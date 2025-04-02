@@ -32,6 +32,16 @@ class GreenFuncNph{
     GreenFuncNph() = default;
     GreenFuncNph(long long int N_diags, double tau_max, double kx, double ky, double kz, double chem_potential, int order_int_max, int ph_ext_max);
 
+    // getters
+
+    //setters
+    void setRelaxSteps(int relax_steps);
+    void setAlpha(double alpha);
+    void setVolume(double volume);
+    void setDimension(int D);
+    void setN_bins(int N_bins);
+    void setNormConst(double norm_const);
+
     private:
 
     std::mt19937 gen; // Mersenne Twister Algorithm, 32-bit
