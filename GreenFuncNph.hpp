@@ -69,7 +69,7 @@ class GreenFuncNph{
     // important variables to keep
     double _last_vertex = 0.; // last current phonon vertex
     int _current_order_int = 0; // internal order of diagram (2*N_{ph_{int}}) 
-    int _current_order_ext = 0; // external order of diagram (N_{ph_{ext}})
+    int _current_ph_ext = 0; // number of current external phonon lines in diagram (N_{ph_{ext}})
 
     // diagram backbone
     Vertex* _vertices; // array  of all possible vertices (also 0 and tau_max)
@@ -85,7 +85,51 @@ class GreenFuncNph{
     double _bin_center = _bin_width/2; // center of each bin
     double* _histogram; // histogram time lengths
     int* _bin_count; // number of diagrams in each bin
+    
+    // Green's function
+    double _norm_const = 1.0;
+    double* _green_func;
 
+    
+    // flags for destructor
+    bool _data_written = false;
+    bool _histogram_calculated = false;
+    bool _histogram_normalized = false;
+
+    // fixes errors in input
+    static inline int returnEven(int value){if(value%2==0){return value;}
+        else{std::cout << "The order of a Diagram must be even, order is " << value << " +1." << std::endl; return value + 1;}};
+
+    // evaluates equality between two double precision values
+    static inline bool isEqual(double a, double b, double epsilon = 1e-9) {return std::fabs(a - b) < epsilon;};
+
+    // computation methods
+    // free electron energy
+    static inline double calcEnergy(double px, double py, double pz){return (std::pow(px,2) + std::pow(py,2) + std::pow(pz,2))/2;}; 
+     // 3D vertex strength (modulus squared)
+    inline double calcVertexStrength(double w_x, double w_y, double w_z){return (2.*std::sqrt(2.)*M_PI*_alpha/_volume)/(pow(w_x,2)+pow(w_y,2)+pow(w_z,2));};
+     // 2D vertex strength (modulus squared)
+    inline double calcVertexStrength(double w_x, double w_y){return (std::sqrt(2)*M_PI*_alpha/_volume)/std::sqrt(pow(w_x,2)+pow(w_y,2));};
+    // finds last vertex before diagram end
+    inline void findLastPhVertex(){_last_vertex = _vertices[_current_order_int + 2*_current_ph_ext].tau;};
+    // general purpose method for generating random number between 0 and 1
+    inline double drawUniformR(){std::uniform_real_distribution<> distrib(0,1); double r = distrib(gen); return r;};
+
+    // manage diagram
+    int chooseInternalPhononPropagator();
+    int findVertexPosition(double);
+    void phVertexMakeRoom(int, int);
+    void phVertexRemoveRoom(int, int);
+    void propagatorArrayMakeRoom(int, int);
+    void propagatorArrayRemoveRoom(int, int);
+
+    // MCMC updates
+    double diagramLengthUpdate(double);
+    void addPhononPropagator();
+    void removePhononPropagator();
+
+    // debug methods
+    void Diagnostic(std::string, int) const;
 };
 
 #endif
