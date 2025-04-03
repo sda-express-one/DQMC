@@ -9,7 +9,7 @@
 #include "GreenFunc.hpp"
 
 int main(){
-    long long int N = 1000000000;
+    long long int unsigned N = 10000000;
     GreenFunc diagram(N, 50.0, 0., 0., 0., -2.2, 500);
     
     // settings

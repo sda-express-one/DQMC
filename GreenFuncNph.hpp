@@ -21,8 +21,8 @@ class GreenFuncNph{
 
     struct Vertex{
         double tau = 0.;
-        int type = 0; // +1 outgoing, -1 incoming, -1 unassigned (extrema)
-        int linked = -1; // describes connection to other vertex of phonon propagator (-1 if not linked for external ph lines or extrema)
+        int type = 0; // +1 outgoing and -1 incoming (internal), +2 outgoing and -2 incoming (external), -1 unassigned (extrema)
+        int linked = -1; // describes connection to other vertex of phonon propagator (-1 if not linked for extrema)
         double wx = 0.;
         double wy = 0.;
         double wz = 0.;
@@ -30,7 +30,7 @@ class GreenFuncNph{
 
     // constructor 
     GreenFuncNph() = default;
-    GreenFuncNph(long long int N_diags, double tau_max, double kx, double ky, double kz, double chem_potential, int order_int_max, int ph_ext_max);
+    GreenFuncNph(long long unsigned int N_diags, double tau_max, double kx, double ky, double kz, double chem_potential, int order_int_max, int ph_ext_max);
 
     // getters
 
@@ -55,8 +55,8 @@ class GreenFuncNph{
     };
 
     // simulations features
-    const int _N_diags = 100000000; // number of differently generated diagrams
-    int _N0 = 0; // number of diagrams of order 0
+    const long long unsigned int _N_diags = 100000000; // number of different generated diagrams
+    long long unsigned int _N0 = 0; // number of diagrams of order 0
     const double _tau_max =  50.; // max value for imaginary time
     double _kx = 0.; // x momentum
     double _ky = 0.; // y momentum
@@ -135,8 +135,10 @@ class GreenFuncNph{
 
     // MCMC updates
     double diagramLengthUpdate(double);
-    void addPhononPropagator();
-    void removePhononPropagator();
+    void addInternalPhononPropagator();
+    void removeInternalPhononPropagator();
+    void addExternalPhononPropagator();
+    void removeExternalPhononPropagator();
 
     // debug methods
     void Diagnostic(std::string, int) const;
