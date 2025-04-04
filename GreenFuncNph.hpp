@@ -127,6 +127,7 @@ class GreenFuncNph{
 
     // manage diagram
     int chooseInternalPhononPropagator();
+    int chooseExternalPhononPropagator();
     int findVertexPosition(double);
     void phVertexMakeRoom(int, int);
     void phVertexRemoveRoom(int, int);

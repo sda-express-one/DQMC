@@ -106,14 +106,30 @@ int GreenFuncNph::chooseInternalPhononPropagator(){
     int i = 0;
     int counter = 0;
     for(int i = 0; i < _current_order_int + 2*_current_ph_ext; i++){
-        if(_vertices[i].type == +1 && _vertices[i].linked != -1){
+        if(_vertices[i].type == +1){
+            counter++;
+        }
+        if(counter == ph_propagator){
+            return i;
+        }
+    }
+    //test = test + 1;
+    return 0;
+};
+
+int GreenFuncNph::chooseExternalPhononPropagator(){
+    std::uniform_int_distribution<> distrib_unif(1, _current_ph_ext); // chooses one of the external phonon propagators at random
+    int ph_propagator = distrib_unif(gen);
+    int i = 0;
+    int counter = 0;
+    for(int i = 0; i < _current_order_int + 2*_current_ph_ext; i++){
+        if(_vertices[i].type == +2){
             counter++;
         }
         if(counter == ph_propagator){ // to be fixed
             return i;
         }
     }
-    //test = test + 1;
     return 0;
 };
 
@@ -396,15 +412,16 @@ void GreenFuncNph::addExternalPhononPropagator(){
     else{
 
         int total_order = _current_order_int + 2*_current_ph_ext;
-        double current_tau = _vertices[total_order + 2].tau; // length of current diagram
+        double tau_current = _vertices[total_order + 2].tau; // length of current diagram
 
         double tau_one = 0. - std::log(1-drawUniformR())/1; // time of left vertex of ext phonon propagator
-        if(tau_one >= current_tau){return;} // reject if it goes out of bound
+        if(tau_one >= tau_current){return;} // reject if it goes out of bound
 
-        double tau_two = current_tau + std::log(1-drawUniformR())/1; // right vertex
+        double tau_two = tau_current + std::log(1-drawUniformR())/1; // right vertex
         if(tau_two <= 0.){return;} // reject if it goes out of bound
+        if(isEqual(tau_one, tau_two)){return;} // reject if both vertices are equal (should not happen)
 
-        std::normal_distribution<> distrib_norm(0, std::sqrt(1/(current_tau-tau_two+tau_one))); // may need variance, inserted std dev
+        std::normal_distribution<> distrib_norm(0, std::sqrt(1/(tau_current-tau_two+tau_one))); // may need variance, inserted std dev
         double w_x = distrib_norm(gen);
         double w_y = distrib_norm(gen);
         double w_z = distrib_norm(gen);
@@ -451,10 +468,10 @@ void GreenFuncNph::addExternalPhononPropagator(){
                 pz_one_fin[i-index_two] = _propagators[i].el_propagator_kz - w_z;
             }
 
-            double* energy_one_init = new double[index_one+1];
-            double* energy_two_init = new double[total_order - index_two];
+            double* energy_one_init = new double[index_one + 1];
+            double* energy_two_init = new double[total_order + 1 - index_two];
 
-            double* energy_one_fin = new double[index_one+1];
+            double* energy_one_fin = new double[index_one + 1];
             double* energy_two_fin = new double[total_order + 1 - index_two];
 
             // calc energy values for propagators below first ph vertex
@@ -499,11 +516,11 @@ void GreenFuncNph::addExternalPhononPropagator(){
             double p_A = _p_add_ext*(_current_ph_ext+1);
 
             double numerator = p_B*std::exp(-(exponent_two_fin + exponent_one_fin - exponent_two_init - exponent_one_init + 
-                1.*(current_tau-tau_two+tau_one)))*calcVertexStrength(w_x, w_y, w_z);
+                1.*(tau_current-tau_two+tau_one)))*calcVertexStrength(w_x, w_y, w_z);
 
-            double denominator = p_A*std::pow(2*M_PI,_D)*1*std::exp(-tau_one)*1*std::exp(-(current_tau-tau_two))*
-            std::pow(((current_tau-tau_two+tau_one)/(2*M_PI)), (double)_D/2.)*
-            std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(current_tau-tau_two+tau_one));
+            double denominator = p_A*std::pow(2*M_PI,_D)*1*std::exp(-tau_one)*1*std::exp(-(tau_current-tau_two))*
+            std::pow(((tau_current-tau_two+tau_one)/(2*M_PI)), (double)_D/2.)*
+            std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one));
 
             double R_add = numerator/denominator;
             double acceptance_ratio = std::min(1.,R_add);
@@ -620,12 +637,12 @@ void GreenFuncNph::addExternalPhononPropagator(){
             double p_B = _p_rem_ext;
             double p_A = _p_add_ext*(_current_ph_ext+1);
 
-            double numerator = p_B*std::exp(-(exponent_fin - exponent_init + 1.*(current_tau-tau_two+tau_one)))
+            double numerator = p_B*std::exp(-(exponent_fin - exponent_init + 1.*(tau_current-tau_two+tau_one)))
             *calcVertexStrength(w_x, w_y, w_z);
 
-            double denominator = p_A*std::pow(2*M_PI,_D)*1*std::exp(-tau_one)*1*std::exp(-(current_tau-tau_two))*
-            std::pow(((current_tau-tau_two+tau_one)/(2*M_PI)), (double)_D/2.)*
-            std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(current_tau-tau_two+tau_one));
+            double denominator = p_A*std::pow(2*M_PI,_D)*1*std::exp(-tau_one)*1*std::exp(-(tau_current-tau_two))*
+            std::pow(((tau_current-tau_two+tau_one)/(2*M_PI)), (double)_D/2.)*
+            std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one));
 
             double R_add = numerator/denominator;
             double acceptance_ratio = std::min(1.,R_add);
@@ -665,6 +682,223 @@ void GreenFuncNph::addExternalPhononPropagator(){
                 return;
             }
         }
+    }
+};
+
+void GreenFuncNph::removeExternalPhononPropagator(){
+    if(_current_ph_ext <= 0){return;} // reject if already at order 0
+    else{
+        // indexes of initial and final vertices of a random internal phonon propagator
+        int index_one = chooseExternalPhononPropagator();
+        int index_two = _vertices[index_one].linked;
+        if(index_one >= index_two){
+            int temp = index_one;
+            index_one = index_two;
+            index_two = temp;
+        }
+        // retrieve time values of the two vertices
+        double tau_one = _vertices[index_one].tau;
+        double tau_two = _vertices[index_two].tau;
+
+        double w_x = _vertices[index_one].wx;
+        double w_y = _vertices[index_one].wy;
+        double w_z = _vertices[index_one].wz;
+
+        int total_order = _current_order_int + 2*_current_ph_ext;
+
+        if(_vertices[index_one].type == -2){
+
+            double* px_one_init = new double[index_one + 1];
+            double* py_one_init = new double[index_one + 1];
+            double* pz_one_init = new double[index_one + 1];
+
+            double* px_one_fin = new double[index_one + 1];
+            double* py_one_fin = new double[index_one + 1];
+            double* pz_one_fin = new double[index_one + 1];
+
+            double* px_two_init = new double[total_order - index_two + 1];
+            double* py_two_init = new double[total_order - index_two + 1];
+            double* pz_two_init = new double[total_order - index_two + 1];
+
+            double* px_two_fin = new double[total_order - index_two + 1];
+            double* py_two_fin = new double[total_order - index_two + 1];
+            double* pz_two_fin = new double[total_order - index_two + 1];
+
+            for(int i = 0; i < index_one + 1; i++){
+                px_one_init[i] = _propagators[i].el_propagator_kx + w_x;
+                py_one_init[i] = _propagators[i].el_propagator_ky + w_y;
+                pz_one_init[i] = _propagators[i].el_propagator_kz + w_z;
+                px_one_fin[i] = _propagators[i].el_propagator_kx;
+                py_one_fin[i] = _propagators[i].el_propagator_ky;
+                pz_one_fin[i] = _propagators[i].el_propagator_kz;
+            }
+
+            for(int i = index_two; i < total_order + 1; i++){
+                px_two_init[i-index_two] = _propagators[i].el_propagator_kx + w_x;
+                py_two_init[i-index_two] = _propagators[i].el_propagator_ky + w_y;
+                pz_two_init[i-index_two] = _propagators[i].el_propagator_kz + w_z;
+                px_two_fin[i-index_two] = _propagators[i].el_propagator_kx;
+                py_two_fin[i-index_two] = _propagators[i].el_propagator_ky;
+                pz_two_fin[i-index_two] = _propagators[i].el_propagator_kz;
+            }
+
+            double* energy_one_init = new double[index_one + 1];
+            double* energy_one_fin = new double[index_one + 1];
+            double* energy_two_init = new double[total_order - index_two + 1];
+            double* energy_two_fin = new double[total_order - index_two + 1];
+
+            for(int i = 0; i < index_one + 1; i++){
+                energy_one_init[i] = calcEnergy(px_one_init[i], py_one_init[i], pz_one_init[i]);
+                energy_one_fin[i] = calcEnergy(px_one_fin[i], py_one_fin[i], pz_one_fin[i]);
+            }
+            
+            delete[] px_one_init, py_one_init, pz_one_init, px_one_fin, py_one_fin, pz_one_fin;
+            delete[] px_two_init, py_two_init, pz_two_init, px_two_fin, py_two_fin, pz_two_fin;
+
+            for(int i = 0; i < total_order - index_two + 1; i++){   
+                energy_two_init[i] = calcEnergy(px_two_init[i], py_two_init[i], pz_two_init[i]);
+                energy_two_fin[i] = calcEnergy(px_two_fin[i], py_two_fin[i], pz_two_fin[i]);
+            }
+
+            double exponent_one_init = 0.;
+            double exponent_one_fin = 0.;
+            double exponent_two_init = 0.;
+            double exponent_two_fin = 0.;
+
+            for(int i = 0; i < index_one + 1; i++){
+                exponent_one_init += energy_one_init[i]*(_vertices[i+1].tau - _vertices[i].tau);
+                exponent_one_fin += energy_one_fin[i]*(_vertices[i+1].tau - _vertices[i].tau);
+            }
+
+            for(int i = index_two; i < total_order + 1; i++){
+                exponent_two_init += energy_two_init[i-index_two]*(_vertices[i+1].tau - _vertices[i].tau);
+                exponent_two_fin += energy_two_fin[i-index_two]*(_vertices[i+1].tau - _vertices[i].tau);
+            }
+
+            delete[] energy_one_init, energy_one_fin, energy_two_init, energy_two_fin;
+
+            double tau_current = _vertices[total_order + 2].tau; // length of current diagram
+
+            double p_A = _p_add_ext*_current_ph_ext;
+            double p_B = _p_rem_ext;
+
+            double numerator = p_A*std::pow(2*M_PI,_D)*1*std::exp(-tau_one)*1*std::exp(-(tau_current-tau_two))*
+            std::pow(((tau_current-tau_two+tau_one)/(2*M_PI)), (double)_D/2.)*
+            std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one));
+
+            double denominator = p_B*std::exp(-(exponent_two_fin + exponent_one_fin - exponent_two_init - exponent_one_init + 
+            1.*(tau_current-tau_two+tau_one)))*calcVertexStrength(w_x, w_y, w_z);
+            
+            double R_rem = numerator/denominator;
+            double acceptance_ratio = std::min(1., R_rem);
+
+            if(drawUniformR() > acceptance_ratio){return;}
+            else{
+                for(int i=0; i<index_one;i++){
+                    _propagators[i].el_propagator_kx += w_x;
+                    _propagators[i].el_propagator_ky += w_y;
+                    _propagators[i].el_propagator_kz += w_z;
+                }
+                for(int i=index_two; i<total_order+1;i++){
+                    _propagators[i].el_propagator_kx += w_x;
+                    _propagators[i].el_propagator_ky += w_y;
+                    _propagators[i].el_propagator_kz += w_z;
+                }
+
+                phVertexRemoveRoom(index_one, index_two); // remove room in vertices array
+                propagatorArrayRemoveRoom(index_one, index_two); // remove room in electron propagators array
+
+                _current_ph_ext -= 1; // update current number of external phonons
+                findLastPhVertex();
+                return;
+            }
+        }
+        else if(_vertices[index_one].type == +2){
+
+                double* px_init = new double[total_order+2];
+                double* py_init = new double[total_order+2];
+                double* pz_init = new double[total_order+2];
+    
+                double* px_fin = new double[total_order+2];
+                double* py_fin = new double[total_order+2];
+                double* pz_fin = new double[total_order+2];
+
+                for(int i = 0; i < index_one; i++){
+                    px_init[i] = _propagators[i].el_propagator_kx + w_x;
+                    py_init[i] = _propagators[i].el_propagator_ky + w_y;
+                    pz_init[i] = _propagators[i].el_propagator_kz + w_z;
+                }
+                for(int i = index_one; i < index_two + 1; i++){
+                    px_init[i] = _propagators[i-1].el_propagator_kx + 2*w_x;
+                    py_init[i] = _propagators[i-1].el_propagator_ky + 2*w_y;
+                    pz_init[i] = _propagators[i-1].el_propagator_kz + 2*w_z;
+                }
+                for(int i = index_two + 1; i < total_order + 2; i++){
+                    px_init[i] = _propagators[i-2].el_propagator_kx + w_x;
+                    py_init[i] = _propagators[i-2].el_propagator_ky + w_y;
+                    pz_init[i] = _propagators[i-2].el_propagator_kz + w_z;
+                }
+
+                for(int i = 0; i < total_order + 2; i++){
+                    px_fin[i] = _propagators[i].el_propagator_kx;
+                    py_fin[i] = _propagators[i].el_propagator_ky;
+                    pz_fin[i] = _propagators[i].el_propagator_kz;
+                }
+                
+                double* energy_init = new double[total_order+2];
+                double* energy_fin = new double[total_order+2];
+
+                for(int i = 0; i < total_order + 2; i++){
+                    energy_init[i] = calcEnergy(px_init[i], py_init[i], pz_init[i]);
+                    energy_fin[i] = calcEnergy(px_fin[i], py_fin[i], pz_fin[i]);
+                }
+
+                delete[] px_fin, py_fin, pz_fin;
+
+                double exponent_init = 0.;
+                double exponent_fin = 0.;
+
+                for(int i = 0; i < total_order + 2; i++){
+                    exponent_init += energy_init[i]*(_vertices[i+1].tau - _vertices[i].tau);
+                    exponent_fin += energy_fin[i]*(_vertices[i+1].tau - _vertices[i].tau);
+                }
+
+                delete[] energy_init, energy_fin;
+
+                double tau_current = _vertices[total_order + 2].tau; // length of current diagram
+
+                double p_A = _p_add_ext*_current_ph_ext;
+                double p_B = _p_rem_ext;
+
+                double numerator = p_A*std::pow(2*M_PI,_D)*1*std::exp(-tau_one)*1*std::exp(-(tau_current-tau_two))*
+                std::pow(((tau_current-tau_two+tau_one)/(2*M_PI)), (double)_D/2.)*
+                std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one));
+
+                double denominator = p_B*std::exp(-(exponent_fin - exponent_init + 1.*(tau_current-tau_two+tau_one)))
+                *calcVertexStrength(w_x, w_y, w_z);
+
+                double R_rem = numerator/denominator;
+                double acceptance_ratio = std::min(1., R_rem);
+
+                if(drawUniformR() > acceptance_ratio){delete[] px_init, py_init, pz_init; return;}
+                else{
+                    for(int i=0; i<total_order + 2;i++){
+                        _propagators[i].el_propagator_kx = px_init[i];
+                        _propagators[i].el_propagator_ky = py_init[i];
+                        _propagators[i].el_propagator_kz = pz_init[i];
+                    }
+
+                    delete[] px_init, py_init, pz_init;
+
+                    phVertexRemoveRoom(index_one, index_two); // remove room in vertices array
+                    propagatorArrayRemoveRoom(index_one, index_two); // remove room in electron propagators array
+
+                    _current_ph_ext -= 1; // update current number of external phonons
+                    findLastPhVertex();
+                    return;
+                }                
+        }
+        else{return;}
     }
 };
 
