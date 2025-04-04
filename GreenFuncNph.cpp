@@ -10,7 +10,8 @@
 
 GreenFuncNph::GreenFuncNph(long long unsigned int N_diags, double tau_max, double kx, double ky, double kz,
     double chem_potential, int order_int_max, int ph_ext_max) : _N_diags(N_diags), _tau_max(tau_max),
-    _order_int_max(_order_int_max), _ph_ext_max(ph_ext_max) {
+    _order_int_max(_order_int_max), _ph_ext_max(ph_ext_max), gen(setSeed()) {
+    
     // assign momentum values
     _kx = kx;
     _ky = ky;
@@ -394,7 +395,7 @@ void GreenFuncNph::addExternalPhononPropagator(){
     if(_current_ph_ext >= _ph_ext_max){return;} // return if already at max number of ext phonon propagators
     else{
 
-        int total_order = _current_order_int +2*_current_ph_ext;
+        int total_order = _current_order_int + 2*_current_ph_ext;
         double current_tau = _vertices[total_order + 2].tau; // length of current diagram
 
         double tau_one = 0. - std::log(1-drawUniformR())/1; // time of left vertex of ext phonon propagator
