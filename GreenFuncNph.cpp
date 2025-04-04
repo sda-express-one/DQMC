@@ -896,7 +896,7 @@ void GreenFuncNph::removeExternalPhononPropagator(){
                     _current_ph_ext -= 1; // update current number of external phonons
                     findLastPhVertex();
                     return;
-                }                
+                }            
         }
         else{return;}
     }
