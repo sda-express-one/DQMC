@@ -1,0 +1,8 @@
+# ignore all executable files
+*.exe
+*.o
+*.out
+
+# ignore following single files
+aaa.cpp
+aaa.hpp
