@@ -33,6 +33,21 @@ class GreenFuncNph{
     GreenFuncNph(long long unsigned int N_diags, double tau_max, double kx, double ky, double kz, double chem_potential, int order_int_max, int ph_ext_max);
 
     // getters
+    inline long long unsigned int getN() const {return _N_diags;};
+    inline int getRelaxSteps() const {return _relax_steps;};
+    inline double * getData() const {return _tau_data;};
+    inline double getNormConst() const {return _norm_const;};
+    inline double getTauMax() const {return _tau_max;}
+    inline double getkx() const {return _kx;};
+    inline double getky() const {return _ky;};
+    inline double getkz() const {return _kz;};
+    inline double getChemPotential() const {return _chem_potential;}
+    inline double getAlpha() const {return _alpha;}
+    inline double getVolume() const {return _volume;}
+    inline int getDimension() const {return _D;};
+    inline int getN_bins() const {return _N_bins;};
+    inline int getCurrentOrderInt() const {return _current_order_int;};
+    inline int getCurrentPhExt() const {return _current_ph_ext;};
 
     //setters
     void setRelaxSteps(int relax_steps);
@@ -77,7 +92,7 @@ class GreenFuncNph{
     double _p_rem_ext = 0.2;
 
     // important variables to keep
-    double _last_vertex = 0.; // last current phonon vertex
+    double _last_vertex = 0.; // last current phonon vertex (0 if no vertices are present)
     int _current_order_int = 0; // internal order of diagram (2*N_{ph_{int}}) 
     int _current_ph_ext = 0; // number of current external phonon lines in diagram (N_{ph_{ext}})
 
@@ -87,7 +102,7 @@ class GreenFuncNph{
 
     // diagrams data
     double* _tau_data;
-    int* _order_data;
+    unsigned short int* _order_data;
 
     // histogram
     int _N_bins = 100; // number of bins for histogram
@@ -122,20 +137,20 @@ class GreenFuncNph{
     inline double calcVertexStrength(double w_x, double w_y){return (std::sqrt(2)*M_PI*_alpha/_volume)/std::sqrt(pow(w_x,2)+pow(w_y,2));};
     // finds last vertex before diagram end
     inline void findLastPhVertex(){_last_vertex = _vertices[_current_order_int + 2*_current_ph_ext].tau;};
-    // general purpose method for generating random number between 0 and 1
+    // general purpose method for generating random numbers between 0 and 1
     inline double drawUniformR(){std::uniform_real_distribution<> distrib(0,1); double r = distrib(gen); return r;};
 
     // manage diagram
     int chooseInternalPhononPropagator();
     int chooseExternalPhononPropagator();
-    int findVertexPosition(double);
-    void phVertexMakeRoom(int, int);
-    void phVertexRemoveRoom(int, int);
-    void propagatorArrayMakeRoom(int, int);
-    void propagatorArrayRemoveRoom(int, int);
+    int findVertexPosition(double tau);
+    void phVertexMakeRoom(int index_one, int index_two);
+    void phVertexRemoveRoom(int index_one, int index_two);
+    void propagatorArrayMakeRoom(int index_one, int index_two);
+    void propagatorArrayRemoveRoom(int index_one, int index_two);
 
     // MCMC updates
-    double diagramLengthUpdate(double);
+    double diagramLengthUpdate(double tau_init);
     void addInternalPhononPropagator();
     void removeInternalPhononPropagator();
     void addExternalPhononPropagator();
