@@ -67,7 +67,7 @@ class GreenFuncNph{
     void setNormConst(double norm_const);
 
     // main simulation method
-    void markovChainMC(unsigned long long int N_diags, bool data, bool histo);
+    void markovChainMC(unsigned long long int N_diags, bool data, bool histo, bool gs_energy);
 
     private:
 
@@ -127,6 +127,12 @@ class GreenFuncNph{
     double _norm_const = 1.0;
     double* _green_func;
 
+    // direct estimator variables
+    double _tau_cutoff = 1.0; // cutoff for energy estimator, if tau < tau_cutoff energy estimator is not calculated
+    double _gs_energy = 0.0; // ground state energy estimator of the system
+    int _gs_energy_count = 0; // number of times the ground state energy estimator is calculated
+    double _effective_mass = 1.0; // effective mass of polaron (in electron mass units)
+    double _Z_factor = 1.0; // Z factor of polaron (overlap between free electron state and polaron state)
     
     // flags for destructor
     bool _data_written = false;
@@ -171,9 +177,12 @@ class GreenFuncNph{
     // histogram methods
     void calcNormConst();
     void normalizeHistogram();
-    
+
+    // estimator methods
+    double calcGroundStateEnergy(double tau_length);
+
     // debug methods
-    void Diagnostic(std::string, int) const;
+    void Diagnostic(std::string filename, int i) const;
 };
 
 #endif

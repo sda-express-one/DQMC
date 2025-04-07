@@ -907,7 +907,7 @@ void GreenFuncNph::removeExternalPhononPropagator(){
     }
 };
 
-void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0, bool data = false, bool histo = false){
+void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0, bool data = false, bool histo = false, bool gs_energy = false){
     if(N_diags == 0){N_diags = _N_diags;}
     std::cout <<"Starting simulation..." << std::endl;
     std::cout << "Number of thermalization steps: " << _relax_steps << std::endl;
@@ -991,6 +991,11 @@ void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0, bool data =
             int bin = (int)((tau_init - 0.) * bin_width_inv);
             _bin_count[bin]++;
         }
+
+        if(gs_energy){
+            _gs_energy += calcGroundStateEnergy(tau_init);
+        }
+
         Diagnostic("test.txt", i); // debug method to visualize diagram structure, comment it for production runs
         i++;
     }
@@ -998,6 +1003,11 @@ void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0, bool data =
         std::cout << "Histogram computed." << std::endl;
         calcNormConst();
         normalizeHistogram();
+    }
+    if(gs_energy){
+        _gs_energy = _gs_energy/(double)_gs_energy_count; // average energy of diagrams
+        std::cout << "Ground state energy of the system is:" << _gs_energy << " . Input parameters are: kx =" << _kx << 
+        ", ky = " << _ky << ", kz = " << _kz << " coupling strength = " << _alpha <<" ." << std::endl;
     }
     std::cout << "Simulation finished!" << std::endl;
 
@@ -1017,7 +1027,51 @@ void GreenFuncNph::normalizeHistogram(){
         _green_func[i] = _green_func[i]*_norm_const;
     }
     _histogram_normalized = true;
-    std::cout << "Imaginary time Green's function computed." << std::endl;
+    std::cout << "Imaginary time Green's function computed (histogram method)." << std::endl;
+};
+
+double GreenFuncNph::calcGroundStateEnergy(double tau_length){
+    if(tau_length <= _tau_cutoff){return 0;} // reject if below cutoff
+    else{
+        int current_order = _current_order_int + 2*_current_ph_ext; // total order of diagrams (number of phonon vertices)
+        double electron_action = 0., phonon_action = 0.;
+
+        // compute electron bare propagators action
+        for(int i=0; i<current_order+1; i++){
+            double electron_energy = calcEnergy(_propagators[i].el_propagator_kx, _propagators[i].el_propagator_ky, _propagators[i].el_propagator_kz);
+            electron_action += electron_energy*(_vertices[i+1].tau - _vertices[i].tau);
+        }
+
+        // compute phonon bare propagators action
+        int i = 0;
+        int int_count = 0;
+        int ext_count = 0;
+        bool int_flag = false;
+        bool ext_flag = false;
+
+        while(i < current_order + 1 && !(int_flag) && !(ext_flag)){
+            if(_vertices[i].type == +1){
+                int index_two = _vertices[i].linked;
+                double tau_one = _vertices[i].tau;  
+                double tau_two = _vertices[index_two].tau;
+                phonon_action += tau_two - tau_one;
+                int_count++;
+                if(int_count == _current_order_int/2){int_flag = true;}
+            }
+            if(_vertices[i].type == -2){
+                int index_two = _vertices[i].linked;
+                double tau_one = _vertices[i].tau;  
+                double tau_two = _vertices[index_two].tau;
+                phonon_action += tau_length + tau_one - tau_two;
+                ext_count++;
+                if(ext_count == _current_ph_ext){ext_flag = true;}
+            }
+            i++;
+        }
+        double diagram_energy = (electron_action + phonon_action - current_order)/tau_length; // energy of current diagram
+        _gs_energy_count++;
+        return diagram_energy; // return energy of current diagram
+    }
 };
 
 void GreenFuncNph::Diagnostic(std::string filename, int i) const {
