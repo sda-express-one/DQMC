@@ -907,8 +907,20 @@ void GreenFuncNph::removeExternalPhononPropagator(){
     }
 };
 
-void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0, bool data = false, bool histo = false, bool gs_energy = false){
+void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0,
+    bool data = false,
+    bool histo = false,
+    bool gs_energy = false,
+    bool effective_mass = false)
+    {
     if(N_diags == 0){N_diags = _N_diags;}
+
+    if(!(isEqual(_kx,0)) || !(isEqual(_ky,0)) || !(isEqual(_kz,0)) && effective_mass){
+        std::cerr << "Warning: kx, ky and kz should be equal to 0 to calculate effective mass." << std::endl;
+        std::cerr << "Effective mass calculation is not possible." << std::endl;
+        effective_mass = false;
+    }
+
     std::cout <<"Starting simulation..." << std::endl;
     std::cout << "Number of thermalization steps: " << _relax_steps << std::endl;
     std::cout << "Number of diagrams to be generated: " << N_diags << std::endl;
@@ -932,7 +944,7 @@ void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0, bool data =
 
     // input variables
     std::uniform_real_distribution<> distrib(0,_tau_max);
-    double tau_init = distrib(gen);
+    double tau_length = distrib(gen);
     double r = 0.5;
     unsigned long long int i = 0;
 
@@ -940,7 +952,7 @@ void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0, bool data =
     while(i < _relax_steps){
         r = drawUniformR();
         if(r <= _p_length){
-            tau_init = diagramLengthUpdate(tau_init);
+            tau_length = diagramLengthUpdate(tau_length);
         }
         else if(r <= _p_length + _p_add_int){
             addInternalPhononPropagator();
@@ -962,7 +974,7 @@ void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0, bool data =
     while(i < N_diags){
         r = drawUniformR();
         if(r <= _p_length){
-            tau_init = diagramLengthUpdate(tau_init);
+            tau_length = diagramLengthUpdate(tau_length);
         }
         else if(r <= _p_length + _p_add_int){
             addInternalPhononPropagator();
@@ -982,35 +994,49 @@ void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0, bool data =
         }
 
         if(data){
-            _tau_data[i] = tau_init;
+            _tau_data[i] = tau_length;
             _order_data[i] = _current_order_int + 2*_current_ph_ext;
         }
 
-        if(histo  && _ph_ext_max == 0){
-            tau_init = (tau_init < 0.) ? 0. : (tau_init >= _tau_max) ? _tau_max - 1e-9 : tau_init;
-            int bin = (int)((tau_init - 0.) * bin_width_inv);
+        if(histo){
+            // select correct bin for histogram
+            tau_length = (tau_length < 0.) ? 0. : (tau_length >= _tau_max) ? _tau_max - 1e-9 : tau_length;
+            int bin = (int)((tau_length - 0.) * bin_width_inv);
             _bin_count[bin]++;
         }
 
         if(gs_energy){
-            _gs_energy += calcGroundStateEnergy(tau_init);
+            _gs_energy += calcGroundStateEnergy(tau_length); // accumulate energy of diagrams
+        }
+
+        if(effective_mass){
+            _effective_mass += calcEffectiveMass(tau_length); // accumulate effective mass of diagrams
         }
 
         Diagnostic("test.txt", i); // debug method to visualize diagram structure, comment it for production runs
         i++;
     }
-    if(histo && _ph_ext_max == 0){
+
+    if(histo){ // _ph_ext_max == 0 may not be necessary
         std::cout << "Histogram computed." << std::endl;
         calcNormConst();
         normalizeHistogram();
     }
+
     if(gs_energy){
         _gs_energy = _gs_energy/(double)_gs_energy_count; // average energy of diagrams
-        std::cout << "Ground state energy of the system is:" << _gs_energy << " . Input parameters are: kx =" << _kx << 
+        std::cout << "Ground state energy of the system is: " << _gs_energy << " . Input parameters are: kx =" << _kx << 
         ", ky = " << _ky << ", kz = " << _kz << " coupling strength = " << _alpha <<" ." << std::endl;
     }
-    std::cout << "Simulation finished!" << std::endl;
 
+    if(effective_mass){
+        _effective_mass = _effective_mass/(double)_effective_mass_count; // average effective mass of diagrams
+        _effective_mass = 1/_effective_mass; // effective mass is inverse of the value calculated
+        std::cout << "Effective mass of system is: " << _effective_mass << "Input parameters are: coupling strength = " << _alpha <<
+        " . " << std::endl;
+    }
+
+    std::cout << "Simulation finished!" << std::endl;
 };
 
 void GreenFuncNph::calcNormConst(){
@@ -1031,7 +1057,7 @@ void GreenFuncNph::normalizeHistogram(){
 };
 
 double GreenFuncNph::calcGroundStateEnergy(double tau_length){
-    if(tau_length <= _tau_cutoff){return 0;} // reject if below cutoff
+    if(tau_length <= _tau_cutoff_energy){return 0;} // reject if below cutoff
     else{
         int current_order = _current_order_int + 2*_current_ph_ext; // total order of diagrams (number of phonon vertices)
         double electron_action = 0., phonon_action = 0.;
@@ -1071,6 +1097,26 @@ double GreenFuncNph::calcGroundStateEnergy(double tau_length){
         double diagram_energy = (electron_action + phonon_action - current_order)/tau_length; // energy of current diagram
         _gs_energy_count++;
         return diagram_energy; // return energy of current diagram
+    }
+};
+
+double GreenFuncNph::calcEffectiveMass(double tau_length){
+    if(tau_length <= _tau_cutoff_mass){return 0;}
+    else{
+        int current_order = _current_order_int + 2*_current_ph_ext; // total order of diagrams (number of phonon vertices)
+        double electron_average_kx = 0., electron_average_ky = 0., electron_average_kz = 0.;
+        for(int i=0; i<current_order+1; i++){
+            electron_average_kx += _propagators[i].el_propagator_kx*(_vertices[i+1].tau - _vertices[i].tau);
+            electron_average_ky += _propagators[i].el_propagator_ky*(_vertices[i+1].tau - _vertices[i].tau);
+            electron_average_kz += _propagators[i].el_propagator_kz*(_vertices[i+1].tau - _vertices[i].tau);
+        }
+        electron_average_kx = electron_average_kx/tau_length;
+        electron_average_ky = electron_average_ky/tau_length;
+        electron_average_kz = electron_average_kz/tau_length;
+
+        _effective_mass_count++;
+        // return inverse of effective mass, _D dimensionality of the system
+        return (1-tau_length*(std::pow(electron_average_kx,2) + std::pow(electron_average_ky,2) + std::pow(electron_average_kz,2))/_D);
     }
 };
 
