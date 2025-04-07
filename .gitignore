@@ -3,6 +3,9 @@
 *.o
 *.out
 
+# visual studio code settings
+.vscode/*
+
 # ignore following single files
 aaa.cpp
 aaa.hpp

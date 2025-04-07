@@ -178,10 +178,15 @@ void GreenFuncNph::propagatorArrayRemoveRoom(int index_one, int index_two){
 };
 
 double GreenFuncNph::diagramLengthUpdate(double tau_init){
-    double tau_fin = _last_vertex - std::log(1-drawUniformR())/(calcEnergy(_kx,_ky,_kz)-_chem_potential);
+    // initialize momentum values for last propagator
+    double kx = _propagators[_current_order_int + 2*_current_ph_ext].el_propagator_kx;
+    double ky = _propagators[_current_order_int + 2*_current_ph_ext].el_propagator_ky;
+    double kz = _propagators[_current_order_int + 2*_current_ph_ext].el_propagator_kz;
+
+    // generate new time value for last vertex, reject if it goes out of bounds
+    double tau_fin = _last_vertex - std::log(1-drawUniformR())/(calcEnergy(kx,ky,kz)-_chem_potential + _current_ph_ext);
     if(tau_fin <= _tau_max){
         _vertices[_current_order_int + 2*_current_ph_ext + 1].tau = tau_fin;
-        //_vertices[_current_order_int + 2*_current_ph_ext + 1].type = 0;
         return tau_fin;
     }
     else{return tau_init;}
@@ -900,6 +905,119 @@ void GreenFuncNph::removeExternalPhononPropagator(){
         }
         else{return;}
     }
+};
+
+void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0, bool data = false, bool histo = false){
+    if(N_diags == 0){N_diags = _N_diags;}
+    std::cout <<"Starting simulation..." << std::endl;
+    std::cout << "Number of thermalization steps: " << _relax_steps << std::endl;
+    std::cout << "Number of diagrams to be generated: " << N_diags << std::endl;
+    double bin_width_inv = 1./_bin_width;
+
+    if(data){
+        _tau_data = new double[N_diags];
+        _order_data = new unsigned short int[N_diags];
+        _data_written = true; // for destructor
+    }
+
+    if(histo && _ph_ext_max == 0){
+        _histogram = new double[_N_bins];
+        _bin_count = new int[_N_bins];
+        for(int i=0; i<_N_bins; i++){
+            _histogram[i] = _bin_center + i*_bin_width;
+            _bin_count[i] = 0;
+        }
+        _histogram_calculated = true; // for destructor
+    }
+
+    // input variables
+    std::uniform_real_distribution<> distrib(0,_tau_max);
+    double tau_init = distrib(gen);
+    double r = 0.5;
+    unsigned long long int i = 0;
+
+    std::cout << "Starting thermalization process" << std::endl;
+    while(i < _relax_steps){
+        r = drawUniformR();
+        if(r <= _p_length){
+            tau_init = diagramLengthUpdate(tau_init);
+        }
+        else if(r <= _p_length + _p_add_int){
+            addInternalPhononPropagator();
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int){
+            removeInternalPhononPropagator();
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext){
+            addExternalPhononPropagator();
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext){
+            removeExternalPhononPropagator();
+        }
+        i++;
+    }
+    std::cout << "Thermalization process finished" << std::endl;
+    i = 0;
+    std::cout << "Starting simulation process" << std::endl;
+    while(i < N_diags){
+        r = drawUniformR();
+        if(r <= _p_length){
+            tau_init = diagramLengthUpdate(tau_init);
+        }
+        else if(r <= _p_length + _p_add_int){
+            addInternalPhononPropagator();
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int){
+            removeInternalPhononPropagator();
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext){
+            addExternalPhononPropagator();
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext){
+            removeExternalPhononPropagator();
+        }
+
+        if(_current_order_int == 0 && _current_ph_ext == 0){
+            _N0++;
+        }
+
+        if(data){
+            _tau_data[i] = tau_init;
+            _order_data[i] = _current_order_int + 2*_current_ph_ext;
+        }
+
+        if(histo  && _ph_ext_max == 0){
+            tau_init = (tau_init < 0.) ? 0. : (tau_init >= _tau_max) ? _tau_max - 1e-9 : tau_init;
+            int bin = (int)((tau_init - 0.) * bin_width_inv);
+            _bin_count[bin]++;
+        }
+        Diagnostic("test.txt", i); // debug method to visualize diagram structure, comment it for production runs
+        i++;
+    }
+    if(histo && _ph_ext_max == 0){
+        std::cout << "Histogram computed." << std::endl;
+        calcNormConst();
+        normalizeHistogram();
+    }
+    std::cout << "Simulation finished!" << std::endl;
+
+};
+
+void GreenFuncNph::calcNormConst(){
+    double numerator = 1 - std::exp(-(calcEnergy(_kx,_ky,_kz)-_chem_potential)*_tau_max);
+    double denominator = calcEnergy(_kx,_ky,_kz)-_chem_potential;
+    std::cout << "Normalization constant calculated." << std::endl;
+    _norm_const = numerator/denominator;
+};
+
+void GreenFuncNph::normalizeHistogram(){
+    _green_func = new double[_N_bins];
+    for(int i=0; i<_N_bins; i++){
+        _green_func[i] = _bin_count[i]/(_N0*_bin_width);
+        _green_func[i] = _green_func[i]*_norm_const;
+    }
+    _histogram_normalized = true;
+    std::cout << "Imaginary time Green's function computed." << std::endl;
 };
 
 void GreenFuncNph::Diagnostic(std::string filename, int i) const {

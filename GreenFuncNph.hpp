@@ -32,6 +32,15 @@ class GreenFuncNph{
     GreenFuncNph() = default;
     GreenFuncNph(long long unsigned int N_diags, double tau_max, double kx, double ky, double kz, double chem_potential, int order_int_max, int ph_ext_max);
 
+    // destructor
+    ~GreenFuncNph(){
+        if(_data_written){delete[] _tau_data; delete[] _order_data;};
+        if(_histogram_calculated){delete[] _histogram; delete[] _bin_count;};
+        if(_histogram_normalized){delete[] _green_func;};
+        delete[] _vertices;
+        delete[] _propagators;
+    };
+
     // getters
     inline long long unsigned int getN() const {return _N_diags;};
     inline int getRelaxSteps() const {return _relax_steps;};
@@ -49,13 +58,16 @@ class GreenFuncNph{
     inline int getCurrentOrderInt() const {return _current_order_int;};
     inline int getCurrentPhExt() const {return _current_ph_ext;};
 
-    //setters
+    // setters
     void setRelaxSteps(int relax_steps);
     void setAlpha(double alpha);
     void setVolume(double volume);
     void setDimension(int D);
     void setN_bins(int N_bins);
     void setNormConst(double norm_const);
+
+    // main simulation method
+    void markovChainMC(unsigned long long int N_diags, bool data, bool histo);
 
     private:
 
@@ -156,6 +168,10 @@ class GreenFuncNph{
     void addExternalPhononPropagator();
     void removeExternalPhononPropagator();
 
+    // histogram methods
+    void calcNormConst();
+    void normalizeHistogram();
+    
     // debug methods
     void Diagnostic(std::string, int) const;
 };
