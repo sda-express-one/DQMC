@@ -37,6 +37,7 @@ class GreenFuncNph{
         if(_data_written){delete[] _tau_data; delete[] _order_data;};
         if(_histogram_calculated){delete[] _histogram; delete[] _bin_count;};
         if(_histogram_normalized){delete[] _green_func;};
+        if(_Z_factor_calculated){delete[] _Z_factor;}
         delete[] _vertices;
         delete[] _propagators;
     };
@@ -57,6 +58,10 @@ class GreenFuncNph{
     inline int getN_bins() const {return _N_bins;};
     inline int getCurrentOrderInt() const {return _current_order_int;};
     inline int getCurrentPhExt() const {return _current_ph_ext;};
+    inline double getTauCutoffEnergy() const {return _tau_cutoff_energy;};
+    inline double getTauCutoffEnergy() const {return _tau_cutoff_mass;};
+    inline double getGSEnergy() const {return _gs_energy;};
+    inline double getEffectiveMass() const {return _effective_mass;};
 
     // setters
     void setRelaxSteps(int relax_steps);
@@ -65,9 +70,14 @@ class GreenFuncNph{
     void setDimension(int D);
     void setN_bins(int N_bins);
     void setNormConst(double norm_const);
+    void setTauCutoffEnergy(double tau_cutoff_energy);
+    void setTauCutoffMass(double tau_cutoff_mass);
 
     // main simulation method
     void markovChainMC(unsigned long long int N_diags, bool data, bool histo, bool gs_energy, bool effective_mass);
+
+    // write to file
+    void writeZFactor(std::string filename) const; // write Z factor in txt file
 
     private:
 
@@ -136,12 +146,13 @@ class GreenFuncNph{
     double _effective_mass = 1.0; // effective mass of polaron (in electron mass units)
     double _effective_mass_count = 0; // number of times the effective mass estimator is calculated
 
-    double _Z_factor = 1.0; // Z factor of polaron (overlap between free electron state and polaron state)
+    int* _Z_factor; // Z factor of polaron (overlap between free electron state and polaron state)
     
     // flags for destructor
     bool _data_written = false;
     bool _histogram_calculated = false;
     bool _histogram_normalized = false;
+    bool _Z_factor_calculated = false;
 
     // fixes errors in input
     static inline int returnEven(int value){if(value%2==0){return value;}
@@ -185,6 +196,8 @@ class GreenFuncNph{
     // estimator methods
     double calcGroundStateEnergy(double tau_length);
     double calcEffectiveMass(double tau_length);
+    void initializeZFactorArray();
+    void calcZFactor();
 
     // debug methods
     void Diagnostic(std::string filename, int i) const;

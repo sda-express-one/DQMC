@@ -38,6 +38,7 @@ void GreenFuncNph::setRelaxSteps(int relax_steps){
         std::cout << "Invalid number of relaxation steps! Number of steps must be >= 0." << std::endl;
         std::cout << "Enter new number of relaxation steps: ";
         std::cin >> relax_steps;
+        std::cout << "\n";
     }
     _relax_steps = relax_steps;
 };
@@ -47,6 +48,7 @@ void GreenFuncNph::setAlpha(double alpha){
         std::cout << "Invalid alpha value! Coupling strength must be > 0." << std::endl;
         std::cout << "Enter new alpha value: ";
         std::cin >> alpha;
+        std::cout << "\n";
     }
     _alpha = alpha;
 };
@@ -56,6 +58,7 @@ void GreenFuncNph::setVolume(double volume){
         std::cout << "Invalid volume value! Volume must be > 0." << std::endl;
         std::cout << "Enter new volume value: ";
         std::cin >> volume;
+        std::cout << "\n";
     }
     _volume = volume;
 };
@@ -65,6 +68,7 @@ void GreenFuncNph::setDimension(int D){
         std::cout << "Invalid dimension! Dimension must be 2 or 3." << std::endl;
         std::cout << "Enter new dimension: ";
         std::cin >> D;
+        std::cout << "\n";
     }
     _D = D;
 };
@@ -74,6 +78,7 @@ void GreenFuncNph::setN_bins(int N_bins){
         std::cout << "Invalid number of bins! Number of bins must be > 0." << std::endl;
         std::cout << "Enter new number of bins: ";
         std::cin >> N_bins;
+        std::cout << "\n";
     }
     _N_bins = N_bins;
     _bin_width = _tau_max/_N_bins;
@@ -85,9 +90,30 @@ void GreenFuncNph::setNormConst(double norm_const){
         std::cout << "Invalid normalization constant! Constant must be > 0." << std::endl;
         std::cout << "Enter new normalization constant: ";
         std::cin >> norm_const;
+        std::cout << "\n";
     }
     _norm_const = norm_const;
 };
+
+void GreenFuncNph::setTauCutoffEnergy(double tau_cutoff_energy){
+    while(tau_cutoff_energy <= 0 || tau_cutoff_energy >= _tau_max){
+        std::cout << "Invalid energy cutoff! Cutoff must be > 0 and < " << _tau_max << " (max tau value).\n";
+        std::cout << "Enter new energy cutoff: ";
+        std::cin >> tau_cutoff_energy;
+        std::cout << "\n";
+    }
+    _tau_cutoff_energy = tau_cutoff_energy;
+}
+
+void GreenFuncNph::setTauCutoffMass(double tau_cutoff_mass){
+    while(tau_cutoff_mass <= 0 || tau_cutoff_mass >= _tau_max){
+        std::cout << "Invalid mass cutoff! Cutoff must be > 0 and < " << _tau_max << " (max tau value).\n";
+        std::cout << "Enter new mass cutoff: ";
+        std::cin >> tau_cutoff_mass;
+        std::cout << "\n";
+    }
+    _tau_cutoff_mass = tau_cutoff_mass;
+}
 
 int GreenFuncNph::findVertexPosition(double tau){
     int position = 0;
@@ -1117,6 +1143,28 @@ double GreenFuncNph::calcEffectiveMass(double tau_length){
         _effective_mass_count++;
         // return inverse of effective mass, _D dimensionality of the system
         return (1-tau_length*(std::pow(electron_average_kx,2) + std::pow(electron_average_ky,2) + std::pow(electron_average_kz,2))/_D);
+    }
+};
+
+void GreenFuncNph::initializeZFactorArray(){
+    _Z_factor = new int[_ph_ext_max];
+    _Z_factor_calculated = true;
+}
+
+void GreenFuncNph::calcZFactor(){
+    _Z_factor[_current_ph_ext] += 1;
+};
+
+void GreenFuncNph::writeZFactor(std::string filename) const {
+    std::ofstream file;
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open file for writing.\n";
+        return;
+    }
+    file << "# Z factor calculated for max number of external phonons: " << _ph_ext_max << "\n";
+    file << "# N_ext Z_factor(N_ext)\n";
+    for(int i = 0; i < _ph_ext_max; i++){
+        file << i << " " << (double)_Z_factor[i]/_N_diags << "\n";
     }
 };
 
