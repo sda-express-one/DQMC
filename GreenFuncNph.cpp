@@ -933,18 +933,26 @@ void GreenFuncNph::removeExternalPhononPropagator(){
     }
 };
 
-void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0,
+void GreenFuncNph::markovChainMC(
+    unsigned long long int N_diags = 0,
     bool data = false,
     bool histo = false,
     bool gs_energy = false,
-    bool effective_mass = false)
-    {
+    bool effective_mass = false,
+    bool Z_factor = false
+    ){
     if(N_diags == 0){N_diags = _N_diags;}
 
     if(!(isEqual(_kx,0)) || !(isEqual(_ky,0)) || !(isEqual(_kz,0)) && effective_mass){
         std::cerr << "Warning: kx, ky and kz should be equal to 0 to calculate effective mass." << std::endl;
         std::cerr << "Effective mass calculation is not possible." << std::endl;
         effective_mass = false;
+    }
+
+    if(Z_factor && _ph_ext_max == 0){
+        std::cerr << "Warning: number of maximum external phonon must be greater than 0 to calculate Z factor." << std::endl;
+        std::cerr << "Z factor calculation is not possible." << std::endl;
+        Z_factor = false;
     }
 
     std::cout <<"Starting simulation..." << std::endl;
@@ -958,7 +966,7 @@ void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0,
         _data_written = true; // for destructor
     }
 
-    if(histo && _ph_ext_max == 0){
+    if(histo){
         _histogram = new double[_N_bins];
         _bin_count = new int[_N_bins];
         for(int i=0; i<_N_bins; i++){
@@ -966,6 +974,10 @@ void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0,
             _bin_count[i] = 0;
         }
         _histogram_calculated = true; // for destructor
+    }
+
+    if(Z_factor){
+        initializeZFactorArray();
     }
 
     // input variables
@@ -1039,6 +1051,8 @@ void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0,
             _effective_mass += calcEffectiveMass(tau_length); // accumulate effective mass of diagrams
         }
 
+        if(Z_factor){updateZFactor();} // accumulate Z factor data
+
         Diagnostic("test.txt", i); // debug method to visualize diagram structure, comment it for production runs
         i++;
     }
@@ -1060,6 +1074,14 @@ void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0,
         _effective_mass = 1/_effective_mass; // effective mass is inverse of the value calculated
         std::cout << "Effective mass of system is: " << _effective_mass << "Input parameters are: coupling strength = " << _alpha <<
         " . " << std::endl;
+    }
+
+    if(Z_factor){
+        std::string a = "Z_factor_alpha";
+        auto b = std::to_string(_alpha);
+        std::string c = ".txt";
+        std::string filename = a + b + c;
+        writeZFactor(filename);
     }
 
     std::cout << "Simulation finished!" << std::endl;
@@ -1151,8 +1173,29 @@ void GreenFuncNph::initializeZFactorArray(){
     _Z_factor_calculated = true;
 }
 
-void GreenFuncNph::calcZFactor(){
+void GreenFuncNph::updateZFactor(){
     _Z_factor[_current_ph_ext] += 1;
+};
+
+void GreenFuncNph::writeHistogram(std::string filename) const {
+    std::ofstream file;
+    if(filename.empty()){
+        std::cout << "Enter filename: ";
+        std::cin >> filename;
+    }
+
+    file.open(filename);
+
+    if(!file.is_open()){
+        std::cout << "Could not open file " << filename << std::endl;
+        return;
+    }
+
+    for(int i=0; i<_N_bins; i++){
+        file << _histogram[i] << " " << _green_func[i] << "\n";
+    }
+    file.close();
+    std::cout << "Histogram written to file " << filename << "." << std::endl;
 };
 
 void GreenFuncNph::writeZFactor(std::string filename) const {
@@ -1161,7 +1204,7 @@ void GreenFuncNph::writeZFactor(std::string filename) const {
         std::cerr << "Error: Could not open file for writing.\n";
         return;
     }
-    file << "# Z factor calculated for max number of external phonons: " << _ph_ext_max << "\n";
+    file << "# Z factor calculated for max number of external phonons " << _ph_ext_max << " and coupling strength " << _alpha <<".\n";
     file << "# N_ext Z_factor(N_ext)\n";
     for(int i = 0; i < _ph_ext_max; i++){
         file << i << " " << (double)_Z_factor[i]/_N_diags << "\n";
