@@ -166,7 +166,7 @@ class GreenFunc{
 
     // computation methods
     static inline double calcEnergy(double px, double py, double pz){return (std::pow(px,2) + std::pow(py,2) + std::pow(pz,2))/2;}; // free electron energy
-    inline double calcVertexStrength(double w_x, double w_y, double w_z){return (2.*std::sqrt(2.)*M_PI*_alpha/_volume)/(pow(w_x,2)+pow(w_y,2)+pow(w_z,2));}; // 3D vertex strength (modulus squared)
+    inline double calcVertexStrength(double w_x, double w_y, double w_z){return (2.*std::sqrt(2.)*M_PI*_alpha/_volume)/(std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2));}; // 3D vertex strength (modulus squared)
     inline double calcVertexStrength(double w_x, double w_y){return (std::sqrt(2)*M_PI*_alpha/_volume)/std::sqrt(pow(w_x,2)+pow(w_y,2));}; // 2D vertex strength (modulus squared)
     inline void findLastPhVertex(){_last_vertex = _vertices[_current_order].tau;};
     inline double drawUniformR(){std::uniform_real_distribution<> distrib(0,1); double r = distrib(gen); return r;};

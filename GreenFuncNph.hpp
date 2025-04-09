@@ -30,7 +30,7 @@ class GreenFuncNph{
 
     // constructor 
     GreenFuncNph() = default;
-    GreenFuncNph(long long unsigned int N_diags, double tau_max, double kx, double ky, double kz, double chem_potential, int order_int_max, int ph_ext_max);
+    GreenFuncNph(unsigned long long int N_diags, double tau_max, double kx, double ky, double kz, double chem_potential, int order_int_max, int ph_ext_max);
 
     // destructor
     ~GreenFuncNph(){
@@ -59,7 +59,7 @@ class GreenFuncNph{
     inline int getCurrentOrderInt() const {return _current_order_int;};
     inline int getCurrentPhExt() const {return _current_ph_ext;};
     inline double getTauCutoffEnergy() const {return _tau_cutoff_energy;};
-    inline double getTauCutoffEnergy() const {return _tau_cutoff_mass;};
+    inline double getTauCutoffMass() const {return _tau_cutoff_mass;};
     inline double getGSEnergy() const {return _gs_energy;};
     inline double getEffectiveMass() const {return _effective_mass;};
 
@@ -93,7 +93,7 @@ class GreenFuncNph{
     };
 
     // simulations features
-    const long long unsigned int _N_diags = 100000000; // number of different generated diagrams
+    const unsigned long long int _N_diags = 100000000; // number of different generated diagrams
     long long unsigned int _N0 = 0; // number of diagrams of order 0
     const double _tau_max =  50.; // max value for imaginary time
     double _kx = 0.; // x momentum
@@ -157,16 +157,16 @@ class GreenFuncNph{
 
     // fixes errors in input
     static inline int returnEven(int value){if(value%2==0){return value;}
-        else{std::cout << "The order of a Diagram must be even, order is " << value << " +1." << std::endl; return value + 1;}};
+        else{std::cout << "The order of a Diagram must be even, order is " << value << " + 1." << std::endl; return value + 1;}};
 
     // evaluates equality between two double precision values
     static inline bool isEqual(double a, double b, double epsilon = 1e-9) {return std::fabs(a - b) < epsilon;};
 
     // computation methods
     // free electron energy
-    static inline double calcEnergy(double px, double py, double pz){return (std::pow(px,2) + std::pow(py,2) + std::pow(pz,2))/2;}; 
+    static inline double calcEnergy(double px, double py, double pz){return (std::pow(px,2) + std::pow(py,2) + std::pow(pz,2))/2;};
      // 3D vertex strength (modulus squared)
-    inline double calcVertexStrength(double w_x, double w_y, double w_z){return (2.*std::sqrt(2.)*M_PI*_alpha/_volume)/(pow(w_x,2)+pow(w_y,2)+pow(w_z,2));};
+    inline double calcVertexStrength(double w_x, double w_y, double w_z){return (2.*std::sqrt(2.)*M_PI*_alpha/_volume)/(std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2));};
      // 2D vertex strength (modulus squared)
     inline double calcVertexStrength(double w_x, double w_y){return (std::sqrt(2)*M_PI*_alpha/_volume)/std::sqrt(pow(w_x,2)+pow(w_y,2));};
     // finds last vertex before diagram end

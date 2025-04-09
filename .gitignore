@@ -9,3 +9,6 @@
 # ignore following single files
 aaa.cpp
 aaa.hpp
+
+# ignore text files
+*.txt
