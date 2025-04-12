@@ -20,13 +20,13 @@ GreenFuncNph::GreenFuncNph(unsigned long long int N_diags, double tau_max, doubl
     // initialize array of all possible phonon vertices
     _vertices = new Vertex[_order_int_max + 2*_ph_ext_max + 2];
     for(int i=0; i<_order_int_max + 2*_ph_ext_max + 2; i++){
-        _vertices[i].tau = 0.;
+        _vertices[i].tau = 0;
         _vertices[i].type = 0;
         _vertices[i].linked = -1;
     }
     // initialize array of all possible propagators
     _propagators = new Propagator[_order_int_max + 2*_ph_ext_max + 1];
-    for(int i=0;i<(order_int_max + 2*_ph_ext_max + 1);i++){
+    for(int i=0; i<(order_int_max + 2*_ph_ext_max + 1); i++){
         _propagators[i].el_propagator_kx = _kx;
         _propagators[i].el_propagator_ky = _ky;
         _propagators[i].el_propagator_kz = _kz;
@@ -115,6 +115,25 @@ void GreenFuncNph::setTauCutoffMass(double tau_cutoff_mass){
     _tau_cutoff_mass = tau_cutoff_mass;
 }
 
+void GreenFuncNph::setProbabilities(double p_length, double p_add_int, double p_rem_int, double p_add_ext, double p_rem_ext){
+    if(!isEqual(p_length + p_add_int + p_rem_int + p_add_ext + p_rem_ext,1)){
+        std::cerr << "Invalid probabilities, total probability must add to 1.\n";
+        double normalization = 1/(p_length + p_add_int + p_rem_int + p_add_ext + p_rem_ext);
+        std::cout << "Probabilities are being riscaled using the value " << normalization <<".\n";
+        p_length = p_length*normalization;
+        p_add_int = p_add_int*normalization;
+        p_rem_int = p_rem_int*normalization;
+        p_add_ext = p_add_ext*normalization;
+        p_rem_ext = p_rem_ext*normalization;
+        std::cout << "New probabilities are:" << p_length << " " << p_add_int << " " << p_rem_int << " " << p_add_ext << " " << p_rem_ext <<".\n";
+    }
+    _p_length = p_length;
+    _p_add_int = p_add_int;
+    _p_rem_int = p_rem_int;
+    _p_add_ext = p_add_ext;
+    _p_rem_ext = p_rem_ext;
+};
+
 int GreenFuncNph::findVertexPosition(double tau){
     int position = 0;
     for(int i = 0; i < _current_order_int + 2*_current_ph_ext + 1; i++){
@@ -131,7 +150,7 @@ int GreenFuncNph::chooseInternalPhononPropagator(){
     int ph_propagator = distrib_unif(gen);
     int i = 0;
     int counter = 0;
-    for(int i = 0; i < _current_order_int; i++){// + 2*_current_ph_ext; i++){
+    for(int i = 0; i < _current_order_int + 2*_current_ph_ext; i++){
         if(_vertices[i].type == +1){
             counter++;
         }
@@ -145,10 +164,9 @@ int GreenFuncNph::chooseInternalPhononPropagator(){
 int GreenFuncNph::chooseExternalPhononPropagator(){
     std::uniform_int_distribution<> distrib_unif(1, _current_ph_ext); // chooses one of the external phonon propagators at random
     int ph_propagator = distrib_unif(gen);
-    int i = 0;
     int counter = 0;
-    for(int i = 0; i < _current_order_int + 2*_current_ph_ext; i++){
-        if(_vertices[i].type == +2){
+    for(int i = 0; i < _current_order_int + 2*_current_ph_ext + 1; i++){
+        if(_vertices[i].type == -2){
             counter++;
         }
         if(counter == ph_propagator){ // to be fixed
@@ -217,7 +235,7 @@ double GreenFuncNph::diagramLengthUpdate(double tau_init){
     else{return tau_init;}
 };
 
-/*void GreenFuncNph::addInternalPhononPropagator(){
+void GreenFuncNph::addInternalPhononPropagator(){
     if(_current_order_int+1 >= _order_int_max){return;} // reject if already at max order
     else{
         std::uniform_int_distribution<> distrib_prop(0, _current_order_int + 2*_current_ph_ext);
@@ -421,220 +439,9 @@ void GreenFuncNph::removeInternalPhononPropagator(){
         std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_two-tau_one));
         double denominator = p_B*std::exp(-(exponent_fin-exponent_init+(1.)*(tau_two - tau_one)))*calcVertexStrength(w_x,w_y,w_z)*(tau_end-tau_init);
 
-        double acceptance_ratio = std::min(1., numerator/denominator);
-        if(drawUniformR() > acceptance_ratio){return;}
-        else{
-            for(int i=index_one; i<index_two;i++){
-                _propagators[i].el_propagator_kx += w_x;
-                _propagators[i].el_propagator_ky += w_y;
-                _propagators[i].el_propagator_kz += w_z;
-            }
-            phVertexRemoveRoom(index_one, index_two);
-            propagatorArrayRemoveRoom(index_one, index_two);
-            _current_order_int -= 2;
-            findLastPhVertex();
-        }
-    }
-};
-*/
+        double R_rem = numerator/denominator;
+        double acceptance_ratio = std::min(1., R_rem);
 
-void GreenFuncNph::addInternalPhononPropagator(){
-    if(_current_order_int+1 >= _order_int_max){return;} // reject if already at max order
-    else{
-        std::uniform_int_distribution<> distrib_prop(0, _current_order_int);
-        int propagator = distrib_prop(gen);
-        double tau_init = _vertices[propagator].tau;
-        double tau_end = _vertices[propagator+1].tau;
-        std::uniform_real_distribution<> distrib_unif(tau_init, tau_end);
-        double tau_one = distrib_unif(gen);
-        double tau_two = tau_one - std::log(1-drawUniformR())/1;
-        if(tau_two >= _vertices[_current_order_int+1].tau){return;} // reject if phonon vertex goes out of bound
-        else{
-            // sampling momentum values for phonon propagators
-            std::normal_distribution<> distrib_norm(0,std::sqrt(1/(tau_two-tau_one))); // may need variance, inserted std dev
-            double w_x = distrib_norm(gen);
-            double w_y = distrib_norm(gen);
-            double w_z = distrib_norm(gen);
-
-            // find position of new tau values
-            int index_1 = findVertexPosition(tau_one);
-            int index_2 = findVertexPosition(tau_two);
-
-            double* px_init = new double[index_2 + 1 - index_1];
-            double* py_init = new double[index_2 + 1 - index_1];
-            double* pz_init = new double[index_2 + 1 - index_1];
-            double* px_fin = new double[index_2 + 1 - index_1];
-            double* py_fin = new double[index_2 + 1 - index_1];
-            double* pz_fin = new double[index_2 + 1 - index_1];
-
-            for(int i = index_1; i < index_2 +1; i++){
-                px_init[i - index_1] = _propagators[i].el_propagator_kx;
-                px_fin[i - index_1] = _propagators[i].el_propagator_kx - w_x;
-                py_init[i - index_1] = _propagators[i].el_propagator_ky;
-                py_fin[i - index_1] = _propagators[i].el_propagator_ky - w_y;
-                pz_init[i - index_1] = _propagators[i].el_propagator_kz;
-                pz_fin[i - index_1] = _propagators[i].el_propagator_kz - w_z;
-            }
-
-            double* energy_init = new double[index_2 + 1 - index_1];
-            double* energy_fin = new double[index_2 + 1 - index_1];
-
-            for(int i = 0; i < index_2 - index_1 + 1; i++){
-                energy_init[i] = calcEnergy(px_init[i], py_init[i], pz_init[i]);
-                energy_fin[i] = calcEnergy(px_fin[i], py_fin[i], pz_fin[i]);
-            }
-
-            delete[] px_init;
-            delete[] py_init;
-            delete[] pz_init;
-            delete[] px_fin;
-            delete[] py_fin;
-            delete[] pz_fin;
-
-            double p_B = _p_rem_int*(_current_order_int + 1);
-            double p_A = _p_add_int*(_current_order_int/2 + 1);
-
-            double exponent_fin = 0.;
-            double exponent_init = 0.;
-
-            if(index_1 == index_2){
-                exponent_fin = energy_fin[0]*(tau_two-tau_one);
-                exponent_init = energy_init[0]*(tau_two-tau_one);
-            }
-            else{
-                exponent_fin = energy_fin[0]*(_vertices[index_1+1].tau-tau_one);
-                exponent_init = energy_init[0]*(_vertices[index_1+1].tau-tau_one);
-                for(int i = 1; i < index_2 - index_1; i++){
-                    exponent_fin += energy_fin[i]*(_vertices[index_1+1+i].tau - _vertices[index_1+i].tau);
-                    exponent_init += energy_init[i]*(_vertices[index_1+1+i].tau - _vertices[index_1+i].tau);
-                }
-                exponent_fin += energy_fin[index_2 - index_1]*(tau_two-_vertices[index_2].tau);
-                exponent_init += energy_init[index_2 - index_1]*(tau_two-_vertices[index_2].tau);
-            }
-
-            delete[] energy_init;
-            delete[] energy_fin;
-
-            double numerator = p_B*std::exp(-(exponent_fin - exponent_init + (1.)*(tau_two - tau_one)))*calcVertexStrength(w_x,w_y,w_z)*(tau_end-tau_init);
-            double denominator = p_A*std::pow(2*M_PI,_D)*std::exp(-(tau_two-tau_one))*std::pow(((tau_two-tau_one)/(2*M_PI)),double(_D)/2.)*
-            std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_two-tau_one));
-
-            double R_add = numerator/denominator;
-            double acceptance_ratio = std::min(1.,R_add);
-
-            if(drawUniformR()>acceptance_ratio){return;}
-            else{
-                phVertexMakeRoom(index_1, index_2); // make room in vertices array
-                propagatorArrayMakeRoom(index_1, index_2); // make room in electron propagators array
-
-                // assign vertex one values
-                _vertices[index_1+1].tau = tau_one;
-                _vertices[index_1+1].type = +1;
-                _vertices[index_1+1].linked = index_2 + 2;
-                _vertices[index_1+1].wx = w_x;
-                _vertices[index_1+1].wy = w_y;
-                _vertices[index_1+1].wz = w_z;
-                // assign vertex two values
-                _vertices[index_2+2].tau = tau_two;
-                _vertices[index_2+2].type = -1;
-                _vertices[index_2+2].linked = index_1 + 1;
-                _vertices[index_2+2].wx = w_x;
-                _vertices[index_2+2].wy = w_y;
-                _vertices[index_2+2].wz = w_z;
-
-                // update electron propagator energies
-                for(int i=index_1+1; i<index_2+2;i++){
-                    _propagators[i].el_propagator_kx -= w_x;
-                    _propagators[i].el_propagator_ky -= w_y;
-                    _propagators[i].el_propagator_kz -= w_z;
-                }
-                
-                _current_order_int += 2; // update current diagram order
-                findLastPhVertex();
-            }
-        } 
-    }
-};
-
-void GreenFuncNph::removeInternalPhononPropagator(){
-    if(_current_order_int < 2){return;} // reject if already at order 0
-    else{
-        //double tau_end = _vertices[_current_order+1].tau;
-        int index_one = chooseInternalPhononPropagator();
-        int index_two = _vertices[index_one].linked;
-
-        double tau_one = _vertices[index_one].tau;
-        double tau_two = _vertices[index_two].tau;
-
-        double tau_init = _vertices[index_one-1].tau;
-        double tau_end = _tau_max;
-        if(index_two != index_one+1){tau_end = _vertices[index_one+1].tau;}
-        else{tau_end = _vertices[index_one+2].tau;}
-
-        double w_x = _vertices[index_one].wx;
-        double w_y = _vertices[index_one].wy;
-        double w_z = _vertices[index_one].wz;
-
-        double* px_init = new double[index_two - index_one];
-        double* py_init = new double[index_two - index_one];
-        double* pz_init = new double[index_two - index_one];
-        double* px_fin = new double[index_two - index_one];
-        double* py_fin = new double[index_two - index_one];
-        double* pz_fin = new double[index_two - index_one];
-
-        for(int i = index_one; i < index_two; i++){
-            px_init[i - index_one] = _propagators[i].el_propagator_kx + w_x;
-            px_fin[i - index_one] = _propagators[i].el_propagator_kx;
-            py_init[i - index_one] = _propagators[i].el_propagator_ky + w_y;
-            py_fin[i - index_one] = _propagators[i].el_propagator_ky;
-            pz_init[i - index_one] = _propagators[i].el_propagator_kz + w_z;
-            pz_fin[i - index_one] = _propagators[i].el_propagator_kz;
-        }
-
-        double* energy_init = new double[index_two - index_one];
-        double* energy_fin = new double[index_two - index_one];
-
-        for(int i = 0; i < index_two - index_one; i++){
-            energy_init[i] = calcEnergy(px_init[i], py_init[i], pz_init[i]);
-            energy_fin[i] = calcEnergy(px_fin[i], py_fin[i], pz_fin[i]);
-        }
-
-        delete[] px_init;
-        delete[] px_fin;
-        delete[] py_init;
-        delete[] py_fin;
-        delete[] pz_init;
-        delete[] pz_fin;
-
-        double exponent_fin = 0.;
-        double exponent_init = 0.;
-        
-        if(index_one + 1 == index_two){
-            exponent_fin = energy_fin[0]*(tau_two-tau_one);
-            exponent_init = energy_init[0]*(tau_two-tau_one);
-        }
-        else{
-            exponent_fin = energy_fin[0]*(_vertices[index_one+1].tau-tau_one);
-            exponent_init = energy_init[0]*(_vertices[index_one+1].tau-tau_one);
-            for(int i = 1; i < index_two - index_one - 1; i++){
-                exponent_fin += energy_fin[i]*(_vertices[index_one+1+i].tau - _vertices[index_one+i].tau);      
-                exponent_init += energy_init[i]*(_vertices[index_one+1+i].tau - _vertices[index_one+i].tau);
-            }
-            exponent_fin += energy_fin[index_two - index_one - 1]*(tau_two-_vertices[index_two-1].tau);
-            exponent_init += energy_init[index_two - index_one - 1]*(tau_two-_vertices[index_two-1].tau);
-        }
-
-        delete[] energy_init;
-        delete[] energy_fin;
-
-        double p_A = _p_add_int*((_current_order_int - 2)/2 + 1);
-        double p_B = _p_rem_int*(_current_order_int - 1);
-        
-        double numerator = p_A*std::pow(2*M_PI,_D)*std::exp(-(tau_two-tau_one))*std::pow(((tau_two-tau_one)/(2*M_PI)),double(_D)/2.)*
-        std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_two-tau_one));
-        double denominator = p_B*std::exp(-(exponent_fin-exponent_init+(1.)*(tau_two - tau_one)))*calcVertexStrength(w_x,w_y,w_z)*(tau_end-tau_init);
-
-        double acceptance_ratio = std::min(1., numerator/denominator);
         if(drawUniformR() > acceptance_ratio){return;}
         else{
             for(int i=index_one; i<index_two;i++){
@@ -653,15 +460,14 @@ void GreenFuncNph::removeInternalPhononPropagator(){
 void GreenFuncNph::addExternalPhononPropagator(){
     if(_current_ph_ext >= _ph_ext_max){return;} // return if already at max number of ext phonon propagators
     else{
-
         int total_order = _current_order_int + 2*_current_ph_ext;
-        double tau_current = _vertices[total_order + 2].tau; // length of current diagram
+        double tau_current = _vertices[total_order + 1].tau; // length of current diagram
 
-        double tau_one = 0. - std::log(1-drawUniformR())/1; // time of left vertex of ext phonon propagator
+        double tau_one = 0. - std::log(1-drawUniformR())/1; // time of ingoing vertex of ext phonon propagator
         if(tau_one >= tau_current){return;} // reject if it goes out of bound
 
-        double tau_two = tau_current + std::log(1-drawUniformR())/1; // right vertex
-        if(tau_two <= 0.){return;} // reject if it goes out of bound
+        double tau_two = tau_current + std::log(1-drawUniformR())/1; // time of outgoing vertex
+        if(tau_two <= 0){return;} // reject if it goes out of bound
         if(isEqual(tau_one, tau_two)){return;} // reject if both vertices are equal (should not happen)
 
         std::normal_distribution<> distrib_norm(0, std::sqrt(1/(tau_current-tau_two+tau_one))); // may need variance, inserted std dev
@@ -686,7 +492,7 @@ void GreenFuncNph::addExternalPhononPropagator(){
             double* px_two_fin = new double[total_order + 1 - index_two];
 
             double* py_one_fin = new double[index_one + 1];
-            double* py_two_fin = new double[total_order +1 - index_two];
+            double* py_two_fin = new double[total_order + 1 - index_two];
 
             double* pz_one_fin = new double[index_one + 1];
             double* pz_two_fin = new double[total_order + 1 - index_two];
@@ -703,12 +509,12 @@ void GreenFuncNph::addExternalPhononPropagator(){
             
             // retrieve momentum values for propagators above second ph vertex
             for(int i = index_two; i < total_order + 1; i++){
-                px_one_init[i-index_two] = _propagators[i].el_propagator_kx;
-                px_one_fin[i-index_two] = _propagators[i].el_propagator_kx - w_x;
-                py_one_init[i-index_two] = _propagators[i].el_propagator_ky;
-                py_one_fin[i-index_two] = _propagators[i].el_propagator_ky - w_y;
-                pz_one_init[i-index_two] = _propagators[i].el_propagator_kz;
-                pz_one_fin[i-index_two] = _propagators[i].el_propagator_kz - w_z;
+                px_two_init[i-index_two] = _propagators[i].el_propagator_kx;
+                px_two_fin[i-index_two] = _propagators[i].el_propagator_kx - w_x;
+                py_two_init[i-index_two] = _propagators[i].el_propagator_ky;
+                py_two_fin[i-index_two] = _propagators[i].el_propagator_ky - w_y;
+                pz_two_init[i-index_two] = _propagators[i].el_propagator_kz;
+                pz_two_fin[i-index_two] = _propagators[i].el_propagator_kz - w_z;
             }
 
             double* energy_one_init = new double[index_one + 1];
@@ -729,8 +535,18 @@ void GreenFuncNph::addExternalPhononPropagator(){
                 energy_two_fin[i] = calcEnergy(px_two_fin[i], py_two_fin[i], pz_two_fin[i]);
             }
 
-            delete[] px_one_init, px_one_fin, py_one_init, py_one_fin, pz_one_init, pz_one_fin;
-            delete[] px_two_init, px_two_fin, py_two_init, py_two_fin, pz_two_init, pz_two_fin;
+            delete[] px_one_init; 
+            delete[] px_one_fin;
+            delete[] py_one_init;
+            delete[] py_one_fin;
+            delete[] pz_one_init;
+            delete[] pz_one_fin;
+            delete[] px_two_init;
+            delete[] px_two_fin;
+            delete[] py_two_init;
+            delete[] py_two_fin;
+            delete[] pz_two_init;
+            delete[] pz_two_fin;
 
             // initial and final action
             double exponent_one_init = 0.; 
@@ -753,7 +569,10 @@ void GreenFuncNph::addExternalPhononPropagator(){
             }
 
             // delete array of energies
-            delete[] energy_one_init, energy_one_fin, energy_two_init, energy_two_fin;
+            delete[] energy_one_init;
+            delete[]energy_one_fin;
+            delete[] energy_two_init;
+            delete[] energy_two_fin;
             
             double p_B = _p_rem_ext;
             double p_A = _p_add_ext*(_current_ph_ext+1);
@@ -767,6 +586,7 @@ void GreenFuncNph::addExternalPhononPropagator(){
 
             double R_add = numerator/denominator;
             double acceptance_ratio = std::min(1.,R_add);
+
             if(drawUniformR() > acceptance_ratio){return;}
             else{
                 phVertexMakeRoom(index_one, index_two); // make room in vertices array
@@ -789,7 +609,7 @@ void GreenFuncNph::addExternalPhononPropagator(){
                 _vertices[index_two+2].wz = w_z;
 
                 // update electron propagator energies
-                for(int i = 0; i < index_one + 2; i++){
+                for(int i = 0; i < index_one + 1; i++){
                     _propagators[i].el_propagator_kx -= w_x;
                     _propagators[i].el_propagator_ky -= w_y;
                     _propagators[i].el_propagator_kz -= w_z;
@@ -809,17 +629,17 @@ void GreenFuncNph::addExternalPhononPropagator(){
             int index_one = findVertexPosition(tau_two);
             int index_two = findVertexPosition(tau_one);
 
-            int total_order = _current_order_int + _current_ph_ext;
+            int total_order = _current_order_int + 2*_current_ph_ext;
 
-            double* px_init = new double[total_order+2];
-            double* py_init = new double[total_order+2];
-            double* pz_init = new double[total_order+2];
+            double* px_init = new double[total_order+1];
+            double* py_init = new double[total_order+1];
+            double* pz_init = new double[total_order+1];
             
-            double* px_fin = new double[total_order+4];
-            double* py_fin = new double[total_order+4];
-            double* pz_fin = new double[total_order+4];
+            double* px_fin = new double[total_order+3];
+            double* py_fin = new double[total_order+3];
+            double* pz_fin = new double[total_order+3];
 
-            for(int i = 0; i < total_order+2; i++){
+            for(int i = 0; i < total_order + 1; i++){
                 px_init[i] = _propagators[i].el_propagator_kx;
                 py_init[i] = _propagators[i].el_propagator_ky;
                 pz_init[i] = _propagators[i].el_propagator_kz;
@@ -835,28 +655,30 @@ void GreenFuncNph::addExternalPhononPropagator(){
                 py_fin[i] = _propagators[i-1].el_propagator_ky - 2*w_y;
                 pz_fin[i] = _propagators[i-1].el_propagator_kz - 2*w_z;
             }
-            for(int i = index_two + 2; i < total_order + 4; i++){
+            for(int i = index_two + 2; i < total_order + 3; i++){
                 px_fin[i] = _propagators[i-2].el_propagator_kx - w_x;
                 py_fin[i] = _propagators[i-2].el_propagator_ky - w_y;
                 pz_fin[i] = _propagators[i-2].el_propagator_kz - w_z;
             }
 
-            double* energy_init = new double[total_order+2];
-            double* energy_fin = new double[total_order+4];
+            double* energy_init = new double[total_order+1];
+            double* energy_fin = new double[total_order+3];
 
-            for(int i = 0; i < total_order+2; i++){
+            for(int i = 0; i < total_order + 1; i++){
                 energy_init[i] = calcEnergy(px_init[i], py_init[i], pz_init[i]);
             }
-            for(int i = 0; i < total_order+4; i++){
+            for(int i = 0; i < total_order + 3; i++){
                 energy_fin[i] = calcEnergy(px_fin[i], py_fin[i], pz_fin[i]);
             }
 
-            delete[] px_init, px_fin, py_init;
+            delete[] px_init;
+            delete[] py_init;
+            delete[] pz_init;
 
             double exponent_init = 0.;
             double exponent_fin = 0.;
 
-            for(int i = 0; i < total_order+2; i++){
+            for(int i = 0; i < total_order + 1; i++){
                 exponent_init += energy_init[i]*(_vertices[i+1].tau - _vertices[i].tau);
             }
 
@@ -870,12 +692,13 @@ void GreenFuncNph::addExternalPhononPropagator(){
             }
             exponent_fin += energy_fin[index_two+2]*(tau_one - _vertices[index_two].tau);
             exponent_fin += energy_fin[index_two+3]*(_vertices[index_two+1].tau - tau_one);
-            for(int i = index_two+3; i < total_order + 4; i++){
+            for(int i = index_two+3; i < total_order + 3; i++){
                 exponent_fin += energy_fin[i]*(_vertices[i-1].tau - _vertices[i-2].tau);
             }
             
             // delete array of energies
-            delete[] energy_init, energy_fin;
+            delete[] energy_init;
+            delete[] energy_fin;
             
             double p_B = _p_rem_ext;
             double p_A = _p_add_ext*(_current_ph_ext+1);
@@ -890,7 +713,7 @@ void GreenFuncNph::addExternalPhononPropagator(){
             double R_add = numerator/denominator;
             double acceptance_ratio = std::min(1.,R_add);
 
-            if(drawUniformR() < acceptance_ratio){delete px_fin, py_fin, pz_fin; return;}
+            if(drawUniformR() < acceptance_ratio){delete[] px_fin; delete[] py_fin; delete[] pz_fin; return;}
             else{
                 phVertexMakeRoom(index_one, index_two); // make room in vertices array
                 propagatorArrayMakeRoom(index_one, index_two); // make room in electron propagators array
@@ -912,13 +735,15 @@ void GreenFuncNph::addExternalPhononPropagator(){
                 _vertices[index_two+2].wz = w_z;
 
                 // update electron propagator energies
-                for(int i = 0; i < total_order + 4; i++){
+                for(int i = 0; i < total_order + 3; i++){
                     _propagators[i].el_propagator_kx = px_fin[i];
                     _propagators[i].el_propagator_ky = py_fin[i];
                     _propagators[i].el_propagator_kz = pz_fin[i];
                 }
 
-                delete px_fin, py_fin, pz_fin;
+                delete[] px_fin;
+                delete[] py_fin;
+                delete[] pz_fin;
 
                 _current_ph_ext += 1; // update current number of external phonons
                 findLastPhVertex();
@@ -934,6 +759,7 @@ void GreenFuncNph::removeExternalPhononPropagator(){
         // indexes of initial and final vertices of a random internal phonon propagator
         int index_one = chooseExternalPhononPropagator();
         int index_two = _vertices[index_one].linked;
+
         if(index_one >= index_two){
             int temp = index_one;
             index_one = index_two;
@@ -943,6 +769,7 @@ void GreenFuncNph::removeExternalPhononPropagator(){
         double tau_one = _vertices[index_one].tau;
         double tau_two = _vertices[index_two].tau;
 
+        // retrieve phonon momentum
         double w_x = _vertices[index_one].wx;
         double w_y = _vertices[index_one].wy;
         double w_z = _vertices[index_one].wz;
@@ -995,8 +822,18 @@ void GreenFuncNph::removeExternalPhononPropagator(){
                 energy_one_fin[i] = calcEnergy(px_one_fin[i], py_one_fin[i], pz_one_fin[i]);
             }
             
-            delete[] px_one_init, py_one_init, pz_one_init, px_one_fin, py_one_fin, pz_one_fin;
-            delete[] px_two_init, py_two_init, pz_two_init, px_two_fin, py_two_fin, pz_two_fin;
+            delete[] px_one_init;
+            delete[] py_one_init;
+            delete[] pz_one_init;
+            delete[] px_one_fin;
+            delete[] py_one_fin;
+            delete[] pz_one_fin;
+            delete[] px_two_init;
+            delete[] py_two_init;
+            delete[] pz_two_init;
+            delete[] px_two_fin;
+            delete[] py_two_fin;
+            delete[] pz_two_fin;
 
             for(int i = 0; i < total_order - index_two + 1; i++){   
                 energy_two_init[i] = calcEnergy(px_two_init[i], py_two_init[i], pz_two_init[i]);
@@ -1018,9 +855,12 @@ void GreenFuncNph::removeExternalPhononPropagator(){
                 exponent_two_fin += energy_two_fin[i-index_two]*(_vertices[i+1].tau - _vertices[i].tau);
             }
 
-            delete[] energy_one_init, energy_one_fin, energy_two_init, energy_two_fin;
+            delete[] energy_one_init;
+            delete[] energy_one_fin;
+            delete[] energy_two_init;
+            delete[] energy_two_fin;
 
-            double tau_current = _vertices[total_order + 2].tau; // length of current diagram
+            double tau_current = _vertices[total_order+1].tau; // length of current diagram
 
             double p_A = _p_add_ext*_current_ph_ext;
             double p_B = _p_rem_ext;
@@ -1051,6 +891,14 @@ void GreenFuncNph::removeExternalPhononPropagator(){
                 phVertexRemoveRoom(index_one, index_two); // remove room in vertices array
                 propagatorArrayRemoveRoom(index_one, index_two); // remove room in electron propagators array
 
+                _propagators[total_order-1].el_propagator_kx = 0;
+                _propagators[total_order-1].el_propagator_ky = 0;
+                _propagators[total_order-1].el_propagator_kz = 0;
+
+                _propagators[total_order].el_propagator_kx = 0;
+                _propagators[total_order].el_propagator_ky = 0;
+                _propagators[total_order].el_propagator_kz = 0;
+
                 _current_ph_ext -= 1; // update current number of external phonons
                 findLastPhVertex();
                 return;
@@ -1058,57 +906,60 @@ void GreenFuncNph::removeExternalPhononPropagator(){
         }
         else if(_vertices[index_one].type == +2){
 
-                double* px_init = new double[total_order+2];
-                double* py_init = new double[total_order+2];
-                double* pz_init = new double[total_order+2];
+                double* px_init = new double[total_order + 1];
+                double* py_init = new double[total_order + 1];
+                double* pz_init = new double[total_order + 1];
     
-                double* px_fin = new double[total_order+2];
-                double* py_fin = new double[total_order+2];
-                double* pz_fin = new double[total_order+2];
+                double* px_fin = new double[total_order + 1];
+                double* py_fin = new double[total_order + 1];
+                double* pz_fin = new double[total_order + 1];
 
                 for(int i = 0; i < index_one; i++){
                     px_init[i] = _propagators[i].el_propagator_kx + w_x;
                     py_init[i] = _propagators[i].el_propagator_ky + w_y;
                     pz_init[i] = _propagators[i].el_propagator_kz + w_z;
                 }
-                for(int i = index_one; i < index_two + 1; i++){
-                    px_init[i] = _propagators[i-1].el_propagator_kx + 2*w_x;
-                    py_init[i] = _propagators[i-1].el_propagator_ky + 2*w_y;
-                    pz_init[i] = _propagators[i-1].el_propagator_kz + 2*w_z;
+                for(int i = index_one; i < index_two; i++){
+                    px_init[i] = _propagators[i].el_propagator_kx + 2*w_x;
+                    py_init[i] = _propagators[i].el_propagator_ky + 2*w_y;
+                    pz_init[i] = _propagators[i].el_propagator_kz + 2*w_z;
                 }
-                for(int i = index_two + 1; i < total_order + 2; i++){
-                    px_init[i] = _propagators[i-2].el_propagator_kx + w_x;
-                    py_init[i] = _propagators[i-2].el_propagator_ky + w_y;
-                    pz_init[i] = _propagators[i-2].el_propagator_kz + w_z;
+                for(int i = index_two - 1; i < total_order + 1; i++){
+                    px_init[i] = _propagators[i].el_propagator_kx + w_x;
+                    py_init[i] = _propagators[i].el_propagator_ky + w_y;
+                    pz_init[i] = _propagators[i].el_propagator_kz + w_z;
                 }
 
-                for(int i = 0; i < total_order + 2; i++){
+                for(int i = 0; i < total_order + 1; i++){
                     px_fin[i] = _propagators[i].el_propagator_kx;
                     py_fin[i] = _propagators[i].el_propagator_ky;
                     pz_fin[i] = _propagators[i].el_propagator_kz;
                 }
                 
-                double* energy_init = new double[total_order+2];
-                double* energy_fin = new double[total_order+2];
+                double* energy_init = new double[total_order+1];
+                double* energy_fin = new double[total_order+1];
 
-                for(int i = 0; i < total_order + 2; i++){
+                for(int i = 0; i < total_order + 1; i++){
                     energy_init[i] = calcEnergy(px_init[i], py_init[i], pz_init[i]);
                     energy_fin[i] = calcEnergy(px_fin[i], py_fin[i], pz_fin[i]);
                 }
 
-                delete[] px_fin, py_fin, pz_fin;
+                delete[] px_fin;
+                delete[] py_fin;
+                delete[] pz_fin;
 
                 double exponent_init = 0.;
                 double exponent_fin = 0.;
 
-                for(int i = 0; i < total_order + 2; i++){
+                for(int i = 0; i < total_order + 1; i++){
                     exponent_init += energy_init[i]*(_vertices[i+1].tau - _vertices[i].tau);
                     exponent_fin += energy_fin[i]*(_vertices[i+1].tau - _vertices[i].tau);
                 }
 
-                delete[] energy_init, energy_fin;
+                delete[] energy_init;
+                delete[] energy_fin;
 
-                double tau_current = _vertices[total_order + 2].tau; // length of current diagram
+                double tau_current = _vertices[total_order+1].tau; // length of current diagram
 
                 double p_A = _p_add_ext*_current_ph_ext;
                 double p_B = _p_rem_ext;
@@ -1123,18 +974,28 @@ void GreenFuncNph::removeExternalPhononPropagator(){
                 double R_rem = numerator/denominator;
                 double acceptance_ratio = std::min(1., R_rem);
 
-                if(drawUniformR() > acceptance_ratio){delete[] px_init, py_init, pz_init; return;}
+                if(drawUniformR() > acceptance_ratio){delete[] px_init; delete[] py_init; delete[] pz_init; return;}
                 else{
-                    for(int i=0; i < total_order + 2;i++){
+                    for(int i=0; i < total_order+1; i++){
                         _propagators[i].el_propagator_kx = px_init[i];
                         _propagators[i].el_propagator_ky = py_init[i];
                         _propagators[i].el_propagator_kz = pz_init[i];
                     }
 
-                    delete[] px_init, py_init, pz_init;
+                    delete[] px_init;
+                    delete[] py_init;
+                    delete[] pz_init;
 
                     phVertexRemoveRoom(index_one, index_two); // remove room in vertices array
                     propagatorArrayRemoveRoom(index_one, index_two); // remove room in electron propagators array
+
+                    _propagators[total_order-1].el_propagator_kx = 0;
+                    _propagators[total_order-1].el_propagator_ky = 0;
+                    _propagators[total_order-1].el_propagator_kz = 0;
+
+                    _propagators[total_order].el_propagator_kx = 0;
+                    _propagators[total_order].el_propagator_ky = 0;
+                    _propagators[total_order].el_propagator_kz = 0;
 
                     _current_ph_ext -= 1; // update current number of external phonons
                     findLastPhVertex();
@@ -1192,6 +1053,17 @@ void GreenFuncNph::markovChainMC(
         initializeZFactorArray();
     }
 
+    if(_write_diagrams){
+        if(N_diags > 25000){
+            _write_diagrams = false; // if too many diagrams are generated they are not printed to txt file
+            std::cerr << "Warning: too many diagrams generated (> 25000), diagrams will not be printed to txt file." << std::endl;
+        }    
+    }
+
+    // test variables
+    int test_length = 0, test_add_int = 0, test_rem_int = 0, test_add_ext = 0, test_rem_ext = 0;
+    //std::cout << _ph_ext_max+_order_int_max << "\n";
+
     // input variables
     std::uniform_real_distribution<> distrib(0,_tau_max);
     double tau_length = distrib(gen);
@@ -1223,21 +1095,28 @@ void GreenFuncNph::markovChainMC(
     std::cout << "Starting simulation process" << std::endl;
     while(i < N_diags){
         r = drawUniformR();
+        if(_write_diagrams){
+            writeChosenUpdate("Updates.txt", i, r);
+        }
         if(r <= _p_length){
             tau_length = diagramLengthUpdate(tau_length);
+            test_length++;
         }
         else if(r <= _p_length + _p_add_int){
             addInternalPhononPropagator();
+            test_add_int++;
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int){
             removeInternalPhononPropagator();
+            test_rem_int++;
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext){
             addExternalPhononPropagator();
+            test_add_ext++;
         }
-        //else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext){
-        else{
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext){
             removeExternalPhononPropagator();
+            test_rem_ext++;
         }
 
         if(_current_order_int == 0 && _current_ph_ext == 0){
@@ -1266,8 +1145,9 @@ void GreenFuncNph::markovChainMC(
 
         if(Z_factor){updateZFactor();} // accumulate Z factor data
 
-        //Diagnostic("test.txt", i); // debug method to visualize diagram structure, comment it for production runs
-
+        if(_write_diagrams){
+            writeDiagram("Diagrams.txt", i, r); // debug method to visualize diagram structure
+        }
         i++;
     }
 
@@ -1275,6 +1155,7 @@ void GreenFuncNph::markovChainMC(
         std::cout << "Histogram computed." << std::endl;
         calcNormConst();
         normalizeHistogram();
+        writeHistogram("histo.txt");
     }
 
     if(gs_energy){
@@ -1297,7 +1178,8 @@ void GreenFuncNph::markovChainMC(
         std::string filename = a + b + c;
         writeZFactor(filename);
     }
-
+    std::cout << test_length << " " << test_add_int << " " << test_rem_int << " " << test_add_ext << " " << test_rem_ext << "\n"; 
+    std::cout << "Current order ph ext: " << _current_ph_ext << "\n";
     std::cout << "Simulation finished!" << std::endl;
 };
 
@@ -1425,7 +1307,7 @@ void GreenFuncNph::writeZFactor(std::string filename) const {
     }
 };
 
-void GreenFuncNph::Diagnostic(std::string filename, int i) const {
+void GreenFuncNph::writeDiagram(std::string filename, int i, double r) const {
     std::ofstream file(filename, std::ofstream::app);
 
     if (!file.is_open()) {
@@ -1447,6 +1329,22 @@ void GreenFuncNph::Diagnostic(std::string filename, int i) const {
     << _vertices[_current_order_int+2*_current_ph_ext+1].wz <<" type: " << _vertices[_current_order_int+2*_current_ph_ext+1].type 
     << " linked: " << _vertices[_current_order_int+2*_current_ph_ext+1].linked << "\n";
 
+    file << "ext phonons: " << _current_ph_ext << " int order: " << _current_order_int << " chosen update: " << r <<"\n";
+
     file << std::endl;
+    file.close();
+};
+
+void GreenFuncNph::writeChosenUpdate(std::string filename, int i, double r) const {
+    std::ofstream file(filename, std::ofstream::app);
+
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open file for writing.\n";
+        return;
+    }
+
+    file << "Iteration: " << i << " chosen update: " << r << "\n";
+    file << "\n";
+
     file.close();
 };

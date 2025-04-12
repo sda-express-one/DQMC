@@ -72,11 +72,14 @@ class GreenFuncNph{
     void setNormConst(double norm_const);
     void setTauCutoffEnergy(double tau_cutoff_energy);
     void setTauCutoffMass(double tau_cutoff_mass);
+    void setProbabilities(double p_length, double p_add_int, double p_rem_int, double p_add_ext, double p_rem_ext);
+    
 
     // main simulation method
     void markovChainMC(unsigned long long int N_diags, bool data, bool histo, bool gs_energy, bool effective_mass, bool Z_factor);
 
     // write to file
+    inline void writeDiagrams(bool write_diagrams = false){_write_diagrams = write_diagrams;};
     void writeHistogram(std::string) const; // write GF with histogram method in .txt file
     void writeZFactor(std::string filename) const; // write Z factor in .txt file
 
@@ -201,7 +204,9 @@ class GreenFuncNph{
     void updateZFactor();
 
     // debug methods
-    void Diagnostic(std::string filename, int i) const;
+    void writeDiagram(std::string filename, int i, double r) const;
+    void writeChosenUpdate(std::string filename, int i, double r) const;
+    bool _write_diagrams = false;
 };
 
 #endif
