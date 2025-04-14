@@ -21,7 +21,7 @@ class GreenFuncNph{
 
     struct Vertex{
         double tau = 0.;
-        int type = 0; // +1 outgoing and -1 incoming (internal), +2 outgoing and -2 incoming (external), -1 unassigned (extrema)
+        int type = 0; // +1 outgoing and -1 incoming (internal), +2 outgoing and -2 incoming (external), 0 unassigned (extrema)
         int linked = -1; // describes connection to other vertex of phonon propagator (-1 if not linked for extrema)
         double wx = 0.;
         double wy = 0.;
@@ -44,7 +44,7 @@ class GreenFuncNph{
 
     // getters
     inline long long unsigned int getN() const {return _N_diags;};
-    inline int getRelaxSteps() const {return _relax_steps;};
+    inline long long unsigned int getRelaxSteps() const {return _relax_steps;};
     inline double * getData() const {return _tau_data;};
     inline double getNormConst() const {return _norm_const;};
     inline double getTauMax() const {return _tau_max;}
@@ -72,7 +72,8 @@ class GreenFuncNph{
     void setNormConst(double norm_const);
     void setTauCutoffEnergy(double tau_cutoff_energy);
     void setTauCutoffMass(double tau_cutoff_mass);
-    void setProbabilities(double p_length, double p_add_int, double p_rem_int, double p_add_ext, double p_rem_ext);
+    void setProbabilities(double p_length, double p_add_int, double p_rem_int, double p_add_ext, double p_rem_ext, 
+        double p_swap, double p_shift, double p_stretch);
     
 
     // main simulation method
@@ -108,14 +109,17 @@ class GreenFuncNph{
     int _D = 3; // dimensions
     double _alpha = 2.0; // coupling strength
     double _volume = 1.0; // volume of 1BZ
-    int _relax_steps = 10000000; // steps of DQMC that are not taken into account into the full simulation, useful to relax to equilibrium distrib
+    long long unsigned int _relax_steps = 10000000; // steps of DQMC that are not taken into account into the full simulation, useful to relax to equilibrium distrib
 
     // transition probabilities
-    double _p_length = 0.2;
-    double _p_add_int = 0.2;
-    double _p_rem_int = 0.2;
-    double _p_add_ext = 0.2;
-    double _p_rem_ext = 0.2;
+    double _p_length = 1./8.;
+    double _p_add_int = 1./8.;
+    double _p_rem_int = 1./8.;
+    double _p_add_ext = 1./8.;
+    double _p_rem_ext = 1./8.;
+    double _p_swap = 1./8.;
+    double _p_shift = 1./8.;
+    double _p_stretch = 1./8.;
 
     // important variables to keep
     double _last_vertex = 0.; // last current phonon vertex (0 if no vertices are present)
@@ -192,6 +196,9 @@ class GreenFuncNph{
     void removeInternalPhononPropagator();
     void addExternalPhononPropagator();
     void removeExternalPhononPropagator();
+    void swapPhononPropagator();
+    void shiftPhononPropagator();
+    double stretchDiagramLength(double tau_init);
 
     // histogram methods
     void calcNormConst();

@@ -9,8 +9,8 @@
 #include "GreenFuncNph.hpp"
 
 GreenFuncNph::GreenFuncNph(unsigned long long int N_diags, double tau_max, double kx, double ky, double kz,
-    double chem_potential, int order_int_max, int ph_ext_max) : _N_diags(N_diags), _tau_max(tau_max), _chem_potential(chem_potential),
-    _order_int_max(returnEven(order_int_max)), _ph_ext_max(ph_ext_max), gen(setSeed()) {
+    double chem_potential, int order_int_max, int ph_ext_max) : gen(setSeed()), _N_diags(N_diags), _tau_max(tau_max), 
+    _chem_potential(chem_potential), _order_int_max(returnEven(order_int_max)), _ph_ext_max(ph_ext_max) {
     
     // assign momentum values
     _kx = kx;
@@ -40,7 +40,8 @@ void GreenFuncNph::setRelaxSteps(int relax_steps){
         std::cin >> relax_steps;
         std::cout << "\n";
     }
-    _relax_steps = relax_steps;
+    long long unsigned int temp = relax_steps;
+    _relax_steps = temp;
 };
 
 void GreenFuncNph::setAlpha(double alpha){
@@ -115,23 +116,31 @@ void GreenFuncNph::setTauCutoffMass(double tau_cutoff_mass){
     _tau_cutoff_mass = tau_cutoff_mass;
 }
 
-void GreenFuncNph::setProbabilities(double p_length, double p_add_int, double p_rem_int, double p_add_ext, double p_rem_ext){
-    if(!isEqual(p_length + p_add_int + p_rem_int + p_add_ext + p_rem_ext,1)){
+void GreenFuncNph::setProbabilities(double p_length, double p_add_int, double p_rem_int, double p_add_ext, double p_rem_ext, 
+    double p_swap, double p_shift, double p_stretch){
+    if(!isEqual(p_length + p_add_int + p_rem_int + p_add_ext + p_rem_ext + p_swap + p_shift + p_stretch, 1)){
         std::cerr << "Invalid probabilities, total probability must add to 1.\n";
-        double normalization = 1/(p_length + p_add_int + p_rem_int + p_add_ext + p_rem_ext);
+        double normalization = 1/(p_length + p_add_int + p_rem_int + p_add_ext + p_rem_ext + p_swap + p_shift + p_stretch);
         std::cout << "Probabilities are being riscaled using the value " << normalization <<".\n";
         p_length = p_length*normalization;
         p_add_int = p_add_int*normalization;
         p_rem_int = p_rem_int*normalization;
         p_add_ext = p_add_ext*normalization;
         p_rem_ext = p_rem_ext*normalization;
-        std::cout << "New probabilities are:" << p_length << " " << p_add_int << " " << p_rem_int << " " << p_add_ext << " " << p_rem_ext <<".\n";
+        p_swap = p_swap*normalization;
+        p_shift = p_shift*normalization;
+        p_stretch = p_stretch*normalization;
+        std::cout << "New probabilities are: " << p_length << " " << p_add_int << " " << p_rem_int << " " 
+        << p_add_ext << " " << p_rem_ext << " " << p_swap << " " << p_shift << " " << p_stretch << ".\n";
     }
     _p_length = p_length;
     _p_add_int = p_add_int;
     _p_rem_int = p_rem_int;
     _p_add_ext = p_add_ext;
     _p_rem_ext = p_rem_ext;
+    _p_swap = p_swap;
+    _p_shift = p_shift;
+    _p_stretch = p_stretch;
 };
 
 int GreenFuncNph::findVertexPosition(double tau){
@@ -142,13 +151,12 @@ int GreenFuncNph::findVertexPosition(double tau){
             return position;
         }
     }
-    return 0;
+    return -1; // return -1 if tau is not found in the vertices array
 };
 
 int GreenFuncNph::chooseInternalPhononPropagator(){
     std::uniform_int_distribution<> distrib_unif(1,int(_current_order_int/2)); // chooses one of the internal phonon propagators at random
     int ph_propagator = distrib_unif(gen);
-    int i = 0;
     int counter = 0;
     for(int i = 0; i < _current_order_int + 2*_current_ph_ext; i++){
         if(_vertices[i].type == +1){
@@ -256,6 +264,9 @@ void GreenFuncNph::addInternalPhononPropagator(){
             // find position of new tau values
             int index_one = findVertexPosition(tau_one);
             int index_two = findVertexPosition(tau_two);
+
+            // control statements to check for floating point errors
+            if(index_one == -1 || index_two == -1){return;} // reject if tau values are not found in the vertices array
             
             // create arrays of momentum values
             double* px_init = new double[index_two + 1 - index_one];
@@ -479,6 +490,13 @@ void GreenFuncNph::addExternalPhononPropagator(){
             int index_one = findVertexPosition(tau_one);
             int index_two = findVertexPosition(tau_two);
 
+            // control statements to check for floating point errors
+            if(index_one == -1 || index_two == -1){return;} // reject if tau values are not found in the vertices array
+            if( tau_one < _vertices[index_one].tau || isEqual(tau_one, _vertices[index_one].tau) 
+                || isEqual(tau_one, _vertices[index_one+1].tau) || tau_one > _vertices[index_one+1].tau){return;}
+            if(tau_two < _vertices[index_two].tau || isEqual(tau_two, _vertices[index_two].tau) 
+                || isEqual(tau_two, _vertices[index_two+1].tau) || tau_two > _vertices[index_two+1].tau){return;} 
+
             double* px_one_init = new double[index_one + 1];
             double* px_two_init = new double[total_order + 1 - index_two];
 
@@ -628,6 +646,12 @@ void GreenFuncNph::addExternalPhononPropagator(){
         else{
             int index_one = findVertexPosition(tau_two);
             int index_two = findVertexPosition(tau_one);
+            // control statements to check for floating point errors
+            if(index_one == -1 || index_two == -1){return;} // reject if tau values are not found in the vertices array
+            if( tau_two < _vertices[index_one].tau || isEqual(tau_two, _vertices[index_one].tau) 
+                || isEqual(tau_two, _vertices[index_one+1].tau) || tau_two > _vertices[index_one+1].tau){return;}
+            if(tau_one < _vertices[index_two].tau || isEqual(tau_one, _vertices[index_two].tau) 
+                || isEqual(tau_one, _vertices[index_two+1].tau) || tau_one > _vertices[index_two+1].tau){return;}
 
             int total_order = _current_order_int + 2*_current_ph_ext;
 
@@ -1006,6 +1030,158 @@ void GreenFuncNph::removeExternalPhononPropagator(){
     }
 };
 
+void GreenFuncNph::swapPhononPropagator(){
+    if(_current_order_int < 4){return;} // swap not possible if internal order is less than 4
+    else{
+        std::uniform_int_distribution<> distrib(1, _current_order_int + 2*_current_ph_ext - 1); // choose random internal propagator
+        int index_one = distrib(gen); // choose random internal propagatorS
+        
+        if(_vertices[index_one].type != +1 && _vertices[index_one].type != -1){return;} // reject if not belonging to internal phonon propagator
+        if(_vertices[index_one+1].type != +1 && _vertices[index_one+1].type != -1){return;} // reject if not belonging to internal phonon propagator
+        if(_vertices[index_one].linked == index_one + 1 || _vertices[index_one].linked == -1){return;} // reject if the two vertices are linked
+
+        int index_two = index_one +1;
+
+        // get values of first vertex
+        int c1 = _vertices[index_one].type;
+        double wx1 = _vertices[index_one].wx;
+        double wy1 = _vertices[index_one].wy;
+        double wz1 = _vertices[index_one].wz;
+        double tau1 = _vertices[index_one].tau;
+
+        // get values of second vertex
+        int c2 = _vertices[index_two].type;
+        double wx2 = _vertices[index_two].wx;
+        double wy2 = _vertices[index_two].wy;
+        double wz2 = _vertices[index_two].wz;
+        double tau2 = _vertices[index_two].tau;
+
+        // get momentum of propagator
+        double kx = _propagators[index_one].el_propagator_kx;
+        double ky = _propagators[index_one].el_propagator_ky;
+        double kz = _propagators[index_one].el_propagator_kz;
+
+        double energy_final_el = calcEnergy(kx+c1*wx1-c2*wx2, ky+c1*wy1-c2*wy2, kz+c1*wz1-c2*wz2);
+        double energy_initial_el = calcEnergy(kx, ky, kz);
+
+        double R_swap = std::exp(-(energy_final_el - energy_initial_el - 1.*(c1-c2))*(tau2-tau1));
+        double acceptance_ratio = std::min(1.,R_swap);
+
+        if(drawUniformR() > acceptance_ratio){return;}
+        else{
+            _propagators[index_one].el_propagator_kx += c1*wx1-c2*wx2;
+            _propagators[index_one].el_propagator_ky += c1*wy1-c2*wy2;
+            _propagators[index_one].el_propagator_kz += c1*wz1-c2*wz2;
+
+            int linked1 = _vertices[index_one].linked;
+            int linked2 = _vertices[index_two].linked;
+
+            // assing new links to conjugate vertices
+            _vertices[linked1].linked = index_two;         
+            _vertices[linked2].linked = index_one;
+
+            _vertices[index_one].wx = wx2;
+            _vertices[index_one].wy = wy2;
+            _vertices[index_one].wz = wz2;
+            _vertices[index_one].type = c2;
+            _vertices[index_one].linked = linked2;
+            _vertices[index_one].tau = tau1;
+                
+            _vertices[index_two].wx = wx1;
+            _vertices[index_two].wy = wy1;
+            _vertices[index_two].wz = wz1;
+            _vertices[index_two].type = c1;
+            _vertices[index_two].linked = linked1;
+            _vertices[index_two].tau = tau2;
+        }
+    }
+};
+
+void GreenFuncNph::shiftPhononPropagator(){
+    if(_current_order_int + _current_ph_ext == 0){return;} // reject if no vertices are present
+    else{
+        int total_order = _current_order_int + 2*_current_ph_ext;
+        std::uniform_int_distribution<> distrib(1, total_order);
+        int vertex_index = distrib(gen); // choose random vertex
+
+        int c = _vertices[vertex_index].type;
+        if(c == 2){c = 1;}
+        if(c == -2){c = -1;}
+
+        double tau_init = _vertices[vertex_index - 1].tau;
+        double tau_fin = _vertices[vertex_index + 1].tau;
+
+        double kx_incoming = _propagators[vertex_index - 1].el_propagator_kx;
+        double ky_incoming = _propagators[vertex_index - 1].el_propagator_ky;
+        double kz_incoming = _propagators[vertex_index - 1].el_propagator_kz;
+
+        double kx_outgoing = _propagators[vertex_index].el_propagator_kx;
+        double ky_outgoing = _propagators[vertex_index].el_propagator_ky;
+        double kz_outgoing = _propagators[vertex_index].el_propagator_kz;
+
+        double energy_delta = calcEnergy(kx_incoming, ky_incoming, kz_incoming) - calcEnergy(kx_outgoing, ky_outgoing, kz_outgoing) - 1.*c;
+        double r = drawUniformR();
+        double tau_new = tau_init - std::log(1 - r*(1 - std::exp(-energy_delta*(tau_fin - tau_init))))/energy_delta;
+        if(isEqual(tau_new, tau_init) || isEqual(tau_new, tau_fin) || tau_new > tau_fin){return;}
+        _vertices[vertex_index].tau = tau_new; // assign new time value to vertex
+    }
+};
+
+double GreenFuncNph::stretchDiagramLength(double tau_init){
+    // initialize momentum values for first electron propagator
+    double kx = _propagators[0].el_propagator_kx;
+    double ky = _propagators[0].el_propagator_ky;
+    double kz = _propagators[0].el_propagator_kz;
+
+    int total_order = _current_order_int + 2*_current_ph_ext;
+    double* new_taus = new double[total_order+2];
+    new_taus[0] = 0; // first vertex time value is always 0
+
+    // generate new time value for first vertex, reject if it goes out of bounds
+    new_taus[1] = 0 - std::log(1-drawUniformR())/(calcEnergy(kx,ky,kz) - _chem_potential + _current_ph_ext);
+    if(isEqual(0, new_taus[1]) || isEqual(new_taus[1], _vertices[2].tau) || new_taus[1] >= _vertices[2].tau){delete[] new_taus; return tau_init;}
+    else{
+        for(int i = 2; i < total_order+1; i++){
+
+            int c = _vertices[i].type;
+            if(c == 2){c = 1;}
+            if(c == -2){c = -1;}
+
+            double tau_one = new_taus[i-1];
+            double tau_two = _vertices[i+1].tau;
+
+            double kx_incoming = _propagators[i-1].el_propagator_kx;
+            double ky_incoming = _propagators[i-1].el_propagator_ky;
+            double kz_incoming = _propagators[i-1].el_propagator_kz;
+
+            double kx_outgoing = _propagators[i].el_propagator_kx;
+            double ky_outgoing = _propagators[i].el_propagator_ky;
+            double kz_outgoing = _propagators[i].el_propagator_kz;
+
+            double energy_delta = calcEnergy(kx_incoming, ky_incoming, kz_incoming) - calcEnergy(kx_outgoing, ky_outgoing, kz_outgoing) - c;
+            
+            new_taus[i] = tau_one - std::log(1 - drawUniformR()*(1 - std::exp(-energy_delta*(tau_two - tau_one))))/energy_delta;
+            if(isEqual(new_taus[i], tau_one) || isEqual(new_taus[i], tau_two) || new_taus[i] > tau_two){delete[] new_taus; return tau_init;}
+
+        }
+    }
+
+    new_taus[total_order+1] = new_taus[total_order] - std::log(1-drawUniformR())/(calcEnergy(kx,ky,kz) - _chem_potential + _current_ph_ext);
+    
+    if(isEqual(new_taus[total_order], new_taus[total_order+1]) || isEqual(new_taus[total_order+1], _tau_max) 
+       || new_taus[total_order+1] >= _tau_max){delete[] new_taus; return tau_init;}
+    else{
+        for(int i = 0; i < total_order + 2; i++){
+            _vertices[i].tau = new_taus[i]; // assign new time values to vertices
+        }
+    }
+    for(int i = 0; i < total_order + 2; i++){
+        _vertices[i].tau = new_taus[i];} // assign new time values to vertices
+    double tau_fin = new_taus[total_order+1]; // assign new time value to last vertex
+    delete[] new_taus;
+    return tau_fin; // return new length of diagram
+};
+
 void GreenFuncNph::markovChainMC(
     unsigned long long int N_diags = 0,
     bool data = false,
@@ -1016,7 +1192,7 @@ void GreenFuncNph::markovChainMC(
     ){
     if(N_diags == 0){N_diags = _N_diags;}
 
-    if(!(isEqual(_kx,0)) || !(isEqual(_ky,0)) || !(isEqual(_kz,0)) && effective_mass){
+    if((!(isEqual(_kx,0)) || !(isEqual(_ky,0)) || !(isEqual(_kz,0))) && effective_mass){
         std::cerr << "Warning: kx, ky and kz should be equal to 0 to calculate effective mass." << std::endl;
         std::cerr << "Effective mass calculation is not possible." << std::endl;
         effective_mass = false;
@@ -1061,7 +1237,8 @@ void GreenFuncNph::markovChainMC(
     }
 
     // test variables
-    int test_length = 0, test_add_int = 0, test_rem_int = 0, test_add_ext = 0, test_rem_ext = 0;
+    int test_length = 0, test_add_int = 0, test_rem_int = 0, test_add_ext = 0;
+    int test_rem_ext = 0, test_swap = 0, test_shift = 0, test_stretch = 0;
     //std::cout << _ph_ext_max+_order_int_max << "\n";
 
     // input variables
@@ -1088,9 +1265,26 @@ void GreenFuncNph::markovChainMC(
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext){
             removeExternalPhononPropagator();
         }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap){
+            swapPhononPropagator();
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift){
+            shiftPhononPropagator();
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift + _p_stretch){
+            tau_length = stretchDiagramLength(tau_length);
+        }
+
+        if(i%(_relax_steps/10) == 0){
+            std::cout << "\r" << "Thermalization progress: " << (double)i/(double)_relax_steps*100. << "%";
+        }
+
         i++;
     }
+    std::cout << "\r" << "Thermalization progress: 100%";
+    std::cout << std::endl;
     std::cout << "Thermalization process finished" << std::endl;
+
     i = 0;
     std::cout << "Starting simulation process" << std::endl;
     while(i < N_diags){
@@ -1117,6 +1311,18 @@ void GreenFuncNph::markovChainMC(
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext){
             removeExternalPhononPropagator();
             test_rem_ext++;
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap){
+            swapPhononPropagator();
+            test_swap++;
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift){
+            shiftPhononPropagator();
+            test_shift++;
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift + _p_stretch){
+            tau_length = stretchDiagramLength(tau_length);
+            test_stretch++;
         }
 
         if(_current_order_int == 0 && _current_ph_ext == 0){
@@ -1148,8 +1354,15 @@ void GreenFuncNph::markovChainMC(
         if(_write_diagrams){
             writeDiagram("Diagrams.txt", i, r); // debug method to visualize diagram structure
         }
+
+        if(i%(N_diags/100) == 0){
+            std::cout << "\r" << "Simulation progress: " << (double)i/(double)N_diags*100. << "%";
+        }
+
         i++;
     }
+    std::cout << "\r" << "Simulation progress: 100%";
+    std::cout << std::endl;
 
     if(histo){ // _ph_ext_max == 0 may not be necessary
         std::cout << "Histogram computed." << std::endl;
@@ -1160,15 +1373,45 @@ void GreenFuncNph::markovChainMC(
 
     if(gs_energy){
         _gs_energy = _gs_energy/(double)_gs_energy_count; // average energy of diagrams
-        std::cout << "Ground state energy of the system is: " << _gs_energy << " . Input parameters are: kx =" << _kx << 
-        ", ky = " << _ky << ", kz = " << _kz << " coupling strength = " << _alpha <<" ." << std::endl;
+        std::cout << "Ground state energy of the system is: " << _gs_energy << " . Input parameters are: kx = " << _kx << 
+        ", ky = " << _ky << ", kz = " << _kz << " coupling strength = " << _alpha << " chemical potential = " << _chem_potential
+        << " minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
+
+        std::string filename = "gs_energy.txt";
+        std::ofstream file(filename, std::ofstream::app);
+        file.open(filename);
+
+        if(!file.is_open()){
+            std::cerr << "Could not gs_energy.txt open file " << filename << std::endl;
+        }
+        else{
+            file << "Ground state energy of the system is: " << _gs_energy << " . Input parameters are: kx = " << _kx << 
+            ", ky = " << _ky << ", kz = " << _kz << " coupling strength = " << _alpha << " chemical potential = " <<
+            _chem_potential << " minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
+            file.close();
+        }
     }
 
     if(effective_mass){
         _effective_mass = _effective_mass/(double)_effective_mass_count; // average effective mass of diagrams
         _effective_mass = 1/_effective_mass; // effective mass is inverse of the value calculated
-        std::cout << "Effective mass of system is: " << _effective_mass << "Input parameters are: coupling strength = " << _alpha <<
-        " . " << std::endl;
+        std::cout << "Effective mass of system is: " << _effective_mass << ". Input parameters are: coupling strength = " << _alpha << 
+        " chemical potential = " << _chem_potential << " minimum length of diagrams for which effective mass is computed = " 
+        << _tau_cutoff_mass << " . " << std::endl;
+
+        std::string filename = "effective_mass.txt";
+        std::ofstream file(filename, std::ofstream::app);
+        file.open(filename);
+
+        if(!file.is_open()){
+            std::cerr << "Could not effective_mass.txt open file " << filename << std::endl;
+        }
+        else{
+            file << "Effective mass of the system is: " << _effective_mass << ". Input parameters are: coupling strength = " << _alpha 
+            << " chemical potential = " << _chem_potential << " minimum length of diagrams for which effective mass is computed = " 
+            << _tau_cutoff_mass << "." << std::endl;
+            file.close();
+        }
     }
 
     if(Z_factor){
@@ -1178,8 +1421,8 @@ void GreenFuncNph::markovChainMC(
         std::string filename = a + b + c;
         writeZFactor(filename);
     }
-    std::cout << test_length << " " << test_add_int << " " << test_rem_int << " " << test_add_ext << " " << test_rem_ext << "\n"; 
-    std::cout << "Current order ph ext: " << _current_ph_ext << "\n";
+    std::cout << test_length << " " << test_add_int << " " << test_rem_int << " " << test_add_ext << " " << test_rem_ext << 
+    " " << test_swap << " " << test_shift << " " << test_stretch << "\n"; 
     std::cout << "Simulation finished!" << std::endl;
 };
 
@@ -1296,6 +1539,8 @@ void GreenFuncNph::writeHistogram(std::string filename) const {
 
 void GreenFuncNph::writeZFactor(std::string filename) const {
     std::ofstream file;
+    file.open(filename);
+
     if (!file.is_open()) {
         std::cerr << "Error: Could not open file for writing.\n";
         return;
@@ -1305,6 +1550,8 @@ void GreenFuncNph::writeZFactor(std::string filename) const {
     for(int i = 0; i < _ph_ext_max; i++){
         file << i << " " << (double)_Z_factor[i]/_N_diags << "\n";
     }
+
+    file.close();
 };
 
 void GreenFuncNph::writeDiagram(std::string filename, int i, double r) const {
