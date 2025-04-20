@@ -9,6 +9,7 @@
 # ignore following single files
 aaa.cpp
 aaa.hpp
+doubles.cpp
 
 # ignore text files
 *.txt
