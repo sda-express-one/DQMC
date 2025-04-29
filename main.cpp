@@ -9,11 +9,11 @@
 #include "GreenFuncNph.hpp"
 
 int main(){
-    long long int unsigned N = 5000000000;
-    GreenFuncNph diagram(N, 50, 0, 0, 0, -8.00, 500, 50);
+    unsigned long long int N = 5000000000;
+    GreenFuncNph diagram(N, 50, 0, 0, 0, -1.25, 500, 51);
     
     // simulations settings
-    diagram.setAlpha(6.0);
+    diagram.setAlpha(1.0);
     diagram.setVolume(1.0);
     diagram.setDimension(3);
 
@@ -26,19 +26,19 @@ int main(){
     diagram.setN_bins(500);
 
     // exact GF estimator settings
-    diagram.setNumPoints(500);
-    diagram.setWidthEval(5.0);
+    diagram.setNumPoints(200);
+    diagram.setWidthEval(5);
     diagram.setSelectedOrder(0);
 
     // print diagrams to file
     diagram.writeDiagrams(false);
 
     // exact estimators settings (time cutoffs)
-    diagram.setTauCutoffEnergy(10.0);
-    diagram.setTauCutoffMass(10.0);
+    diagram.setTauCutoffEnergy(15.0);
+    diagram.setTauCutoffMass(15.0);
 
     // main simulation
-    diagram.markovChainMC(0, false, true, true, true, false);
+    diagram.markovChainMC(0, false, true, true, true, true);
     std::cout << "Terminating the program." << std::endl;
     return 0;
 }

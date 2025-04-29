@@ -37,6 +37,7 @@ class GreenFuncNph{
         if(_gf_exact_written){;
             delete[] _points;
             delete[] _points_gf_exact;
+            //delete[] _gf_exact_count;
         }
         if(_histogram_calculated){
             delete[] _histogram;
@@ -53,7 +54,7 @@ class GreenFuncNph{
     inline long long unsigned int getRelaxSteps() const {return _relax_steps;};
     //inline double * getData() const {return _tau_data;};
     inline double getNormConst() const {return _norm_const;};
-    inline double getTauMax() const {return _tau_max;}
+    inline long double getTauMax() const {return _tau_max;}
     inline double getkx() const {return _kx;};
     inline double getky() const {return _ky;};
     inline double getkz() const {return _kz;};
@@ -112,7 +113,7 @@ class GreenFuncNph{
     // simulations features
     const unsigned long long int _N_diags = 100000000; // number of different generated diagrams
     long long unsigned int _N0 = 0; // number of diagrams of order 0
-    const double _tau_max =  50.; // max value for imaginary time
+    const long double _tau_max =  50.; // max value for imaginary time
     double _kx = 0.; // x momentum
     double _ky = 0.; // y momentum
     double _kz = 0.; // z momentum
@@ -122,7 +123,7 @@ class GreenFuncNph{
     int _D = 3; // dimensions
     double _alpha = 2.0; // coupling strength
     double _volume = 1.0; // volume of 1BZ
-    long long unsigned int _relax_steps = 10000000; // steps of DQMC that are not taken into account into the full simulation, useful to relax to equilibrium distrib
+    unsigned long long int _relax_steps = 10000000; // steps of DQMC that are not taken into account into the full simulation, useful to relax to equilibrium distrib
 
     // transition probabilities
     double _p_length = 1./8.;
@@ -151,27 +152,28 @@ class GreenFuncNph{
     long double _width_eval = _tau_max/10;
     long double* _points; // array of evaluated points
     long double* _points_gf_exact; // gf values for evaluated points
-    int _gf_exact_count = 0; // number of times the exact estimator is calculated
+    //int* _gf_exact_count; // number of times the exact estimator is calculated
+    unsigned long long int _gf_exact_count = 0;
 
     // histogram method
     int _N_bins = 100; // number of bins for histogram
     double _bin_width = _tau_max/_N_bins; // width of each bin
     double _bin_center = _bin_width/2; // center of each bin
     double* _histogram; // histogram time lengths
-    int* _bin_count; // number of diagrams in each bin
+    unsigned long long int* _bin_count; // number of diagrams in each bin
     double _norm_const = 1.0;
     double* _green_func;
 
     // direct estimator variables
     long double _tau_cutoff_energy = _tau_max/10; // cutoff for energy estimator, if tau < tau_cutoff energy estimator is not calculated
-    double _gs_energy = 0.0; // ground state energy estimator of the system
-    int _gs_energy_count = 0; // number of times the ground state energy estimator is calculated
+    long double _gs_energy = 0.0; // ground state energy estimator of the system
+    unsigned long long int _gs_energy_count = 0; // number of times the ground state energy estimator is calculated
 
     long double _tau_cutoff_mass = _tau_max/10; // cutoff for effective mass estimator, if tau < tau_cutoff mass estimator is not calculated
-    double _effective_mass = 1.0; // effective mass of polaron (in electron mass units)
-    double _effective_mass_count = 0; // number of times the effective mass estimator is calculated
+    long double _effective_mass = 0; // effective mass of polaron (in electron mass units)
+    unsigned long long int _effective_mass_count = 0; // number of times the effective mass estimator is calculated
 
-    int* _Z_factor; // Z factor of polaron (overlap between free electron state and polaron state)
+    unsigned long long int* _Z_factor; // Z factor of polaron (overlap between free electron state and polaron state)
     
     // flags for destructor
     bool _gf_exact_written = false;
@@ -196,7 +198,7 @@ class GreenFuncNph{
     // finds last vertex before diagram end
     inline void findLastPhVertex(){_last_vertex = _vertices[_current_order_int + 2*_current_ph_ext].tau;};
     // general purpose method for generating random numbers between 0 and 1
-    inline double drawUniformR(){std::uniform_real_distribution<long double> distrib(0,1); double r = distrib(gen); return r;};
+    inline long double drawUniformR(){std::uniform_real_distribution<long double> distrib(0,1);long double r = distrib(gen); return r;};
 
     // manage diagram
     int chooseInternalPhononPropagator();
@@ -223,6 +225,7 @@ class GreenFuncNph{
 
     // estimator methods
     void exactEstimatorGF(double tau_length, int ext_phonon_order);
+    void exactEstimatorGF2(double tau_length, int ext_phonon_order);
     double calcGroundStateEnergy(long double tau_length);
     double calcEffectiveMass(long double tau_length);
     void initializeZFactorArray();
