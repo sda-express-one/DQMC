@@ -1253,14 +1253,12 @@ void GreenFuncNph::markovChainMC(
         std::cout << "Width of evaluation around each computed point is: " << _width_eval << std::endl;
         _points = new long double[_num_points];
         _points_gf_exact = new long double[_num_points];
-        //_gf_exact_count = new int[_num_points];
         _gf_exact_written = true; // for destructor
 
         // initialize GF
         for(int i=0; i<_num_points; i++){
             _points[i] = _points_center + i*_points_step;
             _points_gf_exact[i] = 0;
-            //_gf_exact_count[i] = 0;
         }
     }
 
@@ -1289,7 +1287,7 @@ void GreenFuncNph::markovChainMC(
     if(Z_factor){
         std::cout << "Z factor will be calculated using the exact estimator" << std::endl;
         std::cout << "Coupling strength: " << _alpha << ", chemical potential: " << _chem_potential << ", max number of phonons: " << 
-        _ph_ext_max - 1 << std::endl;
+        _ph_ext_max << std::endl;
         initializeZFactorArray();
     }
 
@@ -1427,6 +1425,7 @@ void GreenFuncNph::markovChainMC(
         std::string c = ")";
         std::string d = "exact.txt";
         writeExactGF(a+b+c+d); // write Green function to file
+        std::cout << "exaxt GF count = " << _gf_exact_count << std::endl;
     }
 
     if(histo){ // _ph_ext_max == 0 may not be necessary
@@ -1538,7 +1537,7 @@ double GreenFuncNph::calcGroundStateEnergy(long double tau_length){
         bool ext_flag = false;
 
         while(i < current_order + 1 && !(int_flag && ext_flag)){
-            if(_vertices[i].type == +1 && !int_flag){
+            if(_vertices[i].type == +1){
                 int index_two = _vertices[i].linked;
                 long double tau_one = _vertices[i].tau;  
                 long double tau_two = _vertices[index_two].tau;
@@ -1546,7 +1545,7 @@ double GreenFuncNph::calcGroundStateEnergy(long double tau_length){
                 int_count++;
                 if(int_count == _current_order_int/2){int_flag = true;}
             }
-            if(_vertices[i].type == -2 && !ext_flag){
+            else if(_vertices[i].type == -2){
                 int index_two = _vertices[i].linked;
                 long double tau_one = _vertices[i].tau;  
                 long double tau_two = _vertices[index_two].tau;
@@ -1556,7 +1555,7 @@ double GreenFuncNph::calcGroundStateEnergy(long double tau_length){
             }
             i++;
         }
-        double diagram_energy = (electron_action + phonon_action - current_order)/tau_length; // energy of current diagram
+        double diagram_energy = (electron_action + phonon_action - (double)current_order)/tau_length; // energy of current diagram
         _gs_energy_count++;
         return diagram_energy; // return energy of current diagram
     }
@@ -1583,9 +1582,9 @@ double GreenFuncNph::calcEffectiveMass(long double tau_length){
 };
 
 void GreenFuncNph::initializeZFactorArray(){
-    _Z_factor = new unsigned long long int[_ph_ext_max];
+    _Z_factor = new unsigned long long int[_ph_ext_max + 1];
     
-    for(int i=0; i<_ph_ext_max; i++){
+    for(int i=0; i<_ph_ext_max + 1; i++){
         _Z_factor[i] = 0;
     }
     _Z_factor_calculated = true;
@@ -1595,9 +1594,10 @@ void GreenFuncNph::updateZFactor(){
     _Z_factor[_current_ph_ext] += 1;
 };
 
-void GreenFuncNph::exactEstimatorGF(double tau_length, int ext_phonon_order){
+void GreenFuncNph::exactEstimatorGF(long double tau_length, int ext_phonon_order){
     int current_order = _current_order_int + 2*ext_phonon_order; // total order of diagrams (number of phonon vertices)
     double electron_action = 0, phonon_action = 0;
+
     // compute electron bare propagators action
     for(int i=0; i<current_order+1; i++){
         double electron_energy = calcEnergy(_propagators[i].el_propagator_kx, _propagators[i].el_propagator_ky, _propagators[i].el_propagator_kz);
@@ -1612,7 +1612,7 @@ void GreenFuncNph::exactEstimatorGF(double tau_length, int ext_phonon_order){
     bool ext_flag = false;
 
     while(i < current_order + 1 && !(int_flag && ext_flag)){
-        if(_vertices[i].type == +1 && !int_flag){
+        if(_vertices[i].type == +1){
             int index_two = _vertices[i].linked;
             long double tau_one = _vertices[i].tau;  
             long double tau_two = _vertices[index_two].tau;
@@ -1620,41 +1620,39 @@ void GreenFuncNph::exactEstimatorGF(double tau_length, int ext_phonon_order){
             int_count++;
             if(int_count == _current_order_int/2){int_flag = true;}
         }
-        if(_vertices[i].type == -2 && !ext_flag){
+        else if(_vertices[i].type == -2){
             int index_two = _vertices[i].linked;
             long double tau_one = _vertices[i].tau;  
             long double tau_two = _vertices[index_two].tau;
             phonon_action += tau_length + tau_one - tau_two;
             ext_count++;
-            if(ext_count == _current_ph_ext){ext_flag = true;}
+            if(ext_count == ext_phonon_order){ext_flag = true;}
         }
         i++;
     }
 
+    // compute Green function with exact estimator
+    tau_length = (tau_length < 0.) ? 0. : (tau_length >= _tau_max) ? _tau_max - 1e-9 : tau_length;
+    int bin = (int)((tau_length - 0.) * 1./_points_step);
+
+    long double prefactor = std::pow(1 + (_points[bin] - tau_length)/tau_length, current_order);
+    long double exponential = std::exp(-((_points[bin] - tau_length)/tau_length)*(electron_action + phonon_action));
+    long double diagrams_ratio = prefactor*exponential;
+
+    _points_gf_exact[bin] += diagrams_ratio/(_points_step); // accumulate Green function value
+
     // compute GF value with exact estimator
-    int j = 0;
+    /*int j = 0;
     while(j < _num_points){
-        if(std::abs(_points[j] - tau_length) > _width_eval/2.){ j++;}
+        if(std::abs(tau_length - _points[j]) > _points_step/2.){ j++;}
         else{
             long double prefactor = std::pow(1 + (_points[j] - tau_length)/tau_length, current_order);
             long double exponential = std::exp(-((_points[j] - tau_length)/tau_length)*(electron_action + phonon_action));
             long double diagrams_ratio = prefactor*exponential;
             
-            long double lower_bound = _points[j] - _width_eval/2.;
-            long double upper_bound = _points[j] + _width_eval/2.;
-
-            /*if(lower_bound < _vertices[current_order].tau){
-                lower_bound = _vertices[current_order].tau;
-            }*/
-
-            if(lower_bound < 0 || isEqual(lower_bound, 0)){
-                lower_bound = 0;
-            }
-
-            if(upper_bound > _tau_max || isEqual(upper_bound, _tau_max)){
-                upper_bound = _tau_max;
-            }
-
+            long double lower_bound = _points[j] - _points_step/2.;
+            long double upper_bound = _points[j] + _points_step/2.;
+            
             if(_write_diagrams){
                 std::ofstream file("calculation_GF.txt", std::ofstream::app);
 
@@ -1670,10 +1668,9 @@ void GreenFuncNph::exactEstimatorGF(double tau_length, int ext_phonon_order){
             }
 
             _points_gf_exact[j] += diagrams_ratio/(upper_bound-lower_bound); // accumulate Green function value
-            //_gf_exact_count[j]++; // count number of diagrams contributing to Green function value at j index
             j++;
         }
-    }
+    }*/
 };
 
 void GreenFuncNph::writeExactGF(std::string filename) const {
@@ -1729,7 +1726,7 @@ void GreenFuncNph::writeZFactor(std::string filename) const {
         std::cerr << "Error: Could not open file for writing.\n";
         return;
     }
-    file << "# Z factor calculated for max number of external phonons " << _ph_ext_max - 1 << ", coupling strength " << _alpha << 
+    file << "# Z factor calculated for max number of external phonons " << _ph_ext_max << ", coupling strength " << _alpha << 
     " and chemical potential: " << _chem_potential << ".\n";
     file << "# N_ext Z_factor(N_ext)\n";
     for(int i = 0; i < _ph_ext_max; i++){

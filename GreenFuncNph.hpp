@@ -152,7 +152,7 @@ class GreenFuncNph{
     long double _width_eval = _tau_max/10;
     long double* _points; // array of evaluated points
     long double* _points_gf_exact; // gf values for evaluated points
-    //int* _gf_exact_count; // number of times the exact estimator is calculated
+    //unsigned long long int* _gf_exact_count; // number of times the exact estimator is calculated
     unsigned long long int _gf_exact_count = 0;
 
     // histogram method
@@ -224,8 +224,7 @@ class GreenFuncNph{
     void normalizeHistogram();
 
     // estimator methods
-    void exactEstimatorGF(double tau_length, int ext_phonon_order);
-    void exactEstimatorGF2(double tau_length, int ext_phonon_order);
+    void exactEstimatorGF(long double tau_length, int ext_phonon_order);
     double calcGroundStateEnergy(long double tau_length);
     double calcEffectiveMass(long double tau_length);
     void initializeZFactorArray();
