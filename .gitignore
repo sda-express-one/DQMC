@@ -12,4 +12,10 @@ aaa.hpp
 doubles.cpp
 
 # ignore text files
-*.txt
+*.txt  
+
+# ignore image files
+*.png
+*.jpg
+
+.gitignore
