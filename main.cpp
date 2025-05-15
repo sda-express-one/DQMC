@@ -6,10 +6,11 @@
 #include <random>
 #include <chrono>
 #include <algorithm>
+//#include <nlohmann/json.hpp> // Requires JSON for Modern C++
 #include "GreenFuncNph.hpp"
 
 int main(){
-    unsigned long long int N = 300000000;
+    unsigned long long int N = 500000000;
     GreenFuncNph diagram(N, 50, 0, 0, 0, -2.2, 500, 50);
     
     // simulations settings
@@ -27,7 +28,6 @@ int main(){
 
     // exact GF estimator settings
     diagram.setNumPoints(500);
-    diagram.setWidthEval(5);
     diagram.setSelectedOrder(0);
 
     // print diagrams to file
@@ -42,3 +42,27 @@ int main(){
     std::cout << "Terminating the program." << std::endl;
     return 0;
 }
+
+
+
+struct parameters
+{   
+    unsigned long long int N_diags = 0;
+    double kx = 0;
+    double ky = 0;
+    double kz = 0;
+    double alpha = 0;
+    double chem_potential = -10;
+    int order_int_max = 0;
+    int ph_ext_max = 0;
+};
+
+
+struct settings
+{
+    bool gf_exact = false;
+    bool histo = false;
+    bool gs_energy = false;
+    bool effective_mass = false;
+    bool Z_factor = false;
+};

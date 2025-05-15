@@ -71,7 +71,6 @@ class GreenFuncNph{
     inline double getEffectiveMass() const {return _effective_mass;};
     inline double getnumPoints() const {return _num_points;};
     inline int getSelectedOrder() const {return _selected_order;};
-    inline long double getWidthEval()const {return _width_eval;};
 
     // setters
     void setRelaxSteps(int relax_steps);
@@ -84,7 +83,6 @@ class GreenFuncNph{
     void setTauCutoffMass(long double tau_cutoff_mass);
     void setNumPoints(int num_points);
     void setSelectedOrder(int selected_order);
-    void setWidthEval(long double width_eval);
     void setProbabilities(double p_length, double p_add_int, double p_rem_int, double p_add_ext, double p_rem_ext, 
         double p_swap, double p_shift, double p_stretch);
     
@@ -149,7 +147,6 @@ class GreenFuncNph{
     int _selected_order = 0;
     long double _points_step = _tau_max/_num_points;
     long double _points_center = _points_step/2;
-    long double _width_eval = _tau_max/10;
     long double* _points; // array of evaluated points
     long double* _points_gf_exact; // gf values for evaluated points
     //unsigned long long int* _gf_exact_count; // number of times the exact estimator is calculated

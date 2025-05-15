@@ -138,16 +138,6 @@ void GreenFuncNph::setSelectedOrder(int selected_order){
     _selected_order = selected_order;
 };
 
-void GreenFuncNph::setWidthEval(long double widthEval){
-    while(widthEval <= 0){
-        std::cout << "Invalid width for evaluation! Width must be > 0." << std::endl;
-        std::cout << "Enter new width for evaluation: ";
-        std::cin >> widthEval;
-        std::cout << "\n";
-    }
-    _width_eval = widthEval;
-};
-
 void GreenFuncNph::setProbabilities(double p_length, double p_add_int, double p_rem_int, double p_add_ext, double p_rem_ext, 
     double p_swap, double p_shift, double p_stretch){
     if(!isEqual(p_length + p_add_int + p_rem_int + p_add_ext + p_rem_ext + p_swap + p_shift + p_stretch, 1)){
@@ -625,7 +615,7 @@ void GreenFuncNph::addExternalPhononPropagator(){
 
             // delete array of energies
             delete[] energy_one_init;
-            delete[]energy_one_fin;
+            delete[] energy_one_fin;
             delete[] energy_two_init;
             delete[] energy_two_fin;
             
@@ -1250,7 +1240,6 @@ void GreenFuncNph::markovChainMC(
         std::cout << "Green Function will be calculated exactly." << std::endl;
         std::cout << "Number of computed points: " << _num_points << std::endl;
         std::cout << "The selected external number of phonons is: " << _selected_order << std::endl;
-        std::cout << "Width of evaluation around each computed point is: " << _width_eval << std::endl;
         _points = new long double[_num_points];
         _points_gf_exact = new long double[_num_points];
         _gf_exact_written = true; // for destructor
@@ -1379,6 +1368,9 @@ void GreenFuncNph::markovChainMC(
         if(gf_exact && _current_ph_ext == _selected_order){
             exactEstimatorGF(tau_length, _selected_order); // calculate Green function
             _gf_exact_count++; // count number of diagrams for normalization
+            if(_current_order_int == 0 && _current_ph_ext == 0){
+                _N0++;
+            }
         }
 
         if(histo){
@@ -1417,8 +1409,10 @@ void GreenFuncNph::markovChainMC(
 
     if(gf_exact){
         std::cout << "Exact Green's function computed." << std::endl;
+        calcNormConst();
         for(int i=0; i<_num_points; i++){
-            _points_gf_exact[i] = _points_gf_exact[i]/((double)_gf_exact_count); // right normalization
+            //_points_gf_exact[i] = _points_gf_exact[i]/((double)_gf_exact_count); // right normalization
+            _points_gf_exact[i] = _points_gf_exact[i]*_norm_const/_N0; // right normalization
         }
         std::string a = "GF^(";
         auto b = std::to_string(_selected_order);
