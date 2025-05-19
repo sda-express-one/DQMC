@@ -1,0 +1,10 @@
+# set probabilities
+
+prob_length 0.4
+prob_add_internal 0.3
+prob_remove_internal 0.3
+prob_add_external 0
+prob_remove_external 0
+prob_swap 0
+prob_shift 0
+prob_stretch 0

@@ -12,10 +12,11 @@ aaa.hpp
 doubles.cpp
 
 # ignore text files
-*.txt  
+*.txt
+!simulation_parameters.txt
+!simulation_settings.txt
+!simulation_probabilities_MC.txt
 
 # ignore image files
 *.png
 *.jpg
-
-.gitignore

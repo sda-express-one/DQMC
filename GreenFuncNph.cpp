@@ -45,8 +45,8 @@ void GreenFuncNph::setRelaxSteps(int relax_steps){
 };
 
 void GreenFuncNph::setAlpha(double alpha){
-    while(alpha<=0.){
-        std::cout << "Invalid alpha value! Coupling strength must be > 0." << std::endl;
+    while(alpha<0){
+        std::cout << "Invalid coupling strength value! Coupling strength must be > 0." << std::endl;
         std::cout << "Enter new alpha value: ";
         std::cin >> alpha;
         std::cout << "\n";
@@ -163,6 +163,27 @@ void GreenFuncNph::setProbabilities(double p_length, double p_add_int, double p_
     _p_swap = p_swap;
     _p_shift = p_shift;
     _p_stretch = p_stretch;
+};
+
+void GreenFuncNph::setProbabilities(double* probs){
+    if(!isEqual(probs[0] + probs[1] + probs[2] + probs[3] + probs[4] + probs[5] + probs[6] + probs[7], 1)){
+        std::cerr << "Invalid probabilities, total probability must add to 1.\n";
+        double normalization = 1/(probs[0] + probs[1] + probs[2] + probs[3] + probs[4] + probs[5] + probs[6] + probs[7]);
+        std::cout << "Probabilities are being riscaled using the value " << normalization <<".\n";
+        for(int i = 0; i < 8; i++){
+            probs[i] = probs[i]*normalization;
+        }
+        std::cout << "New probabilities are: " << probs[0] << " " << probs[1] << " " << probs[2] << " " 
+        << probs[3] << " " << probs[4] << " " << probs[5] << " " << probs[6] << " " << probs[7] << ".\n";
+    }
+    _p_length = probs[0];
+    _p_add_int = probs[1];
+    _p_rem_int = probs[2];
+    _p_add_ext = probs[3];
+    _p_rem_ext = probs[4];
+    _p_swap = probs[5];
+    _p_shift = probs[6];
+    _p_stretch = probs[7];
 };
 
 int GreenFuncNph::findVertexPosition(long double tau){
@@ -1231,9 +1252,30 @@ void GreenFuncNph::markovChainMC(
         Z_factor = false;
     }
 
+    // print simulation parameters
     std::cout <<"Starting simulation..." << std::endl;
     std::cout << "Number of thermalization steps: " << _relax_steps << std::endl;
     std::cout << "Number of diagrams to be generated: " << N_diags << std::endl;
+    std::cout << "Maximum length of diagram: " << _tau_max << std::endl;
+    std::cout << "Maximum number of internal phonons: " << _order_int_max/2 << std::endl;
+    std::cout << "Maximum number of external phonons: " << _ph_ext_max << std::endl;
+    std::cout << "Maximum diagram order: " << _order_int_max + 2*_ph_ext_max << std::endl;
+    std::cout << "Coupling strength: " << _alpha << ", chemical potential: " << _chem_potential << std::endl;
+    std::cout << "Number of dimensions: " << _D << std::endl;
+    if(_D == 3){
+        std::cout << "Momentum: kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << std::endl;
+    }
+    if(_D == 2){
+        std::cout << "Momentum: kx = " << _kx << ", ky = " << _ky << std::endl;
+    }
+    // print MC update probabilities
+    std::cout << "Update probabilities: " << std::endl;
+    std::cout << "Length update: " << _p_length << ", add internal update: " << _p_add_int <<
+    ", remove internal update: " << _p_rem_int << std::endl;
+    std::cout << "Add external update: " << _p_add_ext << ", remove external update: " << _p_rem_ext <<
+    ", swap update: " << _p_swap << std::endl;
+    std::cout << "Shift update: " << _p_shift << ", stretch update: " << _p_stretch << std::endl; 
+
     double bin_width_inv = 1./_bin_width;
 
     if(gf_exact){
@@ -1368,9 +1410,6 @@ void GreenFuncNph::markovChainMC(
         if(gf_exact && _current_ph_ext == _selected_order){
             exactEstimatorGF(tau_length, _selected_order); // calculate Green function
             _gf_exact_count++; // count number of diagrams for normalization
-            if(_current_order_int == 0 && _current_ph_ext == 0){
-                _N0++;
-            }
         }
 
         if(histo){
@@ -1378,10 +1417,6 @@ void GreenFuncNph::markovChainMC(
             tau_length = (tau_length < 0.) ? 0. : (tau_length >= _tau_max) ? _tau_max - 1e-9 : tau_length;
             int bin = (int)((tau_length - 0.) * bin_width_inv);
             _bin_count[bin]++;
-
-            if(_current_order_int == 0 && _current_ph_ext == 0){
-                _N0++;
-            }
         }
 
         if(gs_energy){
@@ -1402,14 +1437,18 @@ void GreenFuncNph::markovChainMC(
             std::cout << "\r" << "Simulation progress: " << (double)i/(double)N_diags*100. << "%";
         }
 
+        if(_current_order_int == 0 && _current_ph_ext == 0){
+                _N0++;
+        }
+
         i++;
     }
     std::cout << "\r" << "Simulation progress: 100%";
     std::cout << std::endl;
 
     if(gf_exact){
-        std::cout << "Exact Green's function computed." << std::endl;
         calcNormConst();
+        std::cout << "Exact Green's function computed." << std::endl;
         for(int i=0; i<_num_points; i++){
             //_points_gf_exact[i] = _points_gf_exact[i]/((double)_gf_exact_count); // right normalization
             _points_gf_exact[i] = _points_gf_exact[i]*_norm_const/_N0; // right normalization
@@ -1422,7 +1461,7 @@ void GreenFuncNph::markovChainMC(
         std::cout << "exaxt GF count = " << _gf_exact_count << std::endl;
     }
 
-    if(histo){ // _ph_ext_max == 0 may not be necessary
+    if(histo){
         std::cout << "Histogram computed." << std::endl;
         calcNormConst();
         normalizeHistogram();

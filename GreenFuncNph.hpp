@@ -85,6 +85,7 @@ class GreenFuncNph{
     void setSelectedOrder(int selected_order);
     void setProbabilities(double p_length, double p_add_int, double p_rem_int, double p_add_ext, double p_rem_ext, 
         double p_swap, double p_shift, double p_stretch);
+    void setProbabilities(double * probs);
     
 
     // main simulation method
