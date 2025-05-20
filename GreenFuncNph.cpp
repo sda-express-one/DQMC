@@ -1185,33 +1185,28 @@ long double GreenFuncNph::stretchDiagramLength(long double tau_init){
     long double* new_taus = new long double[total_order+2];
     new_taus[0] = 0; // first vertex time value is always 0
 
-    // generate new time value for first vertex, reject if it goes out of bounds
-    new_taus[1] = 0 - std::log(1-drawUniformR())/(calcEnergy(kx,ky,kz) - _chem_potential + _current_ph_ext);
-    if(isEqual(0, new_taus[1]) || isEqual(new_taus[1], _vertices[2].tau) || new_taus[1] >= _vertices[2].tau){delete[] new_taus; return tau_init;}
-    else{
-        for(int i = 2; i < total_order+1; i++){
+    for(int i = 1; i < total_order+1; i++){
+        // assign new time values to every vertex
+        int c = _vertices[i].type;
+        if(c == 2){c = 1;}
+        if(c == -2){c = -1;}
 
-            int c = _vertices[i].type;
-            if(c == 2){c = 1;}
-            if(c == -2){c = -1;}
+        // value of left vertex is retrieved from new proposed values, right value from old ones (vertex array)
+        long double tau_one = new_taus[i-1];
+        long double tau_two = _vertices[i+1].tau;
 
-            long double tau_one = new_taus[i-1];
-            long double tau_two = _vertices[i+1].tau;
+        long double kx_incoming = _propagators[i-1].el_propagator_kx;
+        long double ky_incoming = _propagators[i-1].el_propagator_ky;
+        long double kz_incoming = _propagators[i-1].el_propagator_kz;
 
-            long double kx_incoming = _propagators[i-1].el_propagator_kx;
-            long double ky_incoming = _propagators[i-1].el_propagator_ky;
-            long double kz_incoming = _propagators[i-1].el_propagator_kz;
+        long double kx_outgoing = _propagators[i].el_propagator_kx;
+        long double ky_outgoing = _propagators[i].el_propagator_ky;
+        long double kz_outgoing = _propagators[i].el_propagator_kz;
 
-            long double kx_outgoing = _propagators[i].el_propagator_kx;
-            long double ky_outgoing = _propagators[i].el_propagator_ky;
-            long double kz_outgoing = _propagators[i].el_propagator_kz;
-
-            double energy_delta = calcEnergy(kx_incoming, ky_incoming, kz_incoming) - calcEnergy(kx_outgoing, ky_outgoing, kz_outgoing) - c;
+        double energy_delta = calcEnergy(kx_incoming, ky_incoming, kz_incoming) - calcEnergy(kx_outgoing, ky_outgoing, kz_outgoing) - c;
             
-            new_taus[i] = tau_one - std::log(1 - drawUniformR()*(1 - std::exp(-energy_delta*(tau_two - tau_one))))/energy_delta;
-            if(isEqual(new_taus[i], tau_one) || isEqual(new_taus[i], tau_two) || new_taus[i] > tau_two){delete[] new_taus; return tau_init;}
-
-        }
+        new_taus[i] = tau_one - std::log(1 - drawUniformR()*(1 - std::exp(-energy_delta*(tau_two - tau_one))))/energy_delta;
+        if(isEqual(new_taus[i], tau_one) || isEqual(new_taus[i], tau_two) || new_taus[i] > tau_two){delete[] new_taus; return tau_init;}
     }
 
     new_taus[total_order+1] = new_taus[total_order] - std::log(1-drawUniformR())/(calcEnergy(kx,ky,kz) - _chem_potential + _current_ph_ext);
@@ -1269,12 +1264,12 @@ void GreenFuncNph::markovChainMC(
         std::cout << "Momentum: kx = " << _kx << ", ky = " << _ky << std::endl;
     }
     // print MC update probabilities
-    std::cout << "Update probabilities: " << std::endl;
-    std::cout << "Length update: " << _p_length << ", add internal update: " << _p_add_int <<
-    ", remove internal update: " << _p_rem_int << std::endl;
-    std::cout << "Add external update: " << _p_add_ext << ", remove external update: " << _p_rem_ext <<
-    ", swap update: " << _p_swap << std::endl;
-    std::cout << "Shift update: " << _p_shift << ", stretch update: " << _p_stretch << std::endl; 
+    std::cout << "Update probabilities:" << std::endl;
+    std::cout << "length update: " << _p_length << ", add internal update: " << _p_add_int <<
+    ", remove internal update: " << _p_rem_int << "," << std::endl;
+    std::cout << "add external update: " << _p_add_ext << ", remove external update: " << _p_rem_ext <<
+    ", swap update: " << _p_swap << "," << std::endl;
+    std::cout << "shift update: " << _p_shift << ", stretch update: " << _p_stretch << std::endl; 
 
     double bin_width_inv = 1./_bin_width;
 
@@ -1673,37 +1668,6 @@ void GreenFuncNph::exactEstimatorGF(long double tau_length, int ext_phonon_order
     long double diagrams_ratio = prefactor*exponential;
 
     _points_gf_exact[bin] += diagrams_ratio/(_points_step); // accumulate Green function value
-
-    // compute GF value with exact estimator
-    /*int j = 0;
-    while(j < _num_points){
-        if(std::abs(tau_length - _points[j]) > _points_step/2.){ j++;}
-        else{
-            long double prefactor = std::pow(1 + (_points[j] - tau_length)/tau_length, current_order);
-            long double exponential = std::exp(-((_points[j] - tau_length)/tau_length)*(electron_action + phonon_action));
-            long double diagrams_ratio = prefactor*exponential;
-            
-            long double lower_bound = _points[j] - _points_step/2.;
-            long double upper_bound = _points[j] + _points_step/2.;
-            
-            if(_write_diagrams){
-                std::ofstream file("calculation_GF.txt", std::ofstream::app);
-
-                if(!file.is_open()){
-                std::cerr << "Error: Could not open exact_GF.txt for writing.\n";
-                }
-                file << "tau MC: " << tau_length << " tau selected: " << _points[j] << " iteration: " << j << "\n";
-                file << "prefactor: " << prefactor << "\n";
-                file << "exponent: " << exponential << "\n";
-                file << "bounds: "  << upper_bound - lower_bound << "\n";
-                file << "diagrams ratio: " << diagrams_ratio/(upper_bound-lower_bound) << "\n";
-                file << std::endl;
-            }
-
-            _points_gf_exact[j] += diagrams_ratio/(upper_bound-lower_bound); // accumulate Green function value
-            j++;
-        }
-    }*/
 };
 
 void GreenFuncNph::writeExactGF(std::string filename) const {

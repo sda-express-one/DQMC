@@ -228,13 +228,7 @@ parameters readSimParameterstxt(const std::string& filename){
             else if(key == "relax_steps" || key == "thermalization_steps"){
                 std::string value;
                 iss >> value;
-                if(value == "0"){
-                    std::cerr << "Warning: relax_steps is set to 0. Using default value of 10000000." << std::endl;
-                    params.relax_steps = 10000000;
-                } 
-                else {
-                    params.relax_steps = stringToUnsignedLongLongInt(value);
-                }
+                params.relax_steps = stringToUnsignedLongLongInt(value);
             } 
             else if(key == "max_tau_value") {
                 std::string value;
@@ -381,17 +375,6 @@ settings readSimSettingstxt(const std::string& filename){
             }
         }
     }
-    /*std::cout << "gf_exact = " << sets.gf_exact << std::endl;
-    std::cout << "histo = " << sets.histo << std::endl;
-    std::cout << "gs_energy = " << sets.gs_energy << std::endl;
-    std::cout << "effective_mass = " << sets.effective_mass << std::endl;
-    std::cout << "Z_factor = " << sets.Z_factor << std::endl;
-    std::cout << "write_diagrams = " << sets.write_diagrams << std::endl;
-    std::cout << "num_points_exact = " << sets.num_points_exact << std::endl;
-    std::cout << "num_bins = " << sets.num_bins << std::endl;
-    std::cout << "selected_order = " << sets.selected_order << std::endl;
-    std::cout << "tau_cutoff_energy = " << sets.tau_cutoff_energy << std::endl;
-    std::cout << "tau_cutoff_mass = " << sets.tau_cutoff_mass << std::endl;*/
 
     if(sets.num_points_exact <= 0 && sets.gf_exact){
         sets.gf_exact = false;
