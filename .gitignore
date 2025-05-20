@@ -10,6 +10,7 @@
 aaa.cpp
 aaa.hpp
 doubles.cpp
+test.cpp
 
 # ignore text files
 *.txt

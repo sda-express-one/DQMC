@@ -9,6 +9,7 @@
 #include <random>
 #include <chrono>
 #include <algorithm>
+#include "progressbar.hpp"
 
 class GreenFuncNph{
     public:

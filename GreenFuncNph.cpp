@@ -7,6 +7,7 @@
 #include <chrono>
 #include <algorithm>
 #include "GreenFuncNph.hpp"
+#include "progressbar.hpp"
 
 GreenFuncNph::GreenFuncNph(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
     double chem_potential, int order_int_max, int ph_ext_max) : gen(setSeed()), _N_diags(N_diags), _tau_max(tau_max), 
@@ -1333,6 +1334,7 @@ void GreenFuncNph::markovChainMC(
     unsigned long long int i = 0;
 
     std::cout << "Starting thermalization process" << std::endl;
+    ProgressBar bar(_relax_steps, 70);
     while(i < _relax_steps){
         r = drawUniformR();
         if(r <= _p_length){
@@ -1360,18 +1362,15 @@ void GreenFuncNph::markovChainMC(
             tau_length = stretchDiagramLength(tau_length);
         }
 
-        if(i%(_relax_steps/10) == 0){
-            std::cout << "\r" << "Thermalization progress: " << (double)i/(double)_relax_steps*100. << "%";
-        }
-
+        bar.update(i);
         i++;
     }
-    std::cout << "\r" << "Thermalization progress: 100%";
-    std::cout << std::endl;
+    bar.finish();
     std::cout << "Thermalization process finished" << std::endl;
 
     i = 0;
     std::cout << "Starting simulation process" << std::endl;
+    bar.setTotal(N_diags);
     while(i < N_diags){
         r = drawUniformR();
         if(_write_diagrams){
@@ -1435,11 +1434,10 @@ void GreenFuncNph::markovChainMC(
         if(_current_order_int == 0 && _current_ph_ext == 0){
                 _N0++;
         }
-
+        bar.update(i);
         i++;
     }
-    std::cout << "\r" << "Simulation progress: 100%";
-    std::cout << std::endl;
+    bar.finish();
 
     if(gf_exact){
         calcNormConst();
