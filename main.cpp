@@ -74,6 +74,7 @@ int main(){
     diagram.setSelectedOrder(sets.selected_order);
 
     // print diagrams to file
+    diagram.setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor);
     diagram.writeDiagrams(sets.write_diagrams);
 
     // exact estimators settings (time cutoffs)
@@ -81,7 +82,7 @@ int main(){
     diagram.setTauCutoffMass(sets.tau_cutoff_mass);
 
     // main simulation
-    diagram.markovChainMC(0, sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor);
+    diagram.markovChainMC(0);
     std::cout << "Terminating the program." << std::endl;
     return 0;
 }

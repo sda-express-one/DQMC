@@ -18,6 +18,14 @@ GreenFuncNph::GreenFuncNph(unsigned long long int N_diags, long double tau_max, 
     _ky = ky;
     _kz = kz;
 
+    // initialize flags
+    _flags.gf_exact = false;
+    _flags.histo = false;
+    _flags.gs_energy = false;
+    _flags.effective_mass = false;
+    _flags.Z_factor = false;
+    _flags.write_diagrams = false;
+
     // initialize array of all possible phonon vertices
     _vertices = new Vertex[_order_int_max + 2*_ph_ext_max + 2];
     for(int i=0; i<_order_int_max + 2*_ph_ext_max + 2; i++){
@@ -185,6 +193,14 @@ void GreenFuncNph::setProbabilities(double* probs){
     _p_swap = probs[5];
     _p_shift = probs[6];
     _p_stretch = probs[7];
+};
+
+void GreenFuncNph::setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor){
+    _flags.gf_exact = gf_exact;
+    _flags.histo = histo;
+    _flags.gs_energy = gs_energy;
+    _flags.effective_mass = effective_mass;
+    _flags.Z_factor = Z_factor;
 };
 
 int GreenFuncNph::findVertexPosition(long double tau){
@@ -1226,26 +1242,20 @@ long double GreenFuncNph::stretchDiagramLength(long double tau_init){
     return tau_fin; // return new length of diagram
 };
 
-void GreenFuncNph::markovChainMC(
-    unsigned long long int N_diags = 0,
-    bool gf_exact = false,
-    bool histo = false,
-    bool gs_energy = false,
-    bool effective_mass = false,
-    bool Z_factor = false
-    ){
+void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0){
+    std::cout << "bccb" << std::endl;
     if(N_diags == 0){N_diags = _N_diags;}
 
-    if((!(isEqual(_kx,0)) || !(isEqual(_ky,0)) || !(isEqual(_kz,0))) && effective_mass){
+    if((!(isEqual(_kx,0)) || !(isEqual(_ky,0)) || !(isEqual(_kz,0))) && _flags.effective_mass){
         std::cerr << "Warning: kx, ky and kz should be equal to 0 to calculate effective mass." << std::endl;
         std::cerr << "Effective mass calculation is not possible." << std::endl;
-        effective_mass = false;
+        _flags.effective_mass = false;
     }
 
-    if(Z_factor && _ph_ext_max == 0){
+    if(_flags.Z_factor && _ph_ext_max == 0){
         std::cerr << "Warning: number of maximum external phonon must be greater than 0 to calculate Z factor." << std::endl;
         std::cerr << "Z factor calculation is not possible." << std::endl;
-        Z_factor = false;
+        _flags.Z_factor = false;
     }
 
     // print simulation parameters
@@ -1274,13 +1284,12 @@ void GreenFuncNph::markovChainMC(
 
     double bin_width_inv = 1./_bin_width;
 
-    if(gf_exact){
+    if(_flags.gf_exact){
         std::cout << "Green Function will be calculated exactly." << std::endl;
         std::cout << "Number of computed points: " << _num_points << std::endl;
         std::cout << "The selected external number of phonons is: " << _selected_order << std::endl;
         _points = new long double[_num_points];
         _points_gf_exact = new long double[_num_points];
-        _gf_exact_written = true; // for destructor
 
         // initialize GF
         for(int i=0; i<_num_points; i++){
@@ -1289,38 +1298,39 @@ void GreenFuncNph::markovChainMC(
         }
     }
 
-    if(histo){
+    if(_flags.histo){
         std::cout << "Green Function will be computed using the histogram method" << std::endl;
         std::cout << "Number of bins: " << _N_bins << std::endl;
         _histogram = new double[_N_bins];
         _bin_count = new unsigned long long int[_N_bins];
+        _green_func = new double[_N_bins];
         for(int i=0; i<_N_bins; i++){
             _histogram[i] = _bin_center + i*_bin_width;
             _bin_count[i] = 0;
+            _green_func[i] = 0;
         }
-        _histogram_calculated = true; // for destructor
     }
 
-    if(gs_energy){
+    if(_flags.gs_energy){
         std::cout << "Ground state energy will be calculated using the exact estimator" << std::endl;
         std::cout << "Coupling strength: " << _alpha << ", chemical potential: " << _chem_potential << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
     }
 
-    if(effective_mass){
+    if(_flags.effective_mass){
         std::cout << "Effective mass will be calculated using the exact estimator" << std::endl;
         std::cout << "Coupling strength: " << _alpha << ", chemical potential: " << _chem_potential << ", tau cutoff: " << _tau_cutoff_mass << std::endl;
     }
 
-    if(Z_factor){
+    if(_flags.Z_factor){
         std::cout << "Z factor will be calculated using the exact estimator" << std::endl;
         std::cout << "Coupling strength: " << _alpha << ", chemical potential: " << _chem_potential << ", max number of phonons: " << 
         _ph_ext_max << std::endl;
         initializeZFactorArray();
     }
 
-    if(_write_diagrams){
+    if(_flags.write_diagrams){
         if(N_diags > 25000){
-            _write_diagrams = false; // if too many diagrams are generated they are not printed to txt file
+            _flags.write_diagrams = false; // if too many diagrams are generated they are not printed to txt file
             std::cerr << "Warning: too many diagrams generated (> 25000), diagrams will not be printed to .txt file." << std::endl;
         }
         else{
@@ -1373,7 +1383,7 @@ void GreenFuncNph::markovChainMC(
     bar.setTotal(N_diags);
     while(i < N_diags){
         r = drawUniformR();
-        if(_write_diagrams){
+        if(_flags.write_diagrams){
             writeChosenUpdate("Updates.txt", i, r);
         }
         if(r <= _p_length){
@@ -1401,29 +1411,29 @@ void GreenFuncNph::markovChainMC(
             tau_length = stretchDiagramLength(tau_length);
         }
 
-        if(gf_exact && _current_ph_ext == _selected_order){
+        if(_flags.gf_exact && _current_ph_ext == _selected_order){
             exactEstimatorGF(tau_length, _selected_order); // calculate Green function
             _gf_exact_count++; // count number of diagrams for normalization
         }
 
-        if(histo){
+        if(_flags.histo){
             // select correct bin for histogram
             tau_length = (tau_length < 0.) ? 0. : (tau_length >= _tau_max) ? _tau_max - 1e-9 : tau_length;
             int bin = (int)((tau_length - 0.) * bin_width_inv);
             _bin_count[bin]++;
         }
 
-        if(gs_energy){
+        if(_flags.gs_energy){
             _gs_energy += calcGroundStateEnergy(tau_length); // accumulate energy of diagrams
         }
 
-        if(effective_mass){
+        if(_flags.effective_mass){
             _effective_mass += calcEffectiveMass(tau_length); // accumulate effective mass of diagrams
         }
 
-        if(Z_factor){updateZFactor();} // accumulate Z factor data
+        if(_flags.Z_factor){updateZFactor();} // accumulate Z factor data
 
-        if(_write_diagrams){
+        if(_flags.write_diagrams){
             writeDiagram("Diagrams.txt", i, r); // debug method to visualize diagram structure
         }
 
@@ -1439,7 +1449,7 @@ void GreenFuncNph::markovChainMC(
     }
     bar.finish();
 
-    if(gf_exact){
+    if(_flags.gf_exact){
         calcNormConst();
         std::cout << "Exact Green's function computed." << std::endl;
         for(int i=0; i<_num_points; i++){
@@ -1451,17 +1461,16 @@ void GreenFuncNph::markovChainMC(
         std::string c = ")";
         std::string d = "exact.txt";
         writeExactGF(a+b+c+d); // write Green function to file
-        std::cout << "exaxt GF count = " << _gf_exact_count << std::endl;
     }
 
-    if(histo){
+    if(_flags.histo){
         std::cout << "Histogram computed." << std::endl;
         calcNormConst();
         normalizeHistogram();
         writeHistogram("histo.txt");
     }
 
-    if(gs_energy){
+    if(_flags.gs_energy){
         _gs_energy = _gs_energy/(double)_gs_energy_count; // average energy of diagrams
         std::cout << "Ground state energy of the system is: " << _gs_energy << ". Input parameters are: kx = " << _kx << 
         ", ky = " << _ky << ", kz = " << _kz << " coupling strength = " << _alpha << 
@@ -1484,7 +1493,7 @@ void GreenFuncNph::markovChainMC(
         }
     }
 
-    if(effective_mass){
+    if(_flags.effective_mass){
         long double effective_mass_inv = _effective_mass/(double)_effective_mass_count; // average effective mass of diagrams
         _effective_mass = 1./effective_mass_inv; // effective mass is inverse of the value calculated
         std::cout << "Effective mass of system is: " << _effective_mass << ". Input parameters are: coupling strength = " << _alpha << 
@@ -1516,7 +1525,7 @@ void GreenFuncNph::markovChainMC(
         }
     }
 
-    if(Z_factor){
+    if(_flags.Z_factor){
         std::string a = "Z_factor_alpha";
         auto b = std::to_string(_alpha);
         std::string c = ".txt";
@@ -1534,12 +1543,10 @@ void GreenFuncNph::calcNormConst(){
 };
 
 void GreenFuncNph::normalizeHistogram(){
-    _green_func = new double[_N_bins];
     for(int i=0; i<_N_bins; i++){
         _green_func[i] = _bin_count[i]/(_N0*_bin_width);
         _green_func[i] = _green_func[i]*_norm_const;
     }
-    _histogram_normalized = true;
     std::cout << "Imaginary time Green's function computed (histogram method)." << std::endl;
 };
 
@@ -1613,7 +1620,6 @@ void GreenFuncNph::initializeZFactorArray(){
     for(int i=0; i<_ph_ext_max + 1; i++){
         _Z_factor[i] = 0;
     }
-    _Z_factor_calculated = true;
 };
 
 void GreenFuncNph::updateZFactor(){

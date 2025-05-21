@@ -29,23 +29,31 @@ class GreenFuncNph{
         double wz = 0.;
     };
 
+    struct flags{
+        bool gf_exact = false; // flag for exact Green function
+        bool histo = false; // flag for histogram method
+        bool gs_energy = false; // flag for ground state energy
+        bool effective_mass = false; // flag for effective mass
+        bool Z_factor = false; // flag for Z factor
+        bool write_diagrams = false; // flag to write diagrams to file
+    };
+
     // constructor 
     GreenFuncNph() = default;
     GreenFuncNph(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz, double chem_potential, int order_int_max, int ph_ext_max);
 
     // destructor
     ~GreenFuncNph(){
-        if(_gf_exact_written){;
+        if(_flags.gf_exact){;
             delete[] _points;
             delete[] _points_gf_exact;
-            //delete[] _gf_exact_count;
         }
-        if(_histogram_calculated){
+        if(_flags.histo){
             delete[] _histogram;
             delete[] _bin_count;
+            delete[] _green_func;
         }
-        if(_histogram_normalized){delete[] _green_func;}
-        if(_Z_factor_calculated){delete[] _Z_factor;}
+        if(_flags.Z_factor){delete[] _Z_factor;}
         delete[] _vertices;
         delete[] _propagators;
     };
@@ -53,7 +61,6 @@ class GreenFuncNph{
     // getters
     inline long long unsigned int getN() const {return _N_diags;};
     inline long long unsigned int getRelaxSteps() const {return _relax_steps;};
-    //inline double * getData() const {return _tau_data;};
     inline double getNormConst() const {return _norm_const;};
     inline long double getTauMax() const {return _tau_max;}
     inline double getkx() const {return _kx;};
@@ -87,13 +94,14 @@ class GreenFuncNph{
     void setProbabilities(double p_length, double p_add_int, double p_rem_int, double p_add_ext, double p_rem_ext, 
         double p_swap, double p_shift, double p_stretch);
     void setProbabilities(double * probs);
+    void setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor);
     
 
     // main simulation method
-    void markovChainMC(unsigned long long int N_diags, bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor);
+    void markovChainMC(unsigned long long int N_diags);
 
     // write to file
-    inline void writeDiagrams(bool write_diagrams = false){_write_diagrams = write_diagrams;};
+    inline void writeDiagrams(bool write_diagrams = false){_flags.write_diagrams = write_diagrams;};
     void writeExactGF(std::string filename) const; // write GF with exact method in .txt file
     void writeHistogram(std::string) const; // write GF with histogram method in .txt file
     void writeZFactor(std::string filename) const; // write Z factor in .txt file
@@ -144,6 +152,8 @@ class GreenFuncNph{
     Vertex* _vertices; // array  of all possible vertices (also 0 and tau_max)
     Propagator* _propagators; // array of all possible bare electron propagators
 
+    flags _flags; // flags for different calculations
+
     // Green function exact estimator
     int _num_points = 100;
     int _selected_order = 0;
@@ -151,7 +161,6 @@ class GreenFuncNph{
     long double _points_center = _points_step/2;
     long double* _points; // array of evaluated points
     long double* _points_gf_exact; // gf values for evaluated points
-    //unsigned long long int* _gf_exact_count; // number of times the exact estimator is calculated
     unsigned long long int _gf_exact_count = 0;
 
     // histogram method
@@ -174,12 +183,6 @@ class GreenFuncNph{
 
     unsigned long long int* _Z_factor; // Z factor of polaron (overlap between free electron state and polaron state)
     
-    // flags for destructor
-    bool _gf_exact_written = false;
-    bool _histogram_calculated = false;
-    bool _histogram_normalized = false;
-    bool _Z_factor_calculated = false;
-
     // fixes errors in input
     static inline int returnEven(int value){if(value%2==0){return value;}
         else{std::cout << "The order of a Diagram must be even, order is " << value << " + 1." << std::endl; return value + 1;}};
@@ -232,7 +235,6 @@ class GreenFuncNph{
     // debug methods
     void writeDiagram(std::string filename, int i, double r) const;
     void writeChosenUpdate(std::string filename, int i, double r) const;
-    bool _write_diagrams = false;
 };
 
 #endif

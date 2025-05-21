@@ -31,7 +31,7 @@ void ProgressBar::update(int current){
                 else if (i == pos) std::cout << ">";
                 else std::cout << " ";
             }
-            std::cout << "] " << std::fixed << std::setprecision(0) << percentage * 100.0 << "%";
+            std::cout << "] " << percentage * 100. << "%";
             std::cout.flush();
         }
     }
