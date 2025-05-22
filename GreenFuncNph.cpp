@@ -1364,7 +1364,7 @@ void GreenFuncNph::markovChainMC(){
     while(i < _relax_steps){
 
         r = drawUniformR();
-        
+
         if(r <= _p_length){
             if(_flags.time_benchmark){benchmark_th.startUpdateTimer();}
             tau_length = diagramLengthUpdate(tau_length);
@@ -1496,10 +1496,6 @@ void GreenFuncNph::markovChainMC(){
 
         if(_flags.write_diagrams){
             writeDiagram("Diagrams.txt", i, r); // debug method to visualize diagram structure
-        }
-
-        if(i%(N_diags/100) == 0){
-            std::cout << "\r" << "Simulation progress: " << (double)i/(double)N_diags*100. << "%";
         }
 
         if(_current_order_int == 0 && _current_ph_ext == 0){
