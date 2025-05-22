@@ -1,7 +1,11 @@
-# ignore all executable files
+# ignore executable files
 *.exe
 *.o
+
+# ignore output and log files
 *.out
+*.e
+*.log
 
 # visual studio code settings
 .vscode/*
@@ -21,3 +25,6 @@ test.cpp
 # ignore image files
 *.png
 *.jpg
+
+# ignore scripts
+*.sh
