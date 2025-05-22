@@ -8,6 +8,7 @@
 #include <algorithm>
 #include "GreenFuncNph.hpp"
 #include "progressbar.hpp"
+#include "MC_Benchmarking.hpp"
 
 GreenFuncNph::GreenFuncNph(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
     double chem_potential, int order_int_max, int ph_ext_max) : gen(setSeed()), _N_diags(N_diags), _tau_max(tau_max), 
@@ -25,6 +26,7 @@ GreenFuncNph::GreenFuncNph(unsigned long long int N_diags, long double tau_max, 
     _flags.effective_mass = false;
     _flags.Z_factor = false;
     _flags.write_diagrams = false;
+    _flags.time_benchmark = false;
 
     // initialize array of all possible phonon vertices
     _vertices = new Vertex[_order_int_max + 2*_ph_ext_max + 2];
@@ -1242,9 +1244,9 @@ long double GreenFuncNph::stretchDiagramLength(long double tau_init){
     return tau_fin; // return new length of diagram
 };
 
-void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0){
-    std::cout << "bccb" << std::endl;
-    if(N_diags == 0){N_diags = _N_diags;}
+void GreenFuncNph::markovChainMC(){
+
+    unsigned long long int N_diags = _N_diags;
 
     if((!(isEqual(_kx,0)) || !(isEqual(_ky,0)) || !(isEqual(_kz,0))) && _flags.effective_mass){
         std::cerr << "Warning: kx, ky and kz should be equal to 0 to calculate effective mass." << std::endl;
@@ -1257,6 +1259,9 @@ void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0){
         std::cerr << "Z factor calculation is not possible." << std::endl;
         _flags.Z_factor = false;
     }
+
+    MC_Benchmarking benchmark_th(_relax_steps, 8);
+    MC_Benchmarking benchmark_sim(N_diags, 8);
 
     // print simulation parameters
     std::cout <<"Starting simulation..." << std::endl;
@@ -1337,6 +1342,11 @@ void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0){
             std::cout << "The diagrams generated in the simulation process will be printed in the Diagrams.txt file" << std::endl;
         }    
     }
+
+    if(_flags.time_benchmark){
+        std::cout << "Time benchmark will be performed." << std::endl;
+    }
+
     // input variables
     std::uniform_real_distribution<long double> distrib(0,_tau_max);
     long double tau_length = distrib(gen);
@@ -1344,42 +1354,77 @@ void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0){
     unsigned long long int i = 0;
 
     std::cout << "Starting thermalization process" << std::endl;
+
+    if(_flags.time_benchmark){
+        std::cout << "Benchmarking thermalization time..." << std::endl;
+        benchmark_th.startTimer();
+    }
+
     ProgressBar bar(_relax_steps, 70);
     while(i < _relax_steps){
+
         r = drawUniformR();
+        
         if(r <= _p_length){
+            if(_flags.time_benchmark){benchmark_th.startUpdateTimer();}
             tau_length = diagramLengthUpdate(tau_length);
+            if(_flags.time_benchmark){benchmark_th.stopUpdateTimer(0);}
         }
         else if(r <= _p_length + _p_add_int){
+            if(_flags.time_benchmark){benchmark_th.startUpdateTimer();}
             addInternalPhononPropagator();
+            if(_flags.time_benchmark){benchmark_th.stopUpdateTimer(1);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int){
+            if(_flags.time_benchmark){benchmark_th.startUpdateTimer();}
             removeInternalPhononPropagator();
+            if(_flags.time_benchmark){benchmark_th.stopUpdateTimer(2);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext){
+            if(_flags.time_benchmark){benchmark_th.startUpdateTimer();}
             addExternalPhononPropagator();
+            if(_flags.time_benchmark){benchmark_th.stopUpdateTimer(3);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext){
+            if(_flags.time_benchmark){benchmark_th.startUpdateTimer();}
             removeExternalPhononPropagator();
+            if(_flags.time_benchmark){benchmark_th.stopUpdateTimer(4);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap){
+            if(_flags.time_benchmark){benchmark_th.startUpdateTimer();}
             swapPhononPropagator();
+            if(_flags.time_benchmark){benchmark_th.stopUpdateTimer(5);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift){
+            if(_flags.time_benchmark){benchmark_th.startUpdateTimer();}
             shiftPhononPropagator();
+            if(_flags.time_benchmark){benchmark_th.stopUpdateTimer(6);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift + _p_stretch){
+            if(_flags.time_benchmark){benchmark_th.startUpdateTimer();}
             tau_length = stretchDiagramLength(tau_length);
+            if(_flags.time_benchmark){benchmark_th.stopUpdateTimer(7);}
         }
 
         bar.update(i);
         i++;
     }
     bar.finish();
+
+    if(_flags.time_benchmark){benchmark_th.stopTimer();}
+
     std::cout << "Thermalization process finished" << std::endl;
+
+    if(_flags.time_benchmark){benchmark_th.printResults(); benchmark_th.writeResultsToFile("thermalization_benchmark.txt");}
 
     i = 0;
     std::cout << "Starting simulation process" << std::endl;
+
+    if(_flags.time_benchmark){
+        std::cout << "Benchmarking simulation time..." << std::endl;
+        benchmark_sim.startTimer();
+    }
+
     bar.setTotal(N_diags);
     while(i < N_diags){
         r = drawUniformR();
@@ -1387,28 +1432,44 @@ void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0){
             writeChosenUpdate("Updates.txt", i, r);
         }
         if(r <= _p_length){
+            if(_flags.time_benchmark){benchmark_sim.startUpdateTimer();}
             tau_length = diagramLengthUpdate(tau_length);
+            if(_flags.time_benchmark){benchmark_sim.stopUpdateTimer(0);}
         }
         else if(r <= _p_length + _p_add_int){
+            if(_flags.time_benchmark){benchmark_sim.startUpdateTimer();}
             addInternalPhononPropagator();
+            if(_flags.time_benchmark){benchmark_sim.stopUpdateTimer(1);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int){
+            if(_flags.time_benchmark){benchmark_sim.startUpdateTimer();}
             removeInternalPhononPropagator();
+            if(_flags.time_benchmark){benchmark_sim.stopUpdateTimer(2);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext){
+            if(_flags.time_benchmark){benchmark_sim.startUpdateTimer();}
             addExternalPhononPropagator();
+            if(_flags.time_benchmark){benchmark_sim.stopUpdateTimer(3);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext){
+            if(_flags.time_benchmark){benchmark_sim.startUpdateTimer();}
             removeExternalPhononPropagator();
+            if(_flags.time_benchmark){benchmark_sim.stopUpdateTimer(4);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap){
+            if(_flags.time_benchmark){benchmark_sim.startUpdateTimer();}
             swapPhononPropagator();
+            if(_flags.time_benchmark){benchmark_sim.stopUpdateTimer(5);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift){
+            if(_flags.time_benchmark){benchmark_sim.startUpdateTimer();}
             shiftPhononPropagator();
+            if(_flags.time_benchmark){benchmark_sim.stopUpdateTimer(6);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift + _p_stretch){
+            if(_flags.time_benchmark){benchmark_sim.startUpdateTimer();}
             tau_length = stretchDiagramLength(tau_length);
+            if(_flags.time_benchmark){benchmark_sim.stopUpdateTimer(7);}
         }
 
         if(_flags.gf_exact && _current_ph_ext == _selected_order){
@@ -1447,7 +1508,15 @@ void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0){
         bar.update(i);
         i++;
     }
+
     bar.finish();
+
+    if(_flags.time_benchmark){
+        benchmark_sim.stopTimer();
+        std::cout << "Simulation time benchmark finished." << std::endl;
+        benchmark_sim.printResults(); 
+        benchmark_sim.writeResultsToFile("simulation_benchmark.txt");
+    }
 
     if(_flags.gf_exact){
         calcNormConst();
@@ -1456,7 +1525,7 @@ void GreenFuncNph::markovChainMC(unsigned long long int N_diags = 0){
             //_points_gf_exact[i] = _points_gf_exact[i]/((double)_gf_exact_count); // right normalization
             _points_gf_exact[i] = _points_gf_exact[i]*_norm_const/_N0; // right normalization
         }
-        std::string a = "GF^(";
+        std::string a = "GF(";
         auto b = std::to_string(_selected_order);
         std::string c = ")";
         std::string d = "exact.txt";

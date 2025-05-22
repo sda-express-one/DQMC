@@ -13,5 +13,6 @@ gs_energy true
 cutoff_tau_(gs_energy) 15
 effective_mass true
 cutoff_tau_(mass) 15
-Z_factor false
+Z_factor true
 write_diagrams false
+time_benchmark true

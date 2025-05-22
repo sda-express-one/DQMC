@@ -8,13 +8,23 @@
 
 class MC_Benchmarking {
     public:
-    MC_Benchmarking(int num_updates = 9);
-    ~MC_Benchmarking();
+    // constructor
+    MC_Benchmarking(int total_iterations , int num_updates = 1);
+    // destructor 
+    ~MC_Benchmarking(){
+        if(_num_updates > 0){
+            delete[] _updates_time;
+            delete[] _updates_iterations;
+        }
+    };
+    // start and stop timers
+    // for total simulation and each update
     void startTimer();
     void startUpdateTimer();
     void stopTimer();
     void stopUpdateTimer(int update_index);
-    void calculateAverageTime();
+    //void calculateAverageTime();
+    // print results to console and write to file
     void printResults();
     void writeResultsToFile(const std::string& filename);
 
@@ -28,13 +38,13 @@ class MC_Benchmarking {
     std::chrono::high_resolution_clock::time_point _end_time_update;
 
     // full simulation time
+    const long long int _total_iterations = 0;
     long double _total_time = 0;
-    long long int _total_iterations = 0;
     long double _total_time_avg = 0;
     // update time
     const int _num_updates = 0;
-    long double* _updates_time; 
     long long int* _updates_iterations;
+    long double* _updates_time; 
 };
 
 #endif 

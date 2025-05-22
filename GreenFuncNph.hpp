@@ -10,6 +10,7 @@
 #include <chrono>
 #include <algorithm>
 #include "progressbar.hpp"
+#include "MC_Benchmarking.hpp"
 
 class GreenFuncNph{
     public:
@@ -36,6 +37,7 @@ class GreenFuncNph{
         bool effective_mass = false; // flag for effective mass
         bool Z_factor = false; // flag for Z factor
         bool write_diagrams = false; // flag to write diagrams to file
+        bool time_benchmark = false; // flag for time benchmarking
     };
 
     // constructor 
@@ -98,10 +100,11 @@ class GreenFuncNph{
     
 
     // main simulation method
-    void markovChainMC(unsigned long long int N_diags);
+    void markovChainMC();
 
     // write to file
     inline void writeDiagrams(bool write_diagrams = false){_flags.write_diagrams = write_diagrams;};
+    inline void setBenchmarking(bool time_benchmark = false){_flags.time_benchmark = time_benchmark;};
     void writeExactGF(std::string filename) const; // write GF with exact method in .txt file
     void writeHistogram(std::string) const; // write GF with histogram method in .txt file
     void writeZFactor(std::string filename) const; // write Z factor in .txt file

@@ -31,6 +31,7 @@ struct settings{
     bool effective_mass = false;
     bool Z_factor = false;
     bool write_diagrams = false;
+    bool time_benchmark = false;
     int num_points_exact = 100;
     int num_bins = 100;
     int selected_order = 0;
@@ -73,8 +74,11 @@ int main(){
     diagram.setNumPoints(sets.num_points_exact);
     diagram.setSelectedOrder(sets.selected_order);
 
-    // print diagrams to file
+    // set calculations perfomed
     diagram.setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor);
+    // set benchmarking
+    diagram.setBenchmarking(sets.time_benchmark);
+    // print diagrams to file
     diagram.writeDiagrams(sets.write_diagrams);
 
     // exact estimators settings (time cutoffs)
@@ -82,7 +86,7 @@ int main(){
     diagram.setTauCutoffMass(sets.tau_cutoff_mass);
 
     // main simulation
-    diagram.markovChainMC(0);
+    diagram.markovChainMC();
     std::cout << "Terminating the program." << std::endl;
     return 0;
 }
@@ -92,7 +96,7 @@ int stringToInt(const std::string& str){
         return std::stoi(str);
     } catch (const std::invalid_argument& e) {
         std::cerr << "Invalid integer: " << str << std::endl;
-        return 0; // or some default value
+        return 0;
     }
 }
 
@@ -101,7 +105,7 @@ unsigned long long int stringToUnsignedLongLongInt(const std::string& str){
         return std::stoull(str);
     } catch (const std::invalid_argument& e) {
         std::cerr << "Invalid unsigned long long int: " << str << std::endl;
-        return 0; // or some default value
+        return 0;
     }
 }
 
@@ -112,7 +116,7 @@ bool stringToBool(const std::string& str){
         return false;
     } else {
         std::cerr << "Invalid boolean: " << str << std::endl;
-        return false; // or some default value
+        return false;
     }
 }
 
@@ -121,7 +125,7 @@ double stringToDouble(const std::string& str){
         return std::stod(str);
     } catch (const std::invalid_argument& e) {
         std::cerr << "Invalid double: " << str << std::endl;
-        return 1.0; // or some default value
+        return 1.0;
     }
 }
 
@@ -130,7 +134,7 @@ long double stringToLongDouble(const std::string& str){
         return std::stold(str);
     } catch (const std::invalid_argument& e) {
         std::cerr << "Invalid long double: " << str << std::endl;
-        return 1.0; // or some default value
+        return 1.0;
     }
 }
 
@@ -348,6 +352,11 @@ settings readSimSettingstxt(const std::string& filename){
                 std::string value;
                 iss >> value;
                 sets.write_diagrams = stringToBool(value);
+            }
+            else if(key == "time_benchmark"){
+                std::string value;
+                iss >> value;
+                sets.time_benchmark = stringToBool(value);
             }
             else if(key == "points_(exact_GF)" || key == "num_points_(exact_GF)" || key == "num_points" || key == "points"){
                 std::string value;
