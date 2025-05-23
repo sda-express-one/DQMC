@@ -39,12 +39,14 @@ struct settings{
     long double tau_cutoff_mass = 10;
 };
 
+// converting from string to other types
 int stringToInt(const std::string& str);
 unsigned long long int stringToUnsignedLongLongInt(const std::string& str);
 bool stringToBool(const std::string& str);
 double stringToDouble(const std::string& str);
 long double stringToLongDouble(const std::string& str);
 
+// read input from .txt file
 double* readProbabilities(const std::string& filename);
 parameters readSimParameterstxt(const std::string& filename);
 settings readSimSettingstxt(const std::string& filename);
@@ -87,6 +89,7 @@ int main(){
 
     // main simulation
     diagram.markovChainMC();
+    std::cout << std::endl;
     std::cout << "Terminating the program." << std::endl;
     return 0;
 }

@@ -3,10 +3,10 @@
 #include <chrono>
 #include "MC_Benchmarking.hpp"
 
-MC_Benchmarking::MC_Benchmarking(int total_iterations, int num_updates) : _total_iterations(total_iterations), _num_updates(num_updates) {
+MC_Benchmarking::MC_Benchmarking(unsigned long long int total_iterations, int num_updates) : _total_iterations(total_iterations), _num_updates(num_updates) {
     if(_num_updates > 0){   
         _updates_time = new long double[num_updates];
-        _updates_iterations = new long long int[num_updates];
+        _updates_iterations = new unsigned long long int[num_updates];
         for(int i = 0; i < num_updates; ++i) {
             _updates_time[i] = 0;
             _updates_iterations[i] = 0;

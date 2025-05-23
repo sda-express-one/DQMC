@@ -9,7 +9,7 @@
 class MC_Benchmarking {
     public:
     // constructor
-    MC_Benchmarking(int total_iterations , int num_updates = 1);
+    MC_Benchmarking(unsigned long long int total_iterations , int num_updates = 1);
     // destructor 
     ~MC_Benchmarking(){
         if(_num_updates > 0){
@@ -38,12 +38,12 @@ class MC_Benchmarking {
     std::chrono::high_resolution_clock::time_point _end_time_update;
 
     // full simulation time
-    const long long int _total_iterations = 0;
+    const unsigned long long int _total_iterations = 0;
     long double _total_time = 0;
     long double _total_time_avg = 0;
     // update time
     const int _num_updates = 0;
-    long long int* _updates_iterations;
+    unsigned long long int* _updates_iterations;
     long double* _updates_time; 
 };
 

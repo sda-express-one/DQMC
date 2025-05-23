@@ -14,15 +14,15 @@
 class ProgressBar{
     public:
 
-    ProgressBar(int total, int width = 50);
+    ProgressBar(unsigned long long int total, int width = 50);
     ~ProgressBar() = default;
-    void update(int current);
+    void update(unsigned long long int current);
     void finish();
-    inline void setTotal(int total) {_total = total;}
+    inline void setTotal(unsigned long long int total) {_total = total;}
 
     private:
 
-    int _total; // total number of iterations
+    unsigned long long int _total; // total number of iterations
     int _width; // width of the progress bar
     bool _is_terminal; // flag to check if output is a terminal, for backend compatibility
 

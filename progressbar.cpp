@@ -2,7 +2,7 @@
 #include <iostream>
 #include <iomanip>
 
-ProgressBar::ProgressBar(int total, int width) : _total(total), _width(width) {
+ProgressBar::ProgressBar(unsigned long long int total, int width) : _total(total), _width(width) {
     _is_terminal = checkTerminal();
 }
 
@@ -17,9 +17,9 @@ bool ProgressBar::checkTerminal() const {
         #endif
 };
 
-void ProgressBar::update(int current){
+void ProgressBar::update(unsigned long long int current){
     if(_is_terminal){
-        if(static_cast<int>(current%(_total/100) == 0)){
+        if(static_cast<unsigned long long int>(current%(_total/100) == 0)){
             // Calculate the percentage completed
             double percentage = static_cast<double>(current) / _total;
             int pos = static_cast<int>(_width * percentage);
@@ -36,7 +36,7 @@ void ProgressBar::update(int current){
         }
     }
     else{
-        if(static_cast<int>(current%(_total/100) == 0)){
+        if(static_cast<unsigned long long int>(current%(_total/100) == 0)){
             std::cout << "Progress: " << static_cast<double>(current)/static_cast<double>(_total)*100. << "%" <<std::endl;
         }
     }

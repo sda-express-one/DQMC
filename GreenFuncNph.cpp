@@ -1265,6 +1265,7 @@ void GreenFuncNph::markovChainMC(){
 
     // print simulation parameters
     std::cout <<"Starting simulation..." << std::endl;
+    std::cout << std::endl;
     std::cout << "Number of thermalization steps: " << _relax_steps << std::endl;
     std::cout << "Number of diagrams to be generated: " << N_diags << std::endl;
     std::cout << "Maximum length of diagram: " << _tau_max << std::endl;
@@ -1273,12 +1274,15 @@ void GreenFuncNph::markovChainMC(){
     std::cout << "Maximum diagram order: " << _order_int_max + 2*_ph_ext_max << std::endl;
     std::cout << "Coupling strength: " << _alpha << ", chemical potential: " << _chem_potential << std::endl;
     std::cout << "Number of dimensions: " << _D << std::endl;
+
     if(_D == 3){
         std::cout << "Momentum: kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << std::endl;
     }
     if(_D == 2){
         std::cout << "Momentum: kx = " << _kx << ", ky = " << _ky << std::endl;
     }
+    std::cout << std::endl;
+
     // print MC update probabilities
     std::cout << "Update probabilities:" << std::endl;
     std::cout << "length update: " << _p_length << ", add internal update: " << _p_add_int <<
@@ -1286,6 +1290,7 @@ void GreenFuncNph::markovChainMC(){
     std::cout << "add external update: " << _p_add_ext << ", remove external update: " << _p_rem_ext <<
     ", swap update: " << _p_swap << "," << std::endl;
     std::cout << "shift update: " << _p_shift << ", stretch update: " << _p_stretch << std::endl; 
+    std::cout << std::endl;
 
     double bin_width_inv = 1./_bin_width;
 
@@ -1301,6 +1306,7 @@ void GreenFuncNph::markovChainMC(){
             _points[i] = _points_center + i*_points_step;
             _points_gf_exact[i] = 0;
         }
+        std::cout << std::endl;
     }
 
     if(_flags.histo){
@@ -1314,16 +1320,19 @@ void GreenFuncNph::markovChainMC(){
             _bin_count[i] = 0;
             _green_func[i] = 0;
         }
+        std::cout << std::endl;
     }
 
     if(_flags.gs_energy){
         std::cout << "Ground state energy will be calculated using the exact estimator" << std::endl;
         std::cout << "Coupling strength: " << _alpha << ", chemical potential: " << _chem_potential << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
+        std::cout << std::endl;
     }
 
     if(_flags.effective_mass){
         std::cout << "Effective mass will be calculated using the exact estimator" << std::endl;
         std::cout << "Coupling strength: " << _alpha << ", chemical potential: " << _chem_potential << ", tau cutoff: " << _tau_cutoff_mass << std::endl;
+        std::cout << std::endl;
     }
 
     if(_flags.Z_factor){
@@ -1331,6 +1340,7 @@ void GreenFuncNph::markovChainMC(){
         std::cout << "Coupling strength: " << _alpha << ", chemical potential: " << _chem_potential << ", max number of phonons: " << 
         _ph_ext_max << std::endl;
         initializeZFactorArray();
+        std::cout << std::endl;
     }
 
     if(_flags.write_diagrams){
@@ -1340,11 +1350,13 @@ void GreenFuncNph::markovChainMC(){
         }
         else{
             std::cout << "The diagrams generated in the simulation process will be printed in the Diagrams.txt file" << std::endl;
+            std::cout << std::endl;
         }    
     }
 
     if(_flags.time_benchmark){
         std::cout << "Time benchmark will be performed." << std::endl;
+        std::cout << std::endl;
     }
 
     // input variables
@@ -1354,6 +1366,7 @@ void GreenFuncNph::markovChainMC(){
     unsigned long long int i = 0;
 
     std::cout << "Starting thermalization process" << std::endl;
+    std::cout << std::endl;
 
     if(_flags.time_benchmark){
         std::cout << "Benchmarking thermalization time..." << std::endl;
@@ -1414,18 +1427,25 @@ void GreenFuncNph::markovChainMC(){
     if(_flags.time_benchmark){benchmark_th.stopTimer();}
 
     std::cout << "Thermalization process finished" << std::endl;
+    std::cout << std::endl;
 
-    if(_flags.time_benchmark){benchmark_th.printResults(); benchmark_th.writeResultsToFile("thermalization_benchmark.txt");}
+    if(_flags.time_benchmark){
+        benchmark_th.printResults();
+        benchmark_th.writeResultsToFile("thermalization_benchmark.txt");
+        std::cout << std::endl;
+    }
 
     i = 0;
     std::cout << "Starting simulation process" << std::endl;
+    std::cout << std::endl;
+
+    bar.setTotal(N_diags);
 
     if(_flags.time_benchmark){
         std::cout << "Benchmarking simulation time..." << std::endl;
         benchmark_sim.startTimer();
     }
 
-    bar.setTotal(N_diags);
     while(i < N_diags){
         r = drawUniformR();
         if(_flags.write_diagrams){
@@ -1507,12 +1527,17 @@ void GreenFuncNph::markovChainMC(){
 
     bar.finish();
 
+    std::cout << std::endl;
+
     if(_flags.time_benchmark){
         benchmark_sim.stopTimer();
         std::cout << "Simulation time benchmark finished." << std::endl;
         benchmark_sim.printResults(); 
         benchmark_sim.writeResultsToFile("simulation_benchmark.txt");
+        std::cout << std::endl;
     }
+
+    
 
     if(_flags.gf_exact){
         calcNormConst();
@@ -1521,11 +1546,12 @@ void GreenFuncNph::markovChainMC(){
             //_points_gf_exact[i] = _points_gf_exact[i]/((double)_gf_exact_count); // right normalization
             _points_gf_exact[i] = _points_gf_exact[i]*_norm_const/_N0; // right normalization
         }
-        std::string a = "GF(";
+        std::string a = "GF_";
         auto b = std::to_string(_selected_order);
-        std::string c = ")";
+        std::string c = "_";
         std::string d = "exact.txt";
         writeExactGF(a+b+c+d); // write Green function to file
+        std::cout << std::endl;
     }
 
     if(_flags.histo){
@@ -1533,6 +1559,7 @@ void GreenFuncNph::markovChainMC(){
         calcNormConst();
         normalizeHistogram();
         writeHistogram("histo.txt");
+        std::cout << std::endl;
     }
 
     if(_flags.gs_energy){
@@ -1556,6 +1583,7 @@ void GreenFuncNph::markovChainMC(){
             file << std::endl;
             file.close();
         }
+        std::cout << std::endl;
     }
 
     if(_flags.effective_mass){
@@ -1564,6 +1592,8 @@ void GreenFuncNph::markovChainMC(){
         std::cout << "Effective mass of system is: " << _effective_mass << ". Input parameters are: coupling strength = " << _alpha << 
         " chemical potential = " << _chem_potential << " minimum length of diagrams for which effective mass is computed = " 
         << _tau_cutoff_mass << ". " << std::endl;
+
+        std::cout << std::endl;
 
         std::cout << "Inverse effective mass of system is: " << effective_mass_inv << ". Input parameters are: coupling strength = " << _alpha << 
         " chemical potential = " << _chem_potential << " minimum length of diagrams for which effective mass is computed = " 
@@ -1588,14 +1618,17 @@ void GreenFuncNph::markovChainMC(){
 
             file.close();
         }
+        std::cout << std::endl;
     }
 
     if(_flags.Z_factor){
+        std::cout << "Z factor calculated." << std::endl;
         std::string a = "Z_factor_alpha";
         auto b = std::to_string(_alpha);
         std::string c = ".txt";
         std::string filename = a + b + c;
         writeZFactor(filename);
+        std::cout << std::endl;
     }
     std::cout << "Simulation finished!" << std::endl;
 };
