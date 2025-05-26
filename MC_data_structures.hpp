@@ -31,6 +31,7 @@ struct settings{
     bool Z_factor = false;
     bool write_diagrams = false;
     bool time_benchmark = false;
+    bool mc_statistics = false;
     int num_points_exact = 100;
     int num_bins = 100;
     int selected_order = 0;
@@ -88,7 +89,7 @@ inline long double stringToLongDouble(const std::string& str){
 }
 
 // Structure to hold flags for different types of calculations
-struct flags{
+struct Flags{
         bool gf_exact = false; // flag for exact Green function
         bool histo = false; // flag for histogram method
         bool gs_energy = false; // flag for ground state energy
@@ -96,6 +97,7 @@ struct flags{
         bool Z_factor = false; // flag for Z factor
         bool write_diagrams = false; // flag to write diagrams to file
         bool time_benchmark = false; // flag for time benchmarking
+        bool mc_statistics = false; // flag for statistics
     };
 
 
@@ -114,6 +116,19 @@ struct Propagator{
     double el_propagator_kx = 0.; // x component of electron propagator momentum
     double el_propagator_ky = 0.; // y component of electron propagator momentum
     double el_propagator_kz = 0.; // z component of electron propagator momentum
+};
+
+struct MC_Statistics{
+    unsigned long long int num_diagrams = 0; // total number of diagrams used for statistics
+    long double avg_tau = 0; // average length of diagrams
+    long double avg_tau_squared = 0; // average squared length of diagrams
+    unsigned long long int avg_order = 0; // average order of diagrams
+    unsigned long long int avg_order_squared = 0; // average squared order of diagrams
+    unsigned long long int avg_ph_int = 0; // average number of internal phonons
+    unsigned long long int avg_ph_int_squared = 0; // average squared number of internal phonons
+    unsigned long long int avg_ph_ext = 0; // average number of external phonons
+    unsigned long long int avg_ph_ext_squared = 0; // average squared number of external phonons
+    unsigned long long int zero_order_diagrams = 0; // number of zero order diagrams
 };
 
 #endif

@@ -57,6 +57,7 @@ class GreenFuncNph{
     inline double getEffectiveMass() const {return _effective_mass;};
     inline double getnumPoints() const {return _num_points;};
     inline int getSelectedOrder() const {return _selected_order;};
+    inline long double getTauCutoffStatistics() const {return _tau_cutoff_statistics;};
 
     // setters
     void setRelaxSteps(int relax_steps);
@@ -73,7 +74,7 @@ class GreenFuncNph{
         double p_swap, double p_shift, double p_stretch);
     void setProbabilities(double * probs);
     void setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor);
-    //void setTauCutoffStatistics(long double tau_cutoff_statistics)
+    void setTauCutoffStatistics(long double tau_cutoff_statistics);
     
 
     // main simulation method
@@ -82,9 +83,11 @@ class GreenFuncNph{
     // write to file
     inline void writeDiagrams(bool write_diagrams = false){_flags.write_diagrams = write_diagrams;};
     inline void setBenchmarking(bool time_benchmark = false){_flags.time_benchmark = time_benchmark;};
+    inline void setMCStatistics(bool mc_statistics = false){_flags.mc_statistics = mc_statistics;};
     void writeExactGF(std::string filename) const; // write GF with exact method in .txt file
     void writeHistogram(std::string) const; // write GF with histogram method in .txt file
     void writeZFactor(std::string filename) const; // write Z factor in .txt file
+    void writeMCStatistics(std::string filename) const; // write MC statistics in .txt file
 
     private:
 
@@ -166,8 +169,8 @@ class GreenFuncNph{
     // collect MC statistics
     MC_Benchmarking * _benchmark_sim; // time benchmarking object
     MC_Benchmarking * _benchmark_th; // time benchmarking object for thermalization
-    //MC_Statistics* _mc_statistics; // statistics of the simulation
-    //long double _tau_cutoff_statistics = 0; // cutoff for statistics, if tau < tau_cutoff statistics is not calculated
+    MC_Statistics _mc_statistics; // statistics of the simulation
+    long double _tau_cutoff_statistics = 0.; // cutoff for statistics, if tau < tau_cutoff statistics is not calculated
     
     // fixes errors in input
     static inline int returnEven(int value){if(value%2==0){return value;}

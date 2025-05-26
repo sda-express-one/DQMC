@@ -32,6 +32,7 @@ int main(){
     // Markov chain settings
     diagram.setRelaxSteps(sim.relax_steps);
     diagram.setProbabilities(probs);
+    delete[] probs;
 
     //histogram settings
     diagram.setN_bins(sets.num_bins);
@@ -44,6 +45,8 @@ int main(){
     diagram.setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor);
     // set benchmarking
     diagram.setBenchmarking(sets.time_benchmark);
+    // set MC statistics
+    diagram.setMCStatistics(sets.mc_statistics);
     // print diagrams to file
     diagram.writeDiagrams(sets.write_diagrams);
 
@@ -53,8 +56,10 @@ int main(){
 
     // main simulation
     diagram.markovChainMC();
+
     std::cout << std::endl;
     std::cout << "Terminating the program." << std::endl;
+    std::cout << std::endl;
     return 0;
 }
 
@@ -277,6 +282,16 @@ settings readSimSettingstxt(const std::string& filename){
                 std::string value;
                 iss >> value;
                 sets.time_benchmark = stringToBool(value);
+            }
+            else if(key == "mc_statistics" || key == "statistics" || key == "stats"){
+                std::string value;
+                iss >> value;
+                sets.mc_statistics = stringToBool(value);
+            } 
+            else if(key == "num_points_exact" || key == "num_points_exact_GF" || key == "points_exact_GF" || key == "exact_GF_points"){
+                std::string value;
+                iss >> value;
+                sets.num_points_exact = stringToInt(value);
             }
             else if(key == "points_(exact_GF)" || key == "num_points_(exact_GF)" || key == "num_points" || key == "points"){
                 std::string value;

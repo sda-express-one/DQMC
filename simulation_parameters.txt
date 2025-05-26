@@ -1,14 +1,14 @@
 # all simulation parameters are written here
 
-simulation_steps 1000000000
 thermalization_steps 100000000
+simulation_steps 1000000000
 max_tau_value 50
 dimensionality 3
 volume 1
 kx 0
 ky 0
 kz 0
-coupling_strength 5.0
-chemical_potential -5.75
+coupling_strength 2.0
+chemical_potential -2.2
 max_internal_order 500
 max_num_ext_phonons 50

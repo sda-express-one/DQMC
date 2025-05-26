@@ -89,5 +89,6 @@ void MC_Benchmarking::writeResultsToFile(const std::string& filename) {
         file << "Average time for update " << i << ": " << _updates_time[i] / _updates_iterations[i] << " seconds" << std::endl;
         file << "Number of iterations for update " << i << ": " << _updates_iterations[i] << std::endl;
     }
+    file << std::endl;
     file.close();
 };

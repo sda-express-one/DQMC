@@ -204,6 +204,15 @@ void GreenFuncNph::setCalculations(bool gf_exact, bool histo, bool gs_energy, bo
     _flags.Z_factor = Z_factor;
 };
 
+void GreenFuncNph::setTauCutoffStatistics(long double tau_cutoff_statistics){
+    while(tau_cutoff_statistics < 0 || tau_cutoff_statistics >= _tau_max){
+        std::cout << "Invalid statistics cutoff! Cutoff must be >= 0 and < " << _tau_max << " (max tau value).\n";
+        std::cout << "The default value is set to 0.\n";
+        tau_cutoff_statistics = 0;
+    }
+    _tau_cutoff_statistics = tau_cutoff_statistics;
+};
+
 int GreenFuncNph::findVertexPosition(long double tau){
     int position = 0;
     for(int i = 0; i < _current_order_int + 2*_current_ph_ext + 1; i++){
@@ -1367,6 +1376,14 @@ void GreenFuncNph::markovChainMC(){
         std::cout << std::endl;
     }
 
+    if(_flags.mc_statistics){
+        std::cout << "Monte Carlo statistics will be calculated (simulation)." << std::endl;
+        std::cout << "Average length of diagram, average order, average number of internal" << 
+        " and external phonons and number of order 0 diagrams will be calculated." << std::endl;
+        std::cout << "Cutoff for diagram length is set to: " << _tau_cutoff_statistics << std::endl;
+        std::cout << std::endl;
+    }
+
     // input variables
     std::uniform_real_distribution<long double> distrib(0,_tau_max);
     long double tau_length = distrib(gen);
@@ -1379,7 +1396,6 @@ void GreenFuncNph::markovChainMC(){
     if(_flags.time_benchmark){
         std::cout << "Benchmarking thermalization time..." << std::endl;
         std::cout << std::endl;
-        //_benchmark_th->startTimer();
         _benchmark_th->startTimer();
     }
 
@@ -1536,6 +1552,21 @@ void GreenFuncNph::markovChainMC(){
                 _N0++;
         }
 
+        if(_flags.mc_statistics && tau_length >= _tau_cutoff_statistics){
+            _mc_statistics.num_diagrams++; // accumulate number of diagrams
+            _mc_statistics.avg_tau += tau_length; // accumulate average length of diagrams
+            _mc_statistics.avg_tau_squared += tau_length*tau_length; // accumulate average squared length of diagrams
+            _mc_statistics.avg_order += _current_order_int + 2*_current_ph_ext; // accumulate average order of diagrams
+            _mc_statistics.avg_order_squared += (_current_order_int + 2*_current_ph_ext)*(_current_order_int + 2*_current_ph_ext); // accumulate average squared order of diagrams
+            _mc_statistics.avg_ph_ext += _current_ph_ext; // accumulate average number of external phonons
+            _mc_statistics.avg_ph_ext_squared += _current_ph_ext*_current_ph_ext; // accumulate average squared number of external phonons
+            _mc_statistics.avg_ph_int += _current_order_int/2; // accumulate average number of internal phonons
+            _mc_statistics.avg_ph_int_squared += (_current_order_int/2)*(_current_order_int/2); // accumulate average squared number of internal phonons
+            if(_current_order_int + 2*_current_ph_ext == 0){
+                _mc_statistics.zero_order_diagrams++; // accumulate number of zero order diagrams
+            }
+        }
+
         if(static_cast<int>(i%(N_diags/100)) == 0){bar.update(i);}
 
         i++;
@@ -1647,6 +1678,33 @@ void GreenFuncNph::markovChainMC(){
         std::cout << "Z factor calculated." << std::endl;
         std::cout << std::endl;
     }
+
+    if(_flags.mc_statistics){
+        _mc_statistics.avg_tau /= static_cast<long double>(_mc_statistics.num_diagrams); // average length of diagrams
+        _mc_statistics.avg_tau_squared /= static_cast<long double>(_mc_statistics.num_diagrams); // average squared length of diagrams
+
+        std::cout << "Monte Carlo statistics:" << std::endl;
+        std::cout << "Monte Carlo statistics:" << std::endl;
+        std::cout << "chemical potential: " << _chem_potential << ", coupling strength: " << _alpha << std::endl;
+        std::cout << "momentum: kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << std::endl;
+        std::cout << "Cutoff for statistics: " << _tau_cutoff_statistics << std::endl;
+        std::cout << "Number of diagrams (taken into account): " << _mc_statistics.num_diagrams << std::endl;
+        std::cout << "Average length of diagrams: " << _mc_statistics.avg_tau << std::endl;
+        std::cout << "variance of length of diagrams: " << _mc_statistics.avg_tau_squared - _mc_statistics.avg_tau*_mc_statistics.avg_tau << std::endl;
+        std::cout << "Average order of diagrams: " << static_cast<long double>(_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams) << std::endl;
+        std::cout << "variance of order of diagrams: " << static_cast<long double>(_mc_statistics.avg_order_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
+        - static_cast<long double>(_mc_statistics.avg_order*_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams) << std::endl;
+        std::cout << "Average number of internal phonons: " << static_cast<long double>(_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams) << std::endl;
+        std::cout << "variance of number of internal phonons: " << static_cast<long double>(_mc_statistics.avg_ph_int_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
+        - static_cast<long double>(_mc_statistics.avg_ph_int*_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams) << std::endl;
+        std::cout << "Average number of external phonons: " << static_cast<long double>(_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams) << std::endl;
+        std::cout << "variance of number of external phonons: " << static_cast<long double>(_mc_statistics.avg_ph_ext_squared)/static_cast<long double>(_mc_statistics.num_diagrams) 
+        - static_cast<long double>(_mc_statistics.avg_ph_ext*_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams) << std::endl;
+        std::cout << "Number of zero order diagrams: " << _mc_statistics.zero_order_diagrams << std::endl;
+        std::cout << std::endl;
+        writeMCStatistics("MC_Statistics.txt");
+    }
+
     std::cout << "Simulation finished!" << std::endl;
 };
 
@@ -1881,6 +1939,36 @@ void GreenFuncNph::writeDiagram(std::string filename, int i, double r) const {
 
     file << std::endl;
     file.close();
+};
+
+void GreenFuncNph::writeMCStatistics(std::string filename) const {
+    std::ofstream file(filename, std::ofstream::app);
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open file for writing.\n";
+        return;
+    }
+
+    file << "Monte Carlo statistics:\n";
+    file << "chemical potential: " << _chem_potential << ", coupling strength: " << _alpha << "\n";
+    file << "momentum: kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << "\n";
+    file << "Cutoff for statistics: " << _tau_cutoff_statistics << "\n";
+    file << "Number of diagrams (taken into account): " << _mc_statistics.num_diagrams << "\n";
+    file << "Average length of diagrams: " << _mc_statistics.avg_tau << "\n";
+    file << "variance of length of diagrams: " << _mc_statistics.avg_tau_squared - _mc_statistics.avg_tau*_mc_statistics.avg_tau << "\n";
+    file << "Average order of diagrams: " << static_cast<long double>(_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams) << "\n";
+    file << "variance of order of diagrams: " << static_cast<long double>(_mc_statistics.avg_order_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
+    - static_cast<long double>(_mc_statistics.avg_order*_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams) << "\n";
+    file << "Average number of internal phonons: " << static_cast<long double>(_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams) << "\n";
+    file << "variance of number of internal phonons: " << static_cast<long double>(_mc_statistics.avg_ph_int_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
+    - static_cast<long double>(_mc_statistics.avg_ph_int*_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams) << "\n";
+    file << "Average number of external phonons: " << static_cast<long double>(_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams) << "\n";
+    file << "variance of number of external phonons: " << static_cast<long double>(_mc_statistics.avg_ph_ext_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
+    - static_cast<long double>(_mc_statistics.avg_ph_ext*_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams) << "\n";
+    file << "Number of zero order diagrams: " << _mc_statistics.zero_order_diagrams << "\n";
+    file << "\n";
+
+    file.close();
+    std::cout << "Values' statistics written to file " << filename << "." << std::endl;
 };
 
 void GreenFuncNph::writeChosenUpdate(std::string filename, int i, double r) const {
