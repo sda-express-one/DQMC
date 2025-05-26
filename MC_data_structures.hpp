@@ -1,0 +1,119 @@
+#ifndef MC_DATA_STRUCTURES_HPP
+#define MC_DATA_STRUCTURES_HPP
+#include <iostream>
+#include <string>
+
+
+// This file contains data structures used in the Monte Carlo simulation for Green's function calculations
+
+// parameters to set in simulation_parameters.txt
+struct parameters{
+    unsigned long long int N_diags = 100000;
+    unsigned long long int relax_steps = 100000;
+    int dimensions = 3;
+    long double tau_max = 100;
+    double volume = 1;
+    double kx = 0;
+    double ky = 0;
+    double kz = 0;
+    double alpha = 0;
+    double chem_potential = -2;
+    int order_int_max = 0;
+    int ph_ext_max = 0;
+};
+
+// parameters to set in simulation_settings.txt
+struct settings{
+    bool gf_exact = false;
+    bool histo = false;
+    bool gs_energy = false;
+    bool effective_mass = false;
+    bool Z_factor = false;
+    bool write_diagrams = false;
+    bool time_benchmark = false;
+    int num_points_exact = 100;
+    int num_bins = 100;
+    int selected_order = 0;
+    long double tau_cutoff_energy = 10;
+    long double tau_cutoff_mass = 10;
+};
+
+// string to type conversion functions
+
+inline int stringToInt(const std::string& str){
+    try {
+        return std::stoi(str);
+    } catch (const std::invalid_argument& e) {
+        std::cerr << "Invalid integer: " << str << std::endl;
+        return 0;
+    }
+}
+
+inline unsigned long long int stringToUnsignedLongLongInt(const std::string& str){
+    try {
+        return std::stoull(str);
+    } catch (const std::invalid_argument& e) {
+        std::cerr << "Invalid unsigned long long int: " << str << std::endl;
+        return 0;
+    }
+}
+
+inline bool stringToBool(const std::string& str){
+    if(str == "true" || str == "True" || str == "1"){
+        return true;
+    } else if(str == "false" || str == "False" || str == "0"){
+        return false;
+    } else {
+        std::cerr << "Invalid boolean: " << str << std::endl;
+        return false;
+    }
+}
+
+inline double stringToDouble(const std::string& str){
+    try {
+        return std::stod(str);
+    } catch (const std::invalid_argument& e) {
+        std::cerr << "Invalid double: " << str << std::endl;
+        return 1.0;
+    }
+}
+
+inline long double stringToLongDouble(const std::string& str){
+    try {
+        return std::stold(str);
+    } catch (const std::invalid_argument& e) {
+        std::cerr << "Invalid long double: " << str << std::endl;
+        return 1.0;
+    }
+}
+
+// Structure to hold flags for different types of calculations
+struct flags{
+        bool gf_exact = false; // flag for exact Green function
+        bool histo = false; // flag for histogram method
+        bool gs_energy = false; // flag for ground state energy
+        bool effective_mass = false; // flag for effective mass
+        bool Z_factor = false; // flag for Z factor
+        bool write_diagrams = false; // flag to write diagrams to file
+        bool time_benchmark = false; // flag for time benchmarking
+    };
+
+
+// Structure to hold a vertex in the diagram
+struct Vertex{
+    long double tau = 0; // time coordinate of the vertex
+    int type = 0; // +1 outgoing and -1 incoming (internal), +2 outgoing and -2 incoming (external), 0 unassigned (extrema)
+    int linked = -1; // describes connection to other vertex of phonon propagator (-1 if not linked for extrema)
+    double wx = 0.; // x component of phonon frequency
+    double wy = 0.; // y component of phonon frequency
+    double wz = 0.; // z component of phonon frequency
+};
+
+// Structure to hold a propagator in the diagram
+struct Propagator{
+    double el_propagator_kx = 0.; // x component of electron propagator momentum
+    double el_propagator_ky = 0.; // y component of electron propagator momentum
+    double el_propagator_kz = 0.; // z component of electron propagator momentum
+};
+
+#endif

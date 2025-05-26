@@ -9,37 +9,13 @@
 #include <random>
 #include <chrono>
 #include <algorithm>
+#include "MC_data_structures.hpp"
 #include "progressbar.hpp"
 #include "MC_Benchmarking.hpp"
 
 class GreenFuncNph{
     public:
-
-    struct Propagator{
-        double el_propagator_kx;
-        double el_propagator_ky;
-        double el_propagator_kz;
-    };
-
-    struct Vertex{
-        long double tau = 0.;
-        int type = 0; // +1 outgoing and -1 incoming (internal), +2 outgoing and -2 incoming (external), 0 unassigned (extrema)
-        int linked = -1; // describes connection to other vertex of phonon propagator (-1 if not linked for extrema)
-        double wx = 0.;
-        double wy = 0.;
-        double wz = 0.;
-    };
-
-    struct flags{
-        bool gf_exact = false; // flag for exact Green function
-        bool histo = false; // flag for histogram method
-        bool gs_energy = false; // flag for ground state energy
-        bool effective_mass = false; // flag for effective mass
-        bool Z_factor = false; // flag for Z factor
-        bool write_diagrams = false; // flag to write diagrams to file
-        bool time_benchmark = false; // flag for time benchmarking
-    };
-
+    
     // constructor 
     GreenFuncNph() = default;
     GreenFuncNph(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz, double chem_potential, int order_int_max, int ph_ext_max);

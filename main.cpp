@@ -7,44 +7,8 @@
 #include <chrono>
 #include <algorithm>
 #include <sstream>
+#include "MC_data_structures.hpp"
 #include "GreenFuncNph.hpp"
-
-struct parameters{
-    unsigned long long int N_diags = 100000;
-    unsigned long long int relax_steps = 100000;
-    int dimensions = 3;
-    long double tau_max = 100;
-    double volume = 1;
-    double kx = 0;
-    double ky = 0;
-    double kz = 0;
-    double alpha = 0;
-    double chem_potential = -2;
-    int order_int_max = 0;
-    int ph_ext_max = 0;
-};
-
-struct settings{
-    bool gf_exact = false;
-    bool histo = false;
-    bool gs_energy = false;
-    bool effective_mass = false;
-    bool Z_factor = false;
-    bool write_diagrams = false;
-    bool time_benchmark = false;
-    int num_points_exact = 100;
-    int num_bins = 100;
-    int selected_order = 0;
-    long double tau_cutoff_energy = 10;
-    long double tau_cutoff_mass = 10;
-};
-
-// converting from string to other types
-int stringToInt(const std::string& str);
-unsigned long long int stringToUnsignedLongLongInt(const std::string& str);
-bool stringToBool(const std::string& str);
-double stringToDouble(const std::string& str);
-long double stringToLongDouble(const std::string& str);
 
 // read input from .txt file
 double* readProbabilities(const std::string& filename);
@@ -92,53 +56,6 @@ int main(){
     std::cout << std::endl;
     std::cout << "Terminating the program." << std::endl;
     return 0;
-}
-
-int stringToInt(const std::string& str){
-    try {
-        return std::stoi(str);
-    } catch (const std::invalid_argument& e) {
-        std::cerr << "Invalid integer: " << str << std::endl;
-        return 0;
-    }
-}
-
-unsigned long long int stringToUnsignedLongLongInt(const std::string& str){
-    try {
-        return std::stoull(str);
-    } catch (const std::invalid_argument& e) {
-        std::cerr << "Invalid unsigned long long int: " << str << std::endl;
-        return 0;
-    }
-}
-
-bool stringToBool(const std::string& str){
-    if(str == "true" || str == "True" || str == "1"){
-        return true;
-    } else if(str == "false" || str == "False" || str == "0"){
-        return false;
-    } else {
-        std::cerr << "Invalid boolean: " << str << std::endl;
-        return false;
-    }
-}
-
-double stringToDouble(const std::string& str){
-    try {
-        return std::stod(str);
-    } catch (const std::invalid_argument& e) {
-        std::cerr << "Invalid double: " << str << std::endl;
-        return 1.0;
-    }
-}
-
-long double stringToLongDouble(const std::string& str){
-    try {
-        return std::stold(str);
-    } catch (const std::invalid_argument& e) {
-        std::cerr << "Invalid long double: " << str << std::endl;
-        return 1.0;
-    }
 }
 
 
@@ -396,10 +313,6 @@ settings readSimSettingstxt(const std::string& filename){
     if(sets.num_bins <= 0 && sets.histo){
         sets.histo = false;
         std::cerr << "Warning: num bins for histogram is not set. Histogram will not be calculated." << std::endl;
-    }
-    if(sets.selected_order < 0 && sets.gf_exact){
-        sets.gf_exact = false;
-        std::cerr << "Warning: selected order for exact GF is not set. GF will not be calculated." << std::endl;
     }
     if(sets.tau_cutoff_energy <= 0 && sets.gs_energy){
         sets.gs_energy = false;

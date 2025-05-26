@@ -7,8 +7,8 @@
 #include <chrono>
 #include <algorithm>
 #include "GreenFuncNph.hpp"
-#include "progressbar.hpp"
-#include "MC_Benchmarking.hpp"
+//#include "progressbar.hpp"
+//#include "MC_Benchmarking.hpp"
 
 GreenFuncNph::GreenFuncNph(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
     double chem_potential, int order_int_max, int ph_ext_max) : gen(setSeed()), _N_diags(N_diags), _tau_max(tau_max), 
@@ -140,11 +140,10 @@ void GreenFuncNph::setNumPoints(int num_points){
 };
 
 void GreenFuncNph::setSelectedOrder(int selected_order){
-    while(selected_order < 0 || selected_order > _ph_ext_max){
-        std::cout << "Invalid order! Order must be >= 0 and <= " << _ph_ext_max << "." << std::endl;
-        std::cout << "Enter new order: ";
-        std::cin >> selected_order;
-        std::cout << "\n";
+    if(selected_order > _ph_ext_max){
+        std::cerr << "Invalid order! Order must be <= " << _ph_ext_max << "." << std::endl;
+        std::cerr << "Selected order for exact GF calculation is set to 0." << std::endl;
+        selected_order = 0;
     }
     _selected_order = selected_order;
 };
@@ -1174,7 +1173,7 @@ void GreenFuncNph::shiftPhononPropagator(){
 
         int c = _vertices[vertex_index].type;
         if(c == 2){c = 1;}
-        if(c == -2){c = -1;}
+        else if(c == -2){c = -1;}
 
         long double tau_init = _vertices[vertex_index - 1].tau;
         long double tau_fin = _vertices[vertex_index + 1].tau;
@@ -1208,7 +1207,7 @@ long double GreenFuncNph::stretchDiagramLength(long double tau_init){
         // assign new time values to every vertex
         int c = _vertices[i].type;
         if(c == 2){c = 1;}
-        if(c == -2){c = -1;}
+        else if(c == -2){c = -1;}
 
         // value of left vertex is retrieved from new proposed values, right value from old ones (vertex array)
         long double tau_one = new_taus[i-1];
@@ -1297,7 +1296,14 @@ void GreenFuncNph::markovChainMC(){
     if(_flags.gf_exact){
         std::cout << "Green Function will be calculated exactly." << std::endl;
         std::cout << "Number of computed points: " << _num_points << std::endl;
-        std::cout << "The selected external number of phonons is: " << _selected_order << std::endl;
+
+        if(_selected_order >= 0){
+            std::cout << "The selected number of external phonons is: " << _selected_order << std::endl;
+        }
+        else {
+            std::cout << "GF will be calculated for every number of external phonons." << std::endl;
+        }
+
         _points = new long double[_num_points];
         _points_gf_exact = new long double[_num_points];
 
@@ -1370,6 +1376,7 @@ void GreenFuncNph::markovChainMC(){
 
     if(_flags.time_benchmark){
         std::cout << "Benchmarking thermalization time..." << std::endl;
+        std::cout << std::endl;
         benchmark_th.startTimer();
     }
 
@@ -1419,13 +1426,15 @@ void GreenFuncNph::markovChainMC(){
             if(_flags.time_benchmark){benchmark_th.stopUpdateTimer(7);}
         }
 
-        bar.update(i);
+        if(static_cast<int>(i%(_relax_steps/100)) == 0){bar.update(i);}
+
         i++;
     }
     bar.finish();
 
     if(_flags.time_benchmark){benchmark_th.stopTimer();}
 
+    std::cout << std::endl;
     std::cout << "Thermalization process finished" << std::endl;
     std::cout << std::endl;
 
@@ -1443,6 +1452,7 @@ void GreenFuncNph::markovChainMC(){
 
     if(_flags.time_benchmark){
         std::cout << "Benchmarking simulation time..." << std::endl;
+        std::cout << std::endl;
         benchmark_sim.startTimer();
     }
 
@@ -1492,7 +1502,7 @@ void GreenFuncNph::markovChainMC(){
             if(_flags.time_benchmark){benchmark_sim.stopUpdateTimer(7);}
         }
 
-        if(_flags.gf_exact && _current_ph_ext == _selected_order){
+        if(_flags.gf_exact && (_current_ph_ext == _selected_order || _selected_order < 0)){
             exactEstimatorGF(tau_length, _selected_order); // calculate Green function
             _gf_exact_count++; // count number of diagrams for normalization
         }
@@ -1521,7 +1531,9 @@ void GreenFuncNph::markovChainMC(){
         if(_current_order_int == 0 && _current_ph_ext == 0){
                 _N0++;
         }
-        bar.update(i);
+
+        if(static_cast<int>(i%(N_diags/100)) == 0){bar.update(i);}
+
         i++;
     }
 
@@ -1537,20 +1549,20 @@ void GreenFuncNph::markovChainMC(){
         std::cout << std::endl;
     }
 
-    
-
     if(_flags.gf_exact){
         calcNormConst();
         std::cout << "Exact Green's function computed." << std::endl;
         for(int i=0; i<_num_points; i++){
-            //_points_gf_exact[i] = _points_gf_exact[i]/((double)_gf_exact_count); // right normalization
+            //_points_gf_exact[i] = _points_gf_exact[i]/((double)_gf_exact_count);
             _points_gf_exact[i] = _points_gf_exact[i]*_norm_const/_N0; // right normalization
         }
         std::string a = "GF_";
         auto b = std::to_string(_selected_order);
-        std::string c = "_";
-        std::string d = "exact.txt";
-        writeExactGF(a+b+c+d); // write Green function to file
+        if(_selected_order < 0){
+            b = "total";
+        }
+        std::string c = "_exact.txt";
+        writeExactGF(a+b+c); // write Green function to file
         std::cout << std::endl;
     }
 
@@ -1622,12 +1634,12 @@ void GreenFuncNph::markovChainMC(){
     }
 
     if(_flags.Z_factor){
-        std::cout << "Z factor calculated." << std::endl;
         std::string a = "Z_factor_alpha";
         auto b = std::to_string(_alpha);
         std::string c = ".txt";
         std::string filename = a + b + c;
         writeZFactor(filename);
+        std::cout << "Z factor calculated." << std::endl;
         std::cout << std::endl;
     }
     std::cout << "Simulation finished!" << std::endl;
@@ -1725,6 +1737,9 @@ void GreenFuncNph::updateZFactor(){
 };
 
 void GreenFuncNph::exactEstimatorGF(long double tau_length, int ext_phonon_order){
+
+    if(ext_phonon_order < 0){ext_phonon_order = _current_ph_ext;}
+
     int current_order = _current_order_int + 2*ext_phonon_order; // total order of diagrams (number of phonon vertices)
     double electron_action = 0, phonon_action = 0;
 
@@ -1828,7 +1843,7 @@ void GreenFuncNph::writeZFactor(std::string filename) const {
     file << "# Z factor calculated for max number of external phonons " << _ph_ext_max << ", coupling strength " << _alpha << 
     " and chemical potential: " << _chem_potential << ".\n";
     file << "# N_ext Z_factor(N_ext)\n";
-    for(int i = 0; i < _ph_ext_max; i++){
+    for(int i = 0; i < _ph_ext_max + 1; i++){
         file << i << " " << (double)_Z_factor[i]/(double)_N_diags << "\n";
     }
 
