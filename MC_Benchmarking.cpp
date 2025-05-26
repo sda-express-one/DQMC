@@ -3,7 +3,8 @@
 #include <chrono>
 #include "MC_Benchmarking.hpp"
 
-MC_Benchmarking::MC_Benchmarking(unsigned long long int total_iterations, int num_updates) : _total_iterations(total_iterations), _num_updates(num_updates) {
+MC_Benchmarking::MC_Benchmarking(unsigned long long int total_iterations, int num_updates) : _total_iterations(total_iterations), 
+    _num_updates(num_updates) {
     if(_num_updates > 0){   
         _updates_time = new long double[num_updates];
         _updates_iterations = new unsigned long long int[num_updates];
@@ -13,6 +14,34 @@ MC_Benchmarking::MC_Benchmarking(unsigned long long int total_iterations, int nu
         }
     }
 };
+
+MC_Benchmarking::MC_Benchmarking(const MC_Benchmarking& other) : _total_iterations(other._total_iterations), 
+    _num_updates(other._num_updates) {
+    if(_num_updates > 0){
+        _updates_time = new long double[_num_updates];
+        _updates_iterations = new unsigned long long int[_num_updates];
+        for(int i = 0; i < _num_updates; ++i) {
+            _updates_time[i] = other._updates_time[i];
+            _updates_iterations[i] = other._updates_iterations[i];
+        }
+    }
+};
+
+MC_Benchmarking& MC_Benchmarking::operator=(const MC_Benchmarking&  other){
+    if(this != &other) {
+        if(_num_updates > 0) {
+            delete[] _updates_time;
+            delete[] _updates_iterations;
+            _updates_time = new long double[_num_updates];
+            _updates_iterations = new unsigned long long int[_num_updates];
+            for(int i = 0; i < _num_updates; ++i) {
+                _updates_time[i] = other._updates_time[i];
+                _updates_iterations[i] = other._updates_iterations[i];
+            }
+        }
+    }
+    return *this;
+}
 
 void MC_Benchmarking::startTimer() {
     _start_time = std::chrono::high_resolution_clock::now();
@@ -43,6 +72,7 @@ void MC_Benchmarking::printResults(){
         std::cout << "Average time for update " << i << ": " << _updates_time[i] / _updates_iterations[i] << " seconds" << std::endl;
         std::cout << "Number of iterations for update " << i << ": " << _updates_iterations[i] << "." << std::endl;
     }
+    std::cout << std::endl;
 };
 
 void MC_Benchmarking::writeResultsToFile(const std::string& filename) {

@@ -15,7 +15,7 @@
 
 class GreenFuncNph{
     public:
-    
+
     // constructor 
     GreenFuncNph() = default;
     GreenFuncNph(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz, double chem_potential, int order_int_max, int ph_ext_max);
@@ -73,6 +73,7 @@ class GreenFuncNph{
         double p_swap, double p_shift, double p_stretch);
     void setProbabilities(double * probs);
     void setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor);
+    //void setTauCutoffStatistics(long double tau_cutoff_statistics)
     
 
     // main simulation method
@@ -104,7 +105,7 @@ class GreenFuncNph{
     double _kx = 0.; // x momentum
     double _ky = 0.; // y momentum
     double _kz = 0.; // z momentum
-    const double _chem_potential = -2.0; // chemical potential, normalization factor
+    const double _chem_potential = -2.2; // chemical potential, normalization factor
     const int _order_int_max = 50; // max diagram order
     const int _ph_ext_max = 10; // max number of external phonon lines
     int _D = 3; // dimensions
@@ -131,7 +132,7 @@ class GreenFuncNph{
     Vertex* _vertices; // array  of all possible vertices (also 0 and tau_max)
     Propagator* _propagators; // array of all possible bare electron propagators
 
-    flags _flags; // flags for different calculations
+    Flags _flags; // flags for different calculations
 
     // Green function exact estimator
     int _num_points = 100;
@@ -161,6 +162,12 @@ class GreenFuncNph{
     unsigned long long int _effective_mass_count = 0; // number of times the effective mass estimator is calculated
 
     unsigned long long int* _Z_factor; // Z factor of polaron (overlap between free electron state and polaron state)
+
+    // collect MC statistics
+    MC_Benchmarking * _benchmark_sim; // time benchmarking object
+    MC_Benchmarking * _benchmark_th; // time benchmarking object for thermalization
+    //MC_Statistics* _mc_statistics; // statistics of the simulation
+    //long double _tau_cutoff_statistics = 0; // cutoff for statistics, if tau < tau_cutoff statistics is not calculated
     
     // fixes errors in input
     static inline int returnEven(int value){if(value%2==0){return value;}

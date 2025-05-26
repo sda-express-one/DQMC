@@ -1259,8 +1259,8 @@ void GreenFuncNph::markovChainMC(){
         _flags.Z_factor = false;
     }
 
-    MC_Benchmarking benchmark_th(_relax_steps, 8);
-    MC_Benchmarking benchmark_sim(N_diags, 8);
+    //MC_Benchmarking benchmark_th(_relax_steps, 8);
+    //MC_Benchmarking benchmark_sim(N_diags, 8);
 
     // print simulation parameters
     std::cout <<"Starting simulation..." << std::endl;
@@ -1361,6 +1361,8 @@ void GreenFuncNph::markovChainMC(){
     }
 
     if(_flags.time_benchmark){
+        _benchmark_sim = new MC_Benchmarking(N_diags, 8);
+        _benchmark_th = new MC_Benchmarking(_relax_steps, 8);
         std::cout << "Time benchmark will be performed." << std::endl;
         std::cout << std::endl;
     }
@@ -1377,7 +1379,8 @@ void GreenFuncNph::markovChainMC(){
     if(_flags.time_benchmark){
         std::cout << "Benchmarking thermalization time..." << std::endl;
         std::cout << std::endl;
-        benchmark_th.startTimer();
+        //_benchmark_th->startTimer();
+        _benchmark_th->startTimer();
     }
 
     ProgressBar bar(_relax_steps, 70);
@@ -1386,44 +1389,44 @@ void GreenFuncNph::markovChainMC(){
         r = drawUniformR();
 
         if(r <= _p_length){
-            if(_flags.time_benchmark){benchmark_th.startUpdateTimer();}
+            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
             tau_length = diagramLengthUpdate(tau_length);
-            if(_flags.time_benchmark){benchmark_th.stopUpdateTimer(0);}
+            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(0);}
         }
         else if(r <= _p_length + _p_add_int){
-            if(_flags.time_benchmark){benchmark_th.startUpdateTimer();}
+            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
             addInternalPhononPropagator();
-            if(_flags.time_benchmark){benchmark_th.stopUpdateTimer(1);}
+            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(1);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int){
-            if(_flags.time_benchmark){benchmark_th.startUpdateTimer();}
+            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
             removeInternalPhononPropagator();
-            if(_flags.time_benchmark){benchmark_th.stopUpdateTimer(2);}
+            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(2);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext){
-            if(_flags.time_benchmark){benchmark_th.startUpdateTimer();}
+            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
             addExternalPhononPropagator();
-            if(_flags.time_benchmark){benchmark_th.stopUpdateTimer(3);}
+            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(3);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext){
-            if(_flags.time_benchmark){benchmark_th.startUpdateTimer();}
+            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
             removeExternalPhononPropagator();
-            if(_flags.time_benchmark){benchmark_th.stopUpdateTimer(4);}
+            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(4);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap){
-            if(_flags.time_benchmark){benchmark_th.startUpdateTimer();}
+            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
             swapPhononPropagator();
-            if(_flags.time_benchmark){benchmark_th.stopUpdateTimer(5);}
+            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(5);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift){
-            if(_flags.time_benchmark){benchmark_th.startUpdateTimer();}
+            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
             shiftPhononPropagator();
-            if(_flags.time_benchmark){benchmark_th.stopUpdateTimer(6);}
+            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(6);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift + _p_stretch){
-            if(_flags.time_benchmark){benchmark_th.startUpdateTimer();}
+            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
             tau_length = stretchDiagramLength(tau_length);
-            if(_flags.time_benchmark){benchmark_th.stopUpdateTimer(7);}
+            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(7);}
         }
 
         if(static_cast<int>(i%(_relax_steps/100)) == 0){bar.update(i);}
@@ -1432,15 +1435,16 @@ void GreenFuncNph::markovChainMC(){
     }
     bar.finish();
 
-    if(_flags.time_benchmark){benchmark_th.stopTimer();}
+    if(_flags.time_benchmark){_benchmark_th->stopTimer();}
 
     std::cout << std::endl;
     std::cout << "Thermalization process finished" << std::endl;
     std::cout << std::endl;
 
     if(_flags.time_benchmark){
-        benchmark_th.printResults();
-        benchmark_th.writeResultsToFile("thermalization_benchmark.txt");
+        _benchmark_th->printResults();
+        _benchmark_th->writeResultsToFile("thermalization_benchmark.txt");
+        delete _benchmark_th;
         std::cout << std::endl;
     }
 
@@ -1453,7 +1457,7 @@ void GreenFuncNph::markovChainMC(){
     if(_flags.time_benchmark){
         std::cout << "Benchmarking simulation time..." << std::endl;
         std::cout << std::endl;
-        benchmark_sim.startTimer();
+        _benchmark_sim->startTimer();
     }
 
     while(i < N_diags){
@@ -1462,44 +1466,44 @@ void GreenFuncNph::markovChainMC(){
             writeChosenUpdate("Updates.txt", i, r);
         }
         if(r <= _p_length){
-            if(_flags.time_benchmark){benchmark_sim.startUpdateTimer();}
+            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
             tau_length = diagramLengthUpdate(tau_length);
-            if(_flags.time_benchmark){benchmark_sim.stopUpdateTimer(0);}
+            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(0);}
         }
         else if(r <= _p_length + _p_add_int){
-            if(_flags.time_benchmark){benchmark_sim.startUpdateTimer();}
+            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
             addInternalPhononPropagator();
-            if(_flags.time_benchmark){benchmark_sim.stopUpdateTimer(1);}
+            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(1);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int){
-            if(_flags.time_benchmark){benchmark_sim.startUpdateTimer();}
+            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
             removeInternalPhononPropagator();
-            if(_flags.time_benchmark){benchmark_sim.stopUpdateTimer(2);}
+            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(2);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext){
-            if(_flags.time_benchmark){benchmark_sim.startUpdateTimer();}
+            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
             addExternalPhononPropagator();
-            if(_flags.time_benchmark){benchmark_sim.stopUpdateTimer(3);}
+            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(3);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext){
-            if(_flags.time_benchmark){benchmark_sim.startUpdateTimer();}
+            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
             removeExternalPhononPropagator();
-            if(_flags.time_benchmark){benchmark_sim.stopUpdateTimer(4);}
+            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(4);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap){
-            if(_flags.time_benchmark){benchmark_sim.startUpdateTimer();}
+            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
             swapPhononPropagator();
-            if(_flags.time_benchmark){benchmark_sim.stopUpdateTimer(5);}
+            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(5);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift){
-            if(_flags.time_benchmark){benchmark_sim.startUpdateTimer();}
+            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
             shiftPhononPropagator();
-            if(_flags.time_benchmark){benchmark_sim.stopUpdateTimer(6);}
+            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(6);}
         }
         else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift + _p_stretch){
-            if(_flags.time_benchmark){benchmark_sim.startUpdateTimer();}
+            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
             tau_length = stretchDiagramLength(tau_length);
-            if(_flags.time_benchmark){benchmark_sim.stopUpdateTimer(7);}
+            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(7);}
         }
 
         if(_flags.gf_exact && (_current_ph_ext == _selected_order || _selected_order < 0)){
@@ -1525,7 +1529,7 @@ void GreenFuncNph::markovChainMC(){
         if(_flags.Z_factor){updateZFactor();} // accumulate Z factor data
 
         if(_flags.write_diagrams){
-            writeDiagram("Diagrams.txt", i, r); // debug method to visualize diagram structure
+            writeDiagram("Diagrams.txt", i, r); // method to visualize diagram structure
         }
 
         if(_current_order_int == 0 && _current_ph_ext == 0){
@@ -1542,10 +1546,11 @@ void GreenFuncNph::markovChainMC(){
     std::cout << std::endl;
 
     if(_flags.time_benchmark){
-        benchmark_sim.stopTimer();
+        _benchmark_sim->stopTimer();
         std::cout << "Simulation time benchmark finished." << std::endl;
-        benchmark_sim.printResults(); 
-        benchmark_sim.writeResultsToFile("simulation_benchmark.txt");
+        _benchmark_sim->printResults(); 
+        _benchmark_sim->writeResultsToFile("simulation_benchmark.txt");
+        delete _benchmark_sim;
         std::cout << std::endl;
     }
 
