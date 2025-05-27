@@ -53,6 +53,7 @@ int main(){
     // exact estimators settings (time cutoffs)
     diagram.setTauCutoffEnergy(sets.tau_cutoff_energy);
     diagram.setTauCutoffMass(sets.tau_cutoff_mass);
+    diagram.setTauCutoffStatistics(sets.tau_cutoff_statistics);
 
     // main simulation
     diagram.markovChainMC();
@@ -317,6 +318,11 @@ settings readSimSettingstxt(const std::string& filename){
                 std::string value;
                 iss >> value;
                 sets.tau_cutoff_mass = stringToLongDouble(value);
+            }
+            else if(key == "cutoff_tau_stats" || key == "cutoff_tau_statistics"){
+                std::string value;
+                iss >> value;
+                sets.tau_cutoff_statistics = stringToLongDouble(value);
             }
         }
     }

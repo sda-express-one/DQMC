@@ -1552,7 +1552,7 @@ void GreenFuncNph::markovChainMC(){
                 _N0++;
         }
 
-        if(_flags.mc_statistics && tau_length >= _tau_cutoff_statistics){
+        if(_flags.mc_statistics && (tau_length >= _tau_cutoff_statistics)){
             _mc_statistics.num_diagrams++; // accumulate number of diagrams
             _mc_statistics.avg_tau += tau_length; // accumulate average length of diagrams
             _mc_statistics.avg_tau_squared += tau_length*tau_length; // accumulate average squared length of diagrams
