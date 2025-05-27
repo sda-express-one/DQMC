@@ -1690,16 +1690,16 @@ void GreenFuncNph::markovChainMC(){
         std::cout << "Cutoff for statistics: " << _tau_cutoff_statistics << std::endl;
         std::cout << "Number of diagrams (taken into account): " << _mc_statistics.num_diagrams << std::endl;
         std::cout << "Average length of diagrams: " << _mc_statistics.avg_tau << std::endl;
-        std::cout << "variance of length of diagrams: " << _mc_statistics.avg_tau_squared - _mc_statistics.avg_tau*_mc_statistics.avg_tau << std::endl;
+        std::cout << "Std dev length of diagrams: " << std::sqrt(_mc_statistics.avg_tau_squared - _mc_statistics.avg_tau*_mc_statistics.avg_tau) << std::endl;
         std::cout << "Average order of diagrams: " << static_cast<long double>(_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams) << std::endl;
-        std::cout << "variance of order of diagrams: " << static_cast<long double>(_mc_statistics.avg_order_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
-        - static_cast<long double>(_mc_statistics.avg_order*_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams) << std::endl;
+        std::cout << "Std dev order of diagrams: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_order_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
+        - static_cast<long double>(_mc_statistics.avg_order*_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << std::endl;
         std::cout << "Average number of internal phonons: " << static_cast<long double>(_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams) << std::endl;
-        std::cout << "variance of number of internal phonons: " << static_cast<long double>(_mc_statistics.avg_ph_int_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
-        - static_cast<long double>(_mc_statistics.avg_ph_int*_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams) << std::endl;
+        std::cout << "Std dev number of internal phonons: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_ph_int_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
+        - static_cast<long double>(_mc_statistics.avg_ph_int*_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << std::endl;
         std::cout << "Average number of external phonons: " << static_cast<long double>(_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams) << std::endl;
-        std::cout << "variance of number of external phonons: " << static_cast<long double>(_mc_statistics.avg_ph_ext_squared)/static_cast<long double>(_mc_statistics.num_diagrams) 
-        - static_cast<long double>(_mc_statistics.avg_ph_ext*_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams) << std::endl;
+        std::cout << "Std dev number of external phonons: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_ph_ext_squared)/static_cast<long double>(_mc_statistics.num_diagrams) 
+        - static_cast<long double>(_mc_statistics.avg_ph_ext*_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << std::endl;
         std::cout << "Number of zero order diagrams: " << _mc_statistics.zero_order_diagrams << std::endl;
         std::cout << std::endl;
         writeMCStatistics("MC_Statistics.txt");
@@ -1954,16 +1954,16 @@ void GreenFuncNph::writeMCStatistics(std::string filename) const {
     file << "Cutoff for statistics: " << _tau_cutoff_statistics << "\n";
     file << "Number of diagrams (taken into account): " << _mc_statistics.num_diagrams << "\n";
     file << "Average length of diagrams: " << _mc_statistics.avg_tau << "\n";
-    file << "variance of length of diagrams: " << _mc_statistics.avg_tau_squared - _mc_statistics.avg_tau*_mc_statistics.avg_tau << "\n";
+    file << "Std dev length of diagrams: " << std::sqrt(_mc_statistics.avg_tau_squared - _mc_statistics.avg_tau*_mc_statistics.avg_tau) << "\n";
     file << "Average order of diagrams: " << static_cast<long double>(_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams) << "\n";
-    file << "variance of order of diagrams: " << static_cast<long double>(_mc_statistics.avg_order_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
-    - static_cast<long double>(_mc_statistics.avg_order*_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams) << "\n";
+    file << "Std dev order of diagrams: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_order_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
+    - static_cast<long double>(_mc_statistics.avg_order*_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << "\n";
     file << "Average number of internal phonons: " << static_cast<long double>(_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams) << "\n";
-    file << "variance of number of internal phonons: " << static_cast<long double>(_mc_statistics.avg_ph_int_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
-    - static_cast<long double>(_mc_statistics.avg_ph_int*_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams) << "\n";
+    file << "Std dev number of internal phonons: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_ph_int_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
+    - static_cast<long double>(_mc_statistics.avg_ph_int*_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << "\n";
     file << "Average number of external phonons: " << static_cast<long double>(_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams) << "\n";
-    file << "variance of number of external phonons: " << static_cast<long double>(_mc_statistics.avg_ph_ext_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
-    - static_cast<long double>(_mc_statistics.avg_ph_ext*_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams) << "\n";
+    file << "Std dev number of external phonons: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_ph_ext_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
+    - static_cast<long double>(_mc_statistics.avg_ph_ext*_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << "\n";
     file << "Number of zero order diagrams: " << _mc_statistics.zero_order_diagrams << "\n";
     file << "\n";
 
