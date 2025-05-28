@@ -224,6 +224,31 @@ int GreenFuncNph::findVertexPosition(long double tau){
     return -1; // return -1 if tau is not found in the vertices array
 };
 
+int * GreenFuncNph::findVerticesPosition(long double tau_one, long double tau_two){
+    int* positions = new int[2];
+    int counts = 0;
+    for(int i = 0; i < _current_order_int + 2*_current_ph_ext + 1; i++){
+        if(_vertices[i].tau < tau_one && _vertices[i+1].tau >= tau_one){
+            positions[0] = i;
+            counts+=1;
+        }
+        if(counts > 0 && _vertices[i].tau < tau_two && _vertices[i+1].tau >= tau_two){
+            positions[1] = i;
+            counts+=1;
+        }
+    }
+
+    // return [-1,-1] if tau_one or tau_two is not found in the vertices array (or multiple positions are somehow found)
+    if(counts != 2){
+        positions[0] = -1;
+        positions[1] = -1;
+        return positions;
+    }
+    else{
+        return positions;
+    }
+};
+
 int GreenFuncNph::chooseInternalPhononPropagator(){
     std::uniform_int_distribution<int> distrib_unif(1,int(_current_order_int/2)); // chooses one of the internal phonon propagators at random
     int ph_propagator = distrib_unif(gen);
@@ -247,7 +272,7 @@ int GreenFuncNph::chooseExternalPhononPropagator(){
         if(_vertices[i].type == -2){
             counter++;
         }
-        if(counter == ph_propagator){ // to be fixed
+        if(counter == ph_propagator){
             return i;
         }
     }
@@ -332,8 +357,10 @@ void GreenFuncNph::addInternalPhononPropagator(){
             double w_z = distrib_norm(gen);
 
             // find position of new tau values
-            int index_one = findVertexPosition(tau_one);
-            int index_two = findVertexPosition(tau_two);
+            int * indexes = findVerticesPosition(tau_one, tau_two);
+            int index_one = indexes[0];
+            int index_two = indexes[1];
+            delete[] indexes;
 
             // control statements to check for floating point errors
             if(index_one == -1 || index_two == -1){return;} // reject if tau values are not found in the vertices array
@@ -449,6 +476,7 @@ void GreenFuncNph::removeInternalPhononPropagator(){
     else{
         // indexes of initial and final vertices of a random internal phonon propagator
         int index_one = chooseInternalPhononPropagator();
+        if(index_one == 0){return;}
         int index_two = _vertices[index_one].linked;
 
         long double tau_one = _vertices[index_one].tau;
@@ -562,8 +590,12 @@ void GreenFuncNph::addExternalPhononPropagator(){
         double w_z = distrib_norm(gen);
 
         if(tau_one <= tau_two){
-            int index_one = findVertexPosition(tau_one);
-            int index_two = findVertexPosition(tau_two);
+            int * indexes = findVerticesPosition(tau_one, tau_two);
+            int index_one = indexes[0];
+            int index_two = indexes[1];
+            delete[] indexes;
+            //int index_one = findVertexPosition(tau_one);
+            //int index_two = findVertexPosition(tau_two);
 
             // control statements to check for floating point errors
             if(index_one == -1 || index_two == -1){return;} // reject if tau values are not found in the vertices array
@@ -719,9 +751,15 @@ void GreenFuncNph::addExternalPhononPropagator(){
             }
         }
         else{
-            int index_one = findVertexPosition(tau_two);
-            int index_two = findVertexPosition(tau_one);
+            int * indexes = findVerticesPosition(tau_two, tau_one);
+            int index_one = indexes[0];
+            int index_two = indexes[1];
+            delete[] indexes;
+
+            //int index_one = findVertexPosition(tau_two);
+            //int index_two = findVertexPosition(tau_one);
             // control statements to check for floating point errors
+
             if(index_one == -1 || index_two == -1){return;} // reject if tau values are not found in the vertices array
             if( tau_two < _vertices[index_one].tau || isEqual(tau_two, _vertices[index_one].tau) 
                 || isEqual(tau_two, _vertices[index_one+1].tau) || tau_two > _vertices[index_one+1].tau){return;}
@@ -857,6 +895,7 @@ void GreenFuncNph::removeExternalPhononPropagator(){
     else{
         // indexes of initial and final vertices of a random internal phonon propagator
         int index_one = chooseExternalPhononPropagator();
+        if(index_one == 0){return;}
         int index_two = _vertices[index_one].linked;
 
         if(index_one >= index_two){
@@ -1684,7 +1723,6 @@ void GreenFuncNph::markovChainMC(){
         _mc_statistics.avg_tau_squared /= static_cast<long double>(_mc_statistics.num_diagrams); // average squared length of diagrams
 
         std::cout << "Monte Carlo statistics:" << std::endl;
-        std::cout << "Monte Carlo statistics:" << std::endl;
         std::cout << "chemical potential: " << _chem_potential << ", coupling strength: " << _alpha << std::endl;
         std::cout << "momentum: kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << std::endl;
         std::cout << "Cutoff for statistics: " << _tau_cutoff_statistics << std::endl;
@@ -1864,7 +1902,12 @@ void GreenFuncNph::writeExactGF(std::string filename) const {
         return;
     }
 
-    file << "# Exact Green's function calculated for number of external phonons " << _selected_order << " and coupling strength " << _alpha <<".\n";
+    if(_selected_order < 0){
+        file << "# Exact Green's function calculated for all orders of external phonons and coupling strength " << _alpha <<".\n";
+    }
+    else{
+        file << "# Exact Green's function calculated for number of external phonons " << _selected_order << " and coupling strength " << _alpha <<".\n";
+    }
     file << "# kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << ", chemical potential = " << _chem_potential << "\n";
 
     for(int i=0; i<_num_points; i++){

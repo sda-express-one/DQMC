@@ -195,6 +195,7 @@ class GreenFuncNph{
     int chooseInternalPhononPropagator();
     int chooseExternalPhononPropagator();
     int findVertexPosition(long double tau);
+    int * findVerticesPosition(long double tau_one, long double tau_two);
     void phVertexMakeRoom(int index_one, int index_two);
     void phVertexRemoveRoom(int index_one, int index_two);
     void propagatorArrayMakeRoom(int index_one, int index_two);
