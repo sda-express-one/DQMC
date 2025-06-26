@@ -73,7 +73,7 @@ class GreenFuncNph{
     void setProbabilities(double p_length, double p_add_int, double p_rem_int, double p_add_ext, double p_rem_ext, 
         double p_swap, double p_shift, double p_stretch);
     void setProbabilities(double * probs);
-    void setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor);
+    void setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor, bool fix_tau_value);
     void setTauCutoffStatistics(long double tau_cutoff_statistics);
     
 
@@ -177,11 +177,16 @@ class GreenFuncNph{
         else{std::cout << "The order of a Diagram must be even, order is " << value << " + 1." << std::endl; return value + 1;}};
 
     // evaluates equality between two double precision values
-    static inline bool isEqual(long double a, long double b, long double epsilon = 1e-9) {return std::fabs(a - b) < epsilon;};
+    static inline bool isEqual(long double a, long double b, long double epsilon = 1e-9L) {return std::fabs(a - b) < epsilon;};
 
     // computation methods
+
     // free electron energy
     static inline double calcEnergy(double px, double py, double pz){return (std::pow(px,2) + std::pow(py,2) + std::pow(pz,2))/2;};
+    // electron dispersion relation inline
+    inline double electronDispersion(double kx, double ky, double kz){return (std::pow(kx,2) + std::pow(ky,2) + std::pow(kz,2))/2;};
+    // phonon dispersion relation inline
+    inline double phononDispersion(int band_index){return 1. + static_cast<double>(band_index);};
      // 3D vertex strength (modulus squared)
     inline double calcVertexStrength(double w_x, double w_y, double w_z){return (2.*std::sqrt(2.)*M_PI*_alpha/_volume)/(std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2));};
      // 2D vertex strength (modulus squared)

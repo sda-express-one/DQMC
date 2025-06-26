@@ -8,7 +8,7 @@ volume 1
 kx 0
 ky 0
 kz 0
-coupling_strength 2.0
-chemical_potential -2.2
+coupling_strength 5.0
+chemical_potential -5.75
 max_internal_order 500
 max_num_ext_phonons 50

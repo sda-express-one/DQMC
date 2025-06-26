@@ -32,6 +32,7 @@ struct settings{
     bool write_diagrams = false;
     bool time_benchmark = false;
     bool mc_statistics = false;
+    bool fix_tau_value = false;
     int num_points_exact = 100;
     int num_bins = 100;
     int selected_order = 0;
@@ -99,6 +100,7 @@ struct Flags{
         bool write_diagrams = false; // flag to write diagrams to file
         bool time_benchmark = false; // flag for time benchmarking
         bool mc_statistics = false; // flag for statistics
+        bool fix_tau_value = false; // flag to fix diagram length during simulation (gs properties)
     };
 
 

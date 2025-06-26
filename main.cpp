@@ -42,7 +42,7 @@ int main(){
     diagram.setSelectedOrder(sets.selected_order);
 
     // set calculations perfomed
-    diagram.setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor);
+    diagram.setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor, sets.fix_tau_value);
     // set benchmarking
     diagram.setBenchmarking(sets.time_benchmark);
     // set MC statistics
@@ -323,6 +323,11 @@ settings readSimSettingstxt(const std::string& filename){
                 std::string value;
                 iss >> value;
                 sets.tau_cutoff_statistics = stringToLongDouble(value);
+            }
+            else if(key == "fix_tau_value" || key == "fix_length"){
+                std::string value;
+                iss >> value;
+                sets.fix_tau_value = stringToBool(value);
             }
         }
     }
