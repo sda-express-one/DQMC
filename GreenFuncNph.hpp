@@ -10,15 +10,17 @@
 #include <chrono>
 #include <algorithm>
 #include "MC_data_structures.hpp"
+#include "Diagram.hpp"
 #include "progressbar.hpp"
 #include "MC_Benchmarking.hpp"
 
-class GreenFuncNph{
+class GreenFuncNph : public Diagram {
     public:
 
     // constructor 
     GreenFuncNph() = default;
-    GreenFuncNph(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz, double chem_potential, int order_int_max, int ph_ext_max);
+    GreenFuncNph(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz, 
+        double chem_potential, int order_int_max, int ph_ext_max, double el_eff_mass, double ph_dispersion);
 
     // destructor
     ~GreenFuncNph(){
@@ -32,19 +34,10 @@ class GreenFuncNph{
             delete[] _green_func;
         }
         if(_flags.Z_factor){delete[] _Z_factor;}
-        delete[] _vertices;
-        delete[] _propagators;
     };
 
     // getters
-    inline long long unsigned int getN() const {return _N_diags;};
-    inline long long unsigned int getRelaxSteps() const {return _relax_steps;};
     inline double getNormConst() const {return _norm_const;};
-    inline long double getTauMax() const {return _tau_max;}
-    inline double getkx() const {return _kx;};
-    inline double getky() const {return _ky;};
-    inline double getkz() const {return _kz;};
-    inline double getChemPotential() const {return _chem_potential;}
     inline double getAlpha() const {return _alpha;}
     inline double getVolume() const {return _volume;}
     inline int getDimension() const {return _D;};
@@ -60,7 +53,6 @@ class GreenFuncNph{
     inline long double getTauCutoffStatistics() const {return _tau_cutoff_statistics;};
 
     // setters
-    void setRelaxSteps(int relax_steps);
     void setAlpha(double alpha);
     void setVolume(double volume);
     void setDimension(int D);
@@ -76,7 +68,6 @@ class GreenFuncNph{
     void setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor, bool fix_tau_value);
     void setTauCutoffStatistics(long double tau_cutoff_statistics);
     
-
     // main simulation method
     void markovChainMC();
 
@@ -91,30 +82,11 @@ class GreenFuncNph{
 
     private:
 
-    std::mt19937 gen; // Mersenne Twister Algorithm, 32-bit
-
-    // initialize seed for random number generator
-    static std::mt19937::result_type setSeed(){
-        std::mt19937::result_type seed = std::random_device()() ^ std::chrono::duration_cast<std::chrono::seconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count() 
-        ^ std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
-        return seed;
-    };
-
     // simulations features
-    const unsigned long long int _N_diags = 100000000; // number of different generated diagrams
     long long unsigned int _N0 = 0; // number of diagrams of order 0
-    const long double _tau_max =  50.; // max value for imaginary time
-    double _kx = 0.; // x momentum
-    double _ky = 0.; // y momentum
-    double _kz = 0.; // z momentum
-    const double _chem_potential = -2.2; // chemical potential, normalization factor
-    const int _order_int_max = 50; // max diagram order
-    const int _ph_ext_max = 10; // max number of external phonon lines
     int _D = 3; // dimensions
     double _alpha = 2.0; // coupling strength
     double _volume = 1.0; // volume of 1BZ
-    unsigned long long int _relax_steps = 10000000; // steps of DQMC that are not taken into account into the full simulation, useful to relax to equilibrium distrib
 
     // transition probabilities
     double _p_length = 1./8.;
@@ -130,10 +102,6 @@ class GreenFuncNph{
     long double _last_vertex = 0.; // last current phonon vertex (0 if no vertices are present)
     int _current_order_int = 0; // internal order of diagram (2*N_{ph_{int}}) 
     int _current_ph_ext = 0; // number of current external phonon lines in diagram (N_{ph_{ext}})
-
-    // diagram backbone
-    Vertex* _vertices; // array  of all possible vertices (also 0 and tau_max)
-    Propagator* _propagators; // array of all possible bare electron propagators
 
     Flags _flags; // flags for different calculations
 
@@ -171,13 +139,11 @@ class GreenFuncNph{
     MC_Benchmarking * _benchmark_th; // time benchmarking object for thermalization
     MC_Statistics _mc_statistics; // statistics of the simulation
     long double _tau_cutoff_statistics = 0.; // cutoff for statistics, if tau < tau_cutoff statistics is not calculated
-    
-    // fixes errors in input
-    static inline int returnEven(int value){if(value%2==0){return value;}
-        else{std::cout << "The order of a Diagram must be even, order is " << value << " + 1." << std::endl; return value + 1;}};
 
-    // evaluates equality between two double precision values
-    static inline bool isEqual(long double a, long double b, long double epsilon = 1e-9L) {return std::fabs(a - b) < epsilon;};
+    // free electron parameters
+    double _el_eff_mass = 1.0; // effective mass of free electron (in electron mass units)
+    // free phonon parameters
+    double _ph_dispersion = 1.0; // phonon dispersion relation
 
     // computation methods
 

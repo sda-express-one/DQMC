@@ -22,7 +22,7 @@ int main(){
     settings sets = readSimSettingstxt("simulation_settings.txt");
 
     // initialize GreenFuncNph object
-    GreenFuncNph diagram(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max, sim.ph_ext_max);
+    GreenFuncNph diagram(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max, sim.ph_ext_max, 1, 1);
 
     // simulations settings
     diagram.setAlpha(sim.alpha);

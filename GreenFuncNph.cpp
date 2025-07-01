@@ -7,17 +7,11 @@
 #include <chrono>
 #include <algorithm>
 #include "GreenFuncNph.hpp"
-//#include "progressbar.hpp"
-//#include "MC_Benchmarking.hpp"
 
 GreenFuncNph::GreenFuncNph(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
-    double chem_potential, int order_int_max, int ph_ext_max) : gen(setSeed()), _N_diags(N_diags), _tau_max(tau_max), 
-    _chem_potential(chem_potential), _order_int_max(returnEven(order_int_max)), _ph_ext_max(ph_ext_max) {
-    
-    // assign momentum values
-    _kx = kx;
-    _ky = ky;
-    _kz = kz;
+    double chem_potential, int order_int_max, int ph_ext_max, double el_eff_mass, double ph_dispersion) 
+    : Diagram(N_diags, tau_max, kx, ky, kz, chem_potential, order_int_max, ph_ext_max),
+    _el_eff_mass(el_eff_mass), _ph_dispersion(ph_dispersion){
 
     // initialize flags
     _flags.gf_exact = false;
@@ -27,32 +21,6 @@ GreenFuncNph::GreenFuncNph(unsigned long long int N_diags, long double tau_max, 
     _flags.Z_factor = false;
     _flags.write_diagrams = false;
     _flags.time_benchmark = false;
-
-    // initialize array of all possible phonon vertices
-    _vertices = new Vertex[_order_int_max + 2*_ph_ext_max + 2];
-    for(int i=0; i<_order_int_max + 2*_ph_ext_max + 2; i++){
-        _vertices[i].tau = 0;
-        _vertices[i].type = 0;
-        _vertices[i].linked = -1;
-    }
-    // initialize array of all possible propagators
-    _propagators = new Propagator[_order_int_max + 2*_ph_ext_max + 1];
-    for(int i=0; i<(order_int_max + 2*_ph_ext_max + 1); i++){
-        _propagators[i].el_propagator_kx = _kx;
-        _propagators[i].el_propagator_ky = _ky;
-        _propagators[i].el_propagator_kz = _kz;
-    }
-};
-
-void GreenFuncNph::setRelaxSteps(int relax_steps){
-    while(relax_steps < 0){
-        std::cout << "Invalid number of relaxation steps! Number of steps must be >= 0." << std::endl;
-        std::cout << "Enter new number of relaxation steps: ";
-        std::cin >> relax_steps;
-        std::cout << "\n";
-    }
-    long long unsigned int temp = relax_steps;
-    _relax_steps = temp;
 };
 
 void GreenFuncNph::setAlpha(double alpha){
@@ -250,14 +218,6 @@ int * GreenFuncNph::findVerticesPosition(long double tau_one, long double tau_tw
     }
 };
 
-/*double GreenFuncNph::electronDispersion(double kx, double ky, double kz){
-    return (std::pow(kx,2) + std::pow(ky,2) + std::pow(kz,2))/2;
-}*/
-
-/*double GreenFuncNph::phononDispersion(int band_index){
-    return 1. + static_cast<double>(band_index);
-}*/
-
 int GreenFuncNph::chooseInternalPhononPropagator(){
     std::uniform_int_distribution<int> distrib_unif(1,int(_current_order_int/2)); // chooses one of the internal phonon propagators at random
     int ph_propagator = distrib_unif(gen);
@@ -443,9 +403,8 @@ void GreenFuncNph::addInternalPhononPropagator(){
             std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_two-tau_one));
 
             double R_add = numerator/denominator;
-            double acceptance_ratio = std::min(1.,R_add);
-
-            if(drawUniformR()>acceptance_ratio){return;}
+            
+            if(!(Metropolis(R_add))){return;}
             else{
                 phVertexMakeRoom(index_one, index_two); // make room in vertices array
                 propagatorArrayMakeRoom(index_one, index_two); // make room in electron propagators array
@@ -563,9 +522,8 @@ void GreenFuncNph::removeInternalPhononPropagator(){
         double denominator = p_B*std::exp(-(exponent_fin-exponent_init+(phononDispersion(0))*(tau_two - tau_one)))*calcVertexStrength(w_x,w_y,w_z)*(tau_end-tau_init);
 
         double R_rem = numerator/denominator;
-        double acceptance_ratio = std::min(1., R_rem);
 
-        if(drawUniformR() > acceptance_ratio){return;}
+        if(!(Metropolis(R_rem))){return;}
         else{
             for(int i=index_one; i<index_two;i++){
                 _propagators[i].el_propagator_kx += w_x;
@@ -719,9 +677,8 @@ void GreenFuncNph::addExternalPhononPropagator(){
             std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one));
 
             double R_add = numerator/denominator;
-            double acceptance_ratio = std::min(1.,R_add);
 
-            if(drawUniformR() > acceptance_ratio){return;}
+            if(!(Metropolis(R_add))){return;}
             else{
                 phVertexMakeRoom(index_one, index_two); // make room in vertices array
                 propagatorArrayMakeRoom(index_one, index_two); // make room in electron propagators array
@@ -857,9 +814,8 @@ void GreenFuncNph::addExternalPhononPropagator(){
             std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one));
 
             double R_add = numerator/denominator;
-            double acceptance_ratio = std::min(1.,R_add);
 
-            if(drawUniformR() < acceptance_ratio){delete[] px_fin; delete[] py_fin; delete[] pz_fin; return;}
+            if(!(Metropolis(R_add))){delete[] px_fin; delete[] py_fin; delete[] pz_fin; return;}
             else{
                 phVertexMakeRoom(index_one, index_two); // make room in vertices array
                 propagatorArrayMakeRoom(index_one, index_two); // make room in electron propagators array
@@ -1021,9 +977,8 @@ void GreenFuncNph::removeExternalPhononPropagator(){
             phononDispersion(0)*(tau_current-tau_two+tau_one)))*calcVertexStrength(w_x, w_y, w_z);
             
             double R_rem = numerator/denominator;
-            double acceptance_ratio = std::min(1., R_rem);
 
-            if(drawUniformR() > acceptance_ratio){return;}
+            if(!Metropolis(R_rem)){return;}
             else{
                 for(int i=0; i<index_one;i++){
                     _propagators[i].el_propagator_kx += w_x;
@@ -1120,9 +1075,8 @@ void GreenFuncNph::removeExternalPhononPropagator(){
                 *calcVertexStrength(w_x, w_y, w_z);
 
                 double R_rem = numerator/denominator;
-                double acceptance_ratio = std::min(1., R_rem);
 
-                if(drawUniformR() > acceptance_ratio){delete[] px_init; delete[] py_init; delete[] pz_init; return;}
+                if(!(Metropolis(R_rem))){delete[] px_init; delete[] py_init; delete[] pz_init; return;}
                 else{
                     for(int i=0; i < total_order+1; i++){
                         _propagators[i].el_propagator_kx = px_init[i];
@@ -1302,7 +1256,8 @@ long double GreenFuncNph::stretchDiagramLength(long double tau_init){
 
 void GreenFuncNph::markovChainMC(){
 
-    unsigned long long int N_diags = _N_diags;
+    unsigned long long int N_diags = getNdiags(); // number of diagrams to be generated
+    unsigned long long int N_relax = getRelaxSteps(); // number of thermalization steps
 
     if((!(isEqual(_kx,0)) || !(isEqual(_ky,0)) || !(isEqual(_kz,0))) && _flags.effective_mass){
         std::cerr << "Warning: kx, ky and kz should be equal to 0 to calculate effective mass." << std::endl;
@@ -1322,7 +1277,7 @@ void GreenFuncNph::markovChainMC(){
     // print simulation parameters
     std::cout <<"Starting simulation..." << std::endl;
     std::cout << std::endl;
-    std::cout << "Number of thermalization steps: " << _relax_steps << std::endl;
+    std::cout << "Number of thermalization steps: " << getRelaxSteps() << std::endl;
     std::cout << "Number of diagrams to be generated: " << N_diags << std::endl;
     std::cout << "Maximum length of diagram: " << _tau_max << std::endl;
     std::cout << "Maximum number of internal phonons: " << _order_int_max/2 << std::endl;
@@ -1419,7 +1374,7 @@ void GreenFuncNph::markovChainMC(){
 
     if(_flags.time_benchmark){
         _benchmark_sim = new MC_Benchmarking(N_diags, 8);
-        _benchmark_th = new MC_Benchmarking(_relax_steps, 8);
+        _benchmark_th = new MC_Benchmarking(N_relax, 8);
         std::cout << "Time benchmark will be performed." << std::endl;
         std::cout << std::endl;
     }
@@ -1476,8 +1431,8 @@ void GreenFuncNph::markovChainMC(){
         _benchmark_th->startTimer();
     }
 
-    ProgressBar bar(_relax_steps, 70);
-    while(i < _relax_steps){
+    ProgressBar bar(N_relax, 70);
+    while(i < N_relax){
 
         r = drawUniformR();
 
@@ -1522,7 +1477,7 @@ void GreenFuncNph::markovChainMC(){
             if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(7);}
         }
 
-        if(static_cast<int>(i%(_relax_steps/100)) == 0){bar.update(i);}
+        if(static_cast<int>(i%(N_relax/100)) == 0){bar.update(i);}
 
         i++;
     }
@@ -1988,7 +1943,7 @@ void GreenFuncNph::writeZFactor(std::string filename) const {
     " and chemical potential: " << _chem_potential << ".\n";
     file << "# N_ext Z_factor(N_ext)\n";
     for(int i = 0; i < _ph_ext_max + 1; i++){
-        file << i << " " << (double)_Z_factor[i]/(double)_N_diags << "\n";
+        file << i << " " << (double)_Z_factor[i]/(double)getNdiags() << "\n";
     }
 
     file.close();
