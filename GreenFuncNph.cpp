@@ -398,7 +398,7 @@ void GreenFuncNph::addInternalPhononPropagator(){
             double p_B = _p_rem_int*(_current_order_int + 2*_current_ph_ext + 1);
             double p_A = _p_add_int*(_current_order_int/2 + 1);
 
-            double numerator = p_B*std::exp(-(exponent_fin - exponent_init + (phononDispersion(0))*(tau_two - tau_one)))*calcVertexStrength(w_x,w_y,w_z)*(tau_end-tau_init);
+            double numerator = p_B*std::exp(-(exponent_fin - exponent_init + (phononDispersion())*(tau_two - tau_one)))*calcVertexStrength(w_x,w_y,w_z)*(tau_end-tau_init);
             double denominator = p_A*std::pow(2*M_PI,_D)*std::exp(-(tau_two-tau_one))*std::pow(((tau_two-tau_one)/(2*M_PI)),double(_D)/2.)*
             std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_two-tau_one));
 
@@ -519,7 +519,7 @@ void GreenFuncNph::removeInternalPhononPropagator(){
         
         double numerator = p_A*std::pow(2*M_PI,_D)*std::exp(-(tau_two-tau_one))*std::pow(((tau_two-tau_one)/(2*M_PI)),double(_D)/2.)*
         std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_two-tau_one));
-        double denominator = p_B*std::exp(-(exponent_fin-exponent_init+(phononDispersion(0))*(tau_two - tau_one)))*calcVertexStrength(w_x,w_y,w_z)*(tau_end-tau_init);
+        double denominator = p_B*std::exp(-(exponent_fin-exponent_init+(phononDispersion())*(tau_two - tau_one)))*calcVertexStrength(w_x,w_y,w_z)*(tau_end-tau_init);
 
         double R_rem = numerator/denominator;
 
@@ -670,7 +670,7 @@ void GreenFuncNph::addExternalPhononPropagator(){
             double p_A = _p_add_ext*(_current_ph_ext+1);
 
             double numerator = p_B*std::exp(-(exponent_two_fin + exponent_one_fin - exponent_two_init - exponent_one_init + 
-                phononDispersion(0)*(tau_current-tau_two+tau_one)))*calcVertexStrength(w_x, w_y, w_z);
+                phononDispersion()*(tau_current-tau_two+tau_one)))*calcVertexStrength(w_x, w_y, w_z);
 
             double denominator = p_A*std::pow(2*M_PI,_D)*1*std::exp(-tau_one)*1*std::exp(-(tau_current-tau_two))*
             std::pow(((tau_current-tau_two+tau_one)/(2*M_PI)), (double)_D/2.)*
@@ -806,7 +806,7 @@ void GreenFuncNph::addExternalPhononPropagator(){
             double p_B = _p_rem_ext;
             double p_A = _p_add_ext*(_current_ph_ext+1);
 
-            double numerator = p_B*std::exp(-(exponent_fin - exponent_init + phononDispersion(0)*(tau_current-tau_two+tau_one)))
+            double numerator = p_B*std::exp(-(exponent_fin - exponent_init + phononDispersion()*(tau_current-tau_two+tau_one)))
             *calcVertexStrength(w_x, w_y, w_z);
 
             double denominator = p_A*std::pow(2*M_PI,_D)*1*std::exp(-tau_one)*1*std::exp(-(tau_current-tau_two))*
@@ -974,7 +974,7 @@ void GreenFuncNph::removeExternalPhononPropagator(){
             std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one));
 
             double denominator = p_B*std::exp(-(exponent_two_fin + exponent_one_fin - exponent_two_init - exponent_one_init + 
-            phononDispersion(0)*(tau_current-tau_two+tau_one)))*calcVertexStrength(w_x, w_y, w_z);
+            phononDispersion()*(tau_current-tau_two+tau_one)))*calcVertexStrength(w_x, w_y, w_z);
             
             double R_rem = numerator/denominator;
 
@@ -1071,7 +1071,7 @@ void GreenFuncNph::removeExternalPhononPropagator(){
                 std::pow(((tau_current-tau_two+tau_one)/(2*M_PI)), (double)_D/2.)*
                 std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one));
 
-                double denominator = p_B*std::exp(-(exponent_fin - exponent_init + phononDispersion(0)*(tau_current-tau_two+tau_one)))
+                double denominator = p_B*std::exp(-(exponent_fin - exponent_init + phononDispersion()*(tau_current-tau_two+tau_one)))
                 *calcVertexStrength(w_x, w_y, w_z);
 
                 double R_rem = numerator/denominator;
@@ -1142,7 +1142,7 @@ void GreenFuncNph::swapPhononPropagator(){
         double energy_final_el = calcEnergy(kx+c1*wx1-c2*wx2, ky+c1*wy1-c2*wy2, kz+c1*wz1-c2*wz2);
         double energy_initial_el = calcEnergy(kx, ky, kz);
 
-        double R_swap = std::exp(-(energy_final_el - energy_initial_el - phononDispersion(0)*(c1-c2))*(tau2-tau1));
+        double R_swap = std::exp(-(energy_final_el - energy_initial_el - phononDispersion()*(c1-c2))*(tau2-tau1));
         double acceptance_ratio = std::min(1.,R_swap);
 
         if(drawUniformR() > acceptance_ratio){return;}
@@ -1778,7 +1778,7 @@ double GreenFuncNph::calcGroundStateEnergy(long double tau_length){
                 int index_two = _vertices[i].linked;
                 long double tau_one = _vertices[i].tau;  
                 long double tau_two = _vertices[index_two].tau;
-                phonon_action += phononDispersion(0)*(tau_two - tau_one);
+                phonon_action += phononDispersion()*(tau_two - tau_one);
                 int_count++;
                 if(int_count == _current_order_int/2){int_flag = true;}
             }
@@ -1786,7 +1786,7 @@ double GreenFuncNph::calcGroundStateEnergy(long double tau_length){
                 int index_two = _vertices[i].linked;
                 long double tau_one = _vertices[i].tau;  
                 long double tau_two = _vertices[index_two].tau;
-                phonon_action += phononDispersion(0)*(tau_length + tau_one - tau_two);
+                phonon_action += phononDispersion()*(tau_length + tau_one - tau_two);
                 ext_count++;
                 if(ext_count == _current_ph_ext){ext_flag = true;}
             }
@@ -1855,7 +1855,7 @@ void GreenFuncNph::exactEstimatorGF(long double tau_length, int ext_phonon_order
             int index_two = _vertices[i].linked;
             long double tau_one = _vertices[i].tau;  
             long double tau_two = _vertices[index_two].tau;
-            phonon_action += phononDispersion(0)*(tau_two - tau_one);
+            phonon_action += phononDispersion()*(tau_two - tau_one);
             int_count++;
             if(int_count == _current_order_int/2){int_flag = true;}
         }
@@ -1863,7 +1863,7 @@ void GreenFuncNph::exactEstimatorGF(long double tau_length, int ext_phonon_order
             int index_two = _vertices[i].linked;
             long double tau_one = _vertices[i].tau;  
             long double tau_two = _vertices[index_two].tau;
-            phonon_action += phononDispersion(0)*(tau_length + tau_one - tau_two);
+            phonon_action += phononDispersion()*(tau_length + tau_one - tau_two);
             ext_count++;
             if(ext_count == ext_phonon_order){ext_flag = true;}
         }

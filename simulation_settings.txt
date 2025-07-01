@@ -9,7 +9,7 @@
 exact_GF false
 num_points 500
 selected_order_(GF) -1
-histo false
+histo true
 bins_(histogram) 500
 gs_energy true
 cutoff_tau_(gs_energy) 15
@@ -17,7 +17,7 @@ effective_mass true
 cutoff_tau_(mass) 15
 Z_factor true
 write_diagrams false
-time_benchmark false
+time_benchmark true
 stats true
 cutoff_tau_stats 0
 fix_tau_value false

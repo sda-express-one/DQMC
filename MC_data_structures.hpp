@@ -20,6 +20,8 @@ struct parameters{
     double chem_potential = -2;
     int order_int_max = 0;
     int ph_ext_max = 0;
+    double el_eff_mass = 1;
+    double ph_dispersion = 1;
 };
 
 // parameters to set in simulation_settings.txt

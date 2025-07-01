@@ -22,7 +22,8 @@ int main(){
     settings sets = readSimSettingstxt("simulation_settings.txt");
 
     // initialize GreenFuncNph object
-    GreenFuncNph diagram(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max, sim.ph_ext_max, 1, 1);
+    GreenFuncNph diagram(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, 
+        sim.order_int_max, sim.ph_ext_max, sim.el_eff_mass, sim.ph_dispersion);
 
     // simulations settings
     diagram.setAlpha(sim.alpha);
@@ -225,6 +226,16 @@ parameters readSimParameterstxt(const std::string& filename){
                 std::string value;
                 iss >> value;
                 params.ph_ext_max = stringToInt(value);
+            }
+            else if(key == "electron_effective_mass"){
+                std::string value;
+                iss >> value;
+                params.el_eff_mass = stringToDouble(value);
+            }
+            else if(key == "optical_phonon_dispersion"){
+                std::string value;
+                iss >> value;
+                params.ph_dispersion = stringToDouble(value);
             }
         }
     }
