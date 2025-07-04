@@ -1,8 +1,10 @@
 #include "Diagram.hpp"
 
+std::mt19937 Diagram::gen;
+
 // constructor definition
 Diagram::Diagram(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
-    double chem_potential, int order_int_max, int ph_ext_max) : _N_diags(N_diags), gen(setSeed()), _tau_max(tau_max),
+    double chem_potential, int order_int_max, int ph_ext_max) : _N_diags(N_diags), _tau_max(tau_max),
     _chem_potential(chem_potential), _order_int_max(returnEven(order_int_max)), _ph_ext_max(ph_ext_max) {
 
         // assign momentum values

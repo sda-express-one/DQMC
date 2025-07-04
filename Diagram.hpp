@@ -25,13 +25,22 @@ class Diagram {
         static inline bool isEqual(long double a, long double b, long double epsilon = 1e-9L) {return std::fabs(a - b) < epsilon;};
 
         // returns uniform random double precision value between 0 and 1
-        inline long double drawUniformR(){std::uniform_real_distribution<long double> distrib(0,1);long double r = distrib(gen); return r;};
+        static inline long double drawUniformR(){std::uniform_real_distribution<long double> distrib(0,1);long double r = distrib(gen); return r;};
 
         // Metropolis-Hastings Monte Carlo method
         inline int Metropolis(double R){
             double acceptance_ratio = std::min(1.0, R);
             if(drawUniformR() > acceptance_ratio){return 0;} // reject
             else{return 1;} // accept
+        };
+
+        // initialize seed for random number generator
+        static inline void setSeed(){
+            std::mt19937::result_type seed = std::random_device()() ^ std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count() 
+            ^ std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+            gen.seed(seed);
+            //return seed;
         };
 
         // setters
@@ -48,21 +57,12 @@ class Diagram {
         inline int getOrderIntMax() const {return _order_int_max;};
         inline int getPhExtMax() const {return _ph_ext_max;};
         inline int getOrderMax() const {return _order_int_max + 2*_ph_ext_max;};
-        inline std::mt19937 getSeed() const {return gen;};
+        static inline std::mt19937 getSeed(){return gen;};
 
     private:
         // number of diagrams generated
         const unsigned long long int _N_diags = 100000000; // number of diagrams
         unsigned long long int _N_relax_steps = 100000000; // number of diagrams generated for thermalization
-
-        
-        // initialize seed for random number generator
-        static inline std::mt19937::result_type setSeed(){
-            std::mt19937::result_type seed = std::random_device()() ^ std::chrono::duration_cast<std::chrono::seconds>(
-            std::chrono::system_clock::now().time_since_epoch()).count() 
-            ^ std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
-            return seed;
-        };
 
         // fixes errors in input
         static inline int returnEven(int value){
@@ -72,7 +72,7 @@ class Diagram {
 
     protected:
         // random number generator
-        std::mt19937 gen; // Mersenne Twister Algorithm, 32-bit
+        static std::mt19937 gen; // Mersenne Twister Algorithm, 32-bit
 
         // diagram backbone
         Vertex* _vertices;

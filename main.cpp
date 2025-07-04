@@ -22,9 +22,12 @@ int main(){
     settings sets = readSimSettingstxt("simulation_settings.txt");
 
     // initialize GreenFuncNph object
+
+    Diagram::setSeed();
+
     GreenFuncNph diagram(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, 
         sim.order_int_max, sim.ph_ext_max, sim.el_eff_mass, sim.ph_dispersion);
-
+    //diagram.setSeed();
     // simulations settings
     diagram.setAlpha(sim.alpha);
     diagram.setVolume(sim.volume);
