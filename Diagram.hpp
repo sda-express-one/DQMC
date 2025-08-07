@@ -24,7 +24,7 @@ class Diagram {
         // evaluates equality between two double precision values
         static inline bool isEqual(long double a, long double b, long double epsilon = 1e-9L) {return std::fabs(a - b) < epsilon;};
 
-        // returns uniform random double precision value between 0 and 1
+        // returns uniform random long double precision value between 0 and 1
         static inline long double drawUniformR(){std::uniform_real_distribution<long double> distrib(0,1);long double r = distrib(gen); return r;};
 
         // Metropolis-Hastings Monte Carlo method

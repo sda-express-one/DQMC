@@ -159,8 +159,6 @@ class GreenFuncNph : public Diagram {
     inline double calcVertexStrength(double w_x, double w_y){return (std::sqrt(2)*M_PI*_alpha/_volume)/std::sqrt(pow(w_x,2)+pow(w_y,2));};
     // finds last vertex before diagram end
     inline void findLastPhVertex(){_last_vertex = _vertices[_current_order_int + 2*_current_ph_ext].tau;};
-    // general purpose method for generating random numbers between 0 and 1
-    inline long double drawUniformR(){std::uniform_real_distribution<long double> distrib(0,1);long double r = distrib(gen); return r;};
 
     // manage diagram
     int chooseInternalPhononPropagator();
