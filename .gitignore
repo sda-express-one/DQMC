@@ -15,6 +15,8 @@ aaa.cpp
 aaa.hpp
 doubles.cpp
 test.cpp
+Updates.cpp
+Updates.hpp
 
 # ignore text files
 *.txt
@@ -28,3 +30,6 @@ test.cpp
 
 # ignore scripts
 *.sh
+
+# ignore folders
+Eigen
