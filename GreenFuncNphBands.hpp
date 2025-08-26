@@ -85,15 +85,15 @@ class GreenFuncNphBands : public Diagram {
     int _current_ph_ext = 0; // number of current external phonon lines in diagram (N_{ph_{ext}})
 
     // vertices computation
-    static inline double vertexStrengthTerm(double q_x, double q_y, double q_z, double V_BZ, double V_BvK, double phonon_mode, 
+    static inline double vertexStrengthTerm(double kx, double ky, double kz, double V_BZ, double V_BvK, double phonon_mode, 
         double born_effective_charge, double dielectric_const){
-        return 1/(std::sqrt(q_x*q_x+q_y*q_y+q_z*q_z))*(4*M_PI/V_BZ)*std::pow(2*phonon_mode*V_BvK,-1/2)*born_effective_charge/dielectric_const;
+        return 1/(std::sqrt(kx*kx+ky*ky+kz*kz))*(4*M_PI/V_BZ)*std::pow(2*phonon_mode*V_BvK,-1/2)*born_effective_charge/dielectric_const;
     };
     static inline double vertexOverlapTerm(Band band_one, Band band_two, int num_bands){
         double overlap = band_one.c1*band_two.c1 + band_one.c2*band_two.c2 + band_one.c3*band_two.c3;
         return overlap;
     };
-    static inline double calcVertexSquareModulus(double strength, double overlap){return -std::pow(strength*overlap,2);}; // -|V(q)|^2, V(q) real (i^2=-1) 
+    static inline double calcVertexSquareModulus(double strength, double overlap){return std::pow(strength*overlap,2);}; // -|V(q)|^2, V(q) real (i^2=-1) 
 
     Flags _flags; // flags for different calculations
 

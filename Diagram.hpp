@@ -6,6 +6,7 @@
 #include <cmath>
 #include <random>
 #include <chrono>
+#include "computational_methods.hpp"
 #include "MC_data_structures.hpp"
 
 class Diagram {
@@ -21,14 +22,11 @@ class Diagram {
             delete[] _propagators;
         }
 
-        // evaluates equality between two double precision values
-        static inline bool isEqual(long double a, long double b, long double epsilon = 1e-9L) {return std::fabs(a - b) < epsilon;};
-
         // returns uniform random long double precision value between 0 and 1
         static inline long double drawUniformR(){std::uniform_real_distribution<long double> distrib(0,1);long double r = distrib(gen); return r;};
 
         // Metropolis-Hastings Monte Carlo method
-        inline int Metropolis(double R){
+        static inline int Metropolis(double R){
             double acceptance_ratio = std::min(1.0, R);
             if(drawUniformR() > acceptance_ratio){return 0;} // reject
             else{return 1;} // accept
