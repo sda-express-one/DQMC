@@ -119,4 +119,8 @@ double extPhononEnergy(const int * num_ext_phonons, const double * phonon_modes,
     return ext_phonon_energy;
 }
 
+double phononEnergy(const double * phonon_modes, int phonon_mode_index){
+    return phonon_modes[phonon_mode_index];
+};
+
 #endif

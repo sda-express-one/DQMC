@@ -216,19 +216,58 @@ void GreenFuncNphBands::updateExternalPhononTypes(int index){
 
 long double GreenFuncNphBands::diagramLengthUpdate(long double tau_init){
     // initialize momentum values for last propagator
-    int current_order = _current_order_int + 2*_current_ph_ext;
-    double kx = _propagators[current_order].el_propagator_kx;
-    double ky = _propagators[current_order].el_propagator_ky;
-    double kz = _propagators[current_order].el_propagator_kz;
+    int total_order = _current_order_int + 2*_current_ph_ext;
+    double kx = _propagators[total_order].el_propagator_kx;
+    double ky = _propagators[total_order].el_propagator_ky;
+    double kz = _propagators[total_order].el_propagator_kz;
     
     double ext_phonon_energy = extPhononEnergy(_ext_phonon_type_num, _phonon_modes, _num_phonon_modes);
 
     // generate new time value for last vertex, reject if it goes out of bounds
-    long double tau_fin = _last_vertex - std::log(1-drawUniformR())/(electronEnergy(kx,ky,kz,_bands[current_order].effective_mass)
+    long double tau_fin = _last_vertex - std::log(1-drawUniformR())/(electronEnergy(kx,ky,kz,_bands[total_order].effective_mass)
         -_chem_potential + ext_phonon_energy);
     if(tau_fin <= _tau_max){
         _vertices[_current_order_int + 2*_current_ph_ext + 1].tau = tau_fin;
         return tau_fin;
     }
     else{return tau_init;}
+};
+
+void GreenFuncNphBands::shiftPhononPropagator(){
+    if(_current_order_int + _current_ph_ext == 0){return;} // reject if no vertices are present
+    else{
+        int total_order = _current_order_int + 2*_current_ph_ext;
+        std::uniform_int_distribution<int> distrib(1, total_order);
+        int vertex_index = distrib(gen); // choose random vertex
+
+        // necessary step to address phonon type into evaluation
+        int c = _vertices[vertex_index].type;
+        if(c == 2){c = 1;}
+        else if(c == -2){c = -1;}
+        int phonon_index = _vertices[vertex_index].index;  // index of phonon mode in el-phonon vertex
+
+        long double tau_init = _vertices[vertex_index - 1].tau;
+        long double tau_fin = _vertices[vertex_index + 1].tau;
+
+        // incoming electron momentum
+        long double kx_incoming = _propagators[vertex_index - 1].el_propagator_kx;
+        long double ky_incoming = _propagators[vertex_index - 1].el_propagator_ky;
+        long double kz_incoming = _propagators[vertex_index - 1].el_propagator_kz;
+        double el_eff_mass_incoming = _bands[vertex_index - 1].effective_mass;
+
+        // outgoing electron momentum
+        long double kx_outgoing = _propagators[vertex_index].el_propagator_kx;
+        long double ky_outgoing = _propagators[vertex_index].el_propagator_ky;
+        long double kz_outgoing = _propagators[vertex_index].el_propagator_kz;
+        double el_eff_mass_outgoing = _bands[vertex_index].effective_mass;
+
+        double energy_delta = electronEnergy(kx_incoming, ky_incoming, kz_incoming, el_eff_mass_incoming) 
+            - electronEnergy(kx_outgoing, ky_outgoing, kz_outgoing, el_eff_mass_outgoing) - phononEnergy(_phonon_modes, phonon_index)*c;
+        
+        long double tau_new = tau_init - std::log(1 - drawUniformR()*(1 - std::exp(-energy_delta*(tau_fin - tau_init))))/energy_delta;
+
+        if(isEqual(tau_new, tau_init) || isEqual(tau_new, tau_fin) || tau_new > tau_fin){return;} // check for possible double precision errors
+        
+        _vertices[vertex_index].tau = tau_new; // assign new time value to vertex
+    }
 };

@@ -75,7 +75,7 @@ class GreenFuncNphBands : public Diagram {
 
     // phonon longitudinal optical modes
     int _num_phonon_modes = 1;
-    double* _phonon_modes; // we assume constant phonon dispersion in momentum spaces
+    double* _phonon_modes; // assumption: constant phonon dispersion in momentum spaces
     int* _ext_phonon_type_num;
     double* _born_effective_charges; // Born effective charges for each phonon mode
 
