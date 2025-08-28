@@ -23,7 +23,16 @@ class GreenFuncNphBands : public Diagram {
     GreenFuncNphBands(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
     double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int phonon_modes);
 
+    // destructor
+    ~GreenFuncNphBands(){
+        delete[] _phonon_dispersions;
+        delete[] _ext_phonon_type;
+        delete[] _born_effective_charges;
+        delete[] _bands;
+    };
+
     // getters
+    
 
     // setters
     // electron bands
@@ -66,7 +75,8 @@ class GreenFuncNphBands : public Diagram {
 
     // phonon longitudinal optical modes
     int _num_phonon_modes = 1;
-    double* _phonon_dispersions; // we assume constant phonon dispersion in momentum spaces 
+    double* _phonon_dispersions; // we assume constant phonon dispersion in momentum spaces
+    int* _ext_phonon_type;
     double* _born_effective_charges; // Born effective charges for each phonon mode
 
     // transition probabilities
@@ -122,6 +132,9 @@ class GreenFuncNphBands : public Diagram {
     void phVertexRemoveRoom(int index_one, int index_two);
     void propagatorArrayMakeRoom(int index_one, int index_two);
     void propagatorArrayRemoveRoom(int index_one, int index_two);
+    void bandArrayMakeRoom(int index_one, int index_two);
+    void bandArrayRemoveRoom(int index_one, int index_two);
+    void updateExternalPhononTypes(int index);
 
     // MCMC updates
     long double diagramLengthUpdate(long double tau_init);

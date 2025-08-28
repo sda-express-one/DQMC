@@ -114,6 +114,7 @@ struct Vertex{
     double wx = 0.; // x component of phonon frequency
     double wy = 0.; // y component of phonon frequency
     double wz = 0.; // z component of phonon frequency
+    int index = 0; // describes link to phonon mode (0 first phonon mode, 1 second phonon mode, etc.)
 };
 
 // Structure to hold a propagator in the diagram

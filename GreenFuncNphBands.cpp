@@ -19,17 +19,30 @@ double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int pho
 
     // initialize arrays
     _phonon_dispersions = new double[_num_phonon_modes];
+    _ext_phonon_type = new int[_num_phonon_modes];
     _born_effective_charges = new double[_num_phonon_modes];
+
+    for(int i=0; i < _num_phonon_modes; i++){
+        _ext_phonon_type[i] = 0;
+    }
 
     // initialize bands
     _bands = new Band[_order_int_max + 2*_ph_ext_max + 1];  // needs further development
 
     if(_num_bands == 1){
         for(int i = 0; i <_order_int_max + 2*_ph_ext_max + 1; i++){
-            _bands[i].band_number = 1;
+            _bands[i].band_number = 0;
             _bands[i].c1 = 1;
             _bands[i].c2 = 0;
             _bands[i].c3 = 0;
+        }
+    }
+    else if(_num_bands == 3){
+        for(int i = 0; i < _order_int_max + 2*_ph_ext_max + 1; i++){
+            _bands[i].band_number = -1; // unassigned
+            _bands[i].c1 = 1/3;
+            _bands[i].c2 = 1/3;
+            _bands[i].c3 = 1/3;
         }
     }
 };
@@ -73,6 +86,133 @@ void GreenFuncNphBands::setDielectricConstant(double dielectric_const){
     _dielectric_const = dielectric_const;
 }
 
+int GreenFuncNphBands::findVertexPosition(long double tau){
+    int position = 0;
+    for(int i = 0; i < _current_order_int + 2*_current_ph_ext + 1; i++){
+        if(_vertices[i].tau < tau && _vertices[i+1].tau >= tau){
+            position = i;
+            return position;
+        }
+    }
+    return -1; // return -1 if tau is not found in the vertices array
+};
+
+int * GreenFuncNphBands::findVerticesPosition(long double tau_one, long double tau_two){
+    int* positions = new int[2];
+    int counts = 0;
+    for(int i = 0; i < _current_order_int + 2*_current_ph_ext + 1; i++){
+        if(_vertices[i].tau < tau_one && _vertices[i+1].tau >= tau_one){
+            positions[0] = i;
+            counts+=1;
+        }
+        if(counts > 0 && _vertices[i].tau < tau_two && _vertices[i+1].tau >= tau_two){
+            positions[1] = i;
+            counts+=1;
+        }
+    }
+
+    // return [-1,-1] if tau_one or tau_two is not found in the vertices array (or multiple positions are somehow found)
+    if(counts != 2){
+        positions[0] = -1;
+        positions[1] = -1;
+        return positions;
+    }
+    else{
+        return positions;
+    }
+};
+
+int GreenFuncNphBands::chooseInternalPhononPropagator(){
+    std::uniform_int_distribution<int> distrib_unif(1,int(_current_order_int/2)); // chooses one of the internal phonon propagators at random
+    int ph_propagator = distrib_unif(gen);
+    int counter = 0;
+    for(int i = 0; i < _current_order_int + 2*_current_ph_ext; i++){
+        if(_vertices[i].type == +1){
+            counter++;
+        }
+        if(counter == ph_propagator){
+            return i;
+        }
+    }
+    return 0;
+};
+
+int GreenFuncNphBands::chooseExternalPhononPropagator(){
+    std::uniform_int_distribution<int> distrib_unif(1, _current_ph_ext); // chooses one of the external phonon propagators at random
+    int ph_propagator = distrib_unif(gen);
+    int counter = 0;
+    for(int i = 0; i < _current_order_int + 2*_current_ph_ext + 1; i++){
+        if(_vertices[i].type == -2){
+            counter++;
+        }
+        if(counter == ph_propagator){
+            return i;
+        }
+    }
+    return 0;
+};
+
+void GreenFuncNphBands::phVertexMakeRoom(int index_one, int index_two){
+    int i = 0;
+    while(i < _current_order_int + 2*_current_ph_ext + 1){
+        if(_vertices[i].linked > index_two){_vertices[i].linked += 2;}
+        else if(_vertices[i].linked > index_one){_vertices[i].linked += 1;}
+        i++;
+    }
+    
+    for(int i = _current_order_int + 2*_current_ph_ext + 1; i > index_one; i--){ 
+        if(i > index_two){_vertices[i+2] = _vertices[i];}
+        else{_vertices[i+1] = _vertices[i];}
+  }
+};
+
+void GreenFuncNphBands::phVertexRemoveRoom(int index_one, int index_two){
+    int i = 0;
+    while(i < _current_order_int + 2*_current_ph_ext + 1){
+        if(_vertices[i].linked >= index_two){_vertices[i].linked -= 2;}
+        else if(_vertices[i].linked >= index_one){_vertices[i].linked -= 1;}
+        i++;
+    }
+
+    for(int i = index_one; i < _current_order_int + 2*_current_ph_ext; i++){
+        if(i < index_two-1){_vertices[i] = _vertices[i+1];}
+        else{_vertices[i] = _vertices[i+2];}
+    }
+};
+
+void GreenFuncNphBands::propagatorArrayMakeRoom(int index_one, int index_two){
+    for(int i = _current_order_int + 2*_current_ph_ext; i > index_one-1; i--){
+        if(i > index_two - 1){_propagators[i+2] = _propagators[i];}
+        else{_propagators[i+1] = _propagators[i];}
+    }
+    _propagators[index_one+1] = _propagators[index_one];
+    _propagators[index_two+1] = _propagators[index_two+2];
+};
+
+void GreenFuncNphBands::propagatorArrayRemoveRoom(int index_one, int index_two){
+    for(int i = index_one; i < _current_order_int + 2*_current_ph_ext; i++){
+        if(i < index_two - 2){_propagators[i] = _propagators[i+1];}
+        else{_propagators[i] = _propagators[i+2];}
+    }
+};
+
+void GreenFuncNphBands::bandArrayMakeRoom(int index_one, int index_two){
+    for(int i = _current_order_int + 2*_current_ph_ext; i > index_one-1; i--){
+        if(i > index_two - 1){_bands[i+2] = _bands[i];}
+        else{_bands[i+1] = _bands[i];}
+    }
+};
+
+void GreenFuncNphBands::bandArrayRemoveRoom(int index_one, int index_two){
+    for(int i = index_one; i < _current_order_int + 2*_current_ph_ext; i++){
+        if(i < index_two - 2){_bands[i] = _bands[i+1];}
+        else{_bands[i] = _bands[i+2];}
+    }
+};
+
+void GreenFuncNphBands::updateExternalPhononTypes(int index){
+    _ext_phonon_type[index] += 1;
+};
 
 long double GreenFuncNphBands::diagramLengthUpdate(long double tau_init){
     // initialize momentum values for last propagator

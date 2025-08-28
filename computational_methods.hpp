@@ -87,7 +87,7 @@ Eigen::Matrix<double, 4, 3> diagonalizeLKHamiltonian(const double kx, const doub
 
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigensolver; 
     eigensolver.compute(LK_matrix); // compute eigenvalues and eigenvectors
-    
+
     if(eigensolver.info() != 0){
         result << -1, -1, -1,
                    0,  0,  0,
@@ -103,6 +103,11 @@ Eigen::Matrix<double, 4, 3> diagonalizeLKHamiltonian(const double kx, const doub
 
     result << eigenvalues, eigenvectors;
     return result;
+};
+
+double electronEnergy(const double kx, const double ky, const double kz, const double eff_mass){
+    double k_squared = kx*kx + ky*ky + kz*kz;
+    return (k_squared/(2*eff_mass));
 };
 
 #endif
