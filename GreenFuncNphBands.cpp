@@ -18,12 +18,12 @@ double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int pho
     _num_phonon_modes = phonon_modes;
 
     // initialize arrays
-    _phonon_dispersions = new double[_num_phonon_modes];
-    _ext_phonon_type = new int[_num_phonon_modes];
+    _phonon_modes = new double[_num_phonon_modes];
+    _ext_phonon_type_num = new int[_num_phonon_modes];
     _born_effective_charges = new double[_num_phonon_modes];
 
     for(int i=0; i < _num_phonon_modes; i++){
-        _ext_phonon_type[i] = 0;
+        _ext_phonon_type_num[i] = 0;
     }
 
     // initialize bands
@@ -65,8 +65,8 @@ void GreenFuncNphBands::setLuttingerKohnParameters(double A_LK_el, double B_LK_e
 
 
 // phonon modes setters
-void GreenFuncNphBands::setPhononDispersions(double * phonon_dispersions){
-    _phonon_dispersions = phonon_dispersions;
+void GreenFuncNphBands::setPhononDispersions(double * phonon_modes){
+    _phonon_modes = phonon_modes;
 };
 
 void GreenFuncNphBands::setBornEffectiveCharges(double * born_effective_charges){
@@ -211,21 +211,24 @@ void GreenFuncNphBands::bandArrayRemoveRoom(int index_one, int index_two){
 };
 
 void GreenFuncNphBands::updateExternalPhononTypes(int index){
-    _ext_phonon_type[index] += 1;
+    _ext_phonon_type_num[index] += 1;
 };
 
 long double GreenFuncNphBands::diagramLengthUpdate(long double tau_init){
     // initialize momentum values for last propagator
-    double kx = _propagators[_current_order_int + 2*_current_ph_ext].el_propagator_kx;
-    double ky = _propagators[_current_order_int + 2*_current_ph_ext].el_propagator_ky;
-    double kz = _propagators[_current_order_int + 2*_current_ph_ext].el_propagator_kz;
+    int current_order = _current_order_int + 2*_current_ph_ext;
+    double kx = _propagators[current_order].el_propagator_kx;
+    double ky = _propagators[current_order].el_propagator_ky;
+    double kz = _propagators[current_order].el_propagator_kz;
+    
+    double ext_phonon_energy = extPhononEnergy(_ext_phonon_type_num, _phonon_modes, _num_phonon_modes);
 
-    {// generate new time value for last vertex, reject if it goes out of bounds
-    /*long double tau_fin = _last_vertex - std::log(1-drawUniformR())/(electronDispersion(kx,ky,kz, _el_eff_mass)-_chem_potential 
-        + phononDispersion(_ph_dispersion)*_current_ph_ext);
+    // generate new time value for last vertex, reject if it goes out of bounds
+    long double tau_fin = _last_vertex - std::log(1-drawUniformR())/(electronEnergy(kx,ky,kz,_bands[current_order].effective_mass)
+        -_chem_potential + ext_phonon_energy);
     if(tau_fin <= _tau_max){
         _vertices[_current_order_int + 2*_current_ph_ext + 1].tau = tau_fin;
-        return tau_fin;*/
+        return tau_fin;
     }
-    //else{return tau_init;}
+    else{return tau_init;}
 };

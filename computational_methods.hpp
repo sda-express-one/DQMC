@@ -1,6 +1,7 @@
 #ifndef COMPUTATIONAL_METHODS_HPP
 #define COMPUTATIONAL_METHODS_HPP
 #include <iostream>
+#include <iterator>
 #include "Eigen/Core"
 #include "Eigen/Eigenvalues"
 #include "Eigen/LU"
@@ -109,5 +110,13 @@ double electronEnergy(const double kx, const double ky, const double kz, const d
     double k_squared = kx*kx + ky*ky + kz*kz;
     return (k_squared/(2*eff_mass));
 };
+
+double extPhononEnergy(const int * num_ext_phonons, const double * phonon_modes, int num_phonon_modes){
+    double ext_phonon_energy = 0;
+    for(int i=0; i < num_phonon_modes; i++){
+        ext_phonon_energy += num_ext_phonons[i]*phonon_modes[i];
+    }
+    return ext_phonon_energy;
+}
 
 #endif

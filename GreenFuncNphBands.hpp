@@ -25,8 +25,8 @@ class GreenFuncNphBands : public Diagram {
 
     // destructor
     ~GreenFuncNphBands(){
-        delete[] _phonon_dispersions;
-        delete[] _ext_phonon_type;
+        delete[] _phonon_modes;
+        delete[] _ext_phonon_type_num;
         delete[] _born_effective_charges;
         delete[] _bands;
     };
@@ -75,8 +75,8 @@ class GreenFuncNphBands : public Diagram {
 
     // phonon longitudinal optical modes
     int _num_phonon_modes = 1;
-    double* _phonon_dispersions; // we assume constant phonon dispersion in momentum spaces
-    int* _ext_phonon_type;
+    double* _phonon_modes; // we assume constant phonon dispersion in momentum spaces
+    int* _ext_phonon_type_num;
     double* _born_effective_charges; // Born effective charges for each phonon mode
 
     // transition probabilities
