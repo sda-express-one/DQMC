@@ -231,6 +231,121 @@ long double GreenFuncNphBands::diagramLengthUpdate(long double tau_init){
     else{return tau_init;}
 };
 
+void GreenFuncNphBands::swapPhononPropagator(){
+    if(_current_order_int < 4){return;} // swap not possible if internal order is less than 4
+    else{
+        std::uniform_int_distribution<int> distrib(1, _current_order_int + 2*_current_ph_ext - 1); // choose random internal propagator
+        int index_one = distrib(gen); // choose random internal propagatorS
+        
+        if(_vertices[index_one].type != +1 && _vertices[index_one].type != -1){return;} // reject if vertex does not belong to internal phonon propagator
+        if(_vertices[index_one+1].type != +1 && _vertices[index_one+1].type != -1){return;} // reject if vertex does not belong to internal phonon propagator
+        if(_vertices[index_one].linked == index_one + 1 || _vertices[index_one].linked == -1){return;} // reject if the two vertices are linked
+
+        int index_two = index_one +1;
+
+        // get values of first vertex
+        int c1 = _vertices[index_one].type;
+        long double wx1 = _vertices[index_one].wx;
+        long double wy1 = _vertices[index_one].wy;
+        long double wz1 = _vertices[index_one].wz;
+        long double tau1 = _vertices[index_one].tau;
+        int phonon_index1 = _vertices[index_one].index;
+
+        // get values of second vertex
+        int c2 = _vertices[index_two].type;
+        long double wx2 = _vertices[index_two].wx;
+        long double wy2 = _vertices[index_two].wy;
+        long double wz2 = _vertices[index_two].wz;
+        long double tau2 = _vertices[index_two].tau;
+        int phonon_index2 = _vertices[index_two].index;
+
+        // get momentum of propagator
+        long double kx = _propagators[index_one].el_propagator_kx;
+        long double ky = _propagators[index_one].el_propagator_ky;
+        long double kz = _propagators[index_one].el_propagator_kz;
+
+        // retrieve value of initial electron effective mass and propose new value of final effective mass
+        double eff_mass_el_initial, eff_mass_el_final;
+        eff_mass_el_initial = _bands[index_one].effective_mass;
+
+        // new proposed band for propagator
+        int chosen_band = 0;
+        
+        // new proposed eigenfunction
+        Eigen::Vector3d new_overlap;
+        new_overlap << 1, 0 ,0;
+
+        // vertex terms that go into R_swap evaluation
+        double prefactor_num = 1;
+        double prefactor_den = 1;
+        
+        if(_num_bands == 3){
+            Eigen::Matrix<double,4,3> new_values_matrix = diagonalizeLKHamiltonian(kx+c1*wx1-c2*wx2, ky+c1*wy1-c2*wy2, kz+c1*wz1-c2*wz2, _A_LK_el, _B_LK_el, _C_LK_el);
+
+            // choose at random one of the bands
+            std::uniform_int_distribution<int> distrib_unif(0,2);
+            chosen_band = distrib_unif(gen);
+
+            double eigenval = new_values_matrix(0,chosen_band);
+            eff_mass_el_final = computeEffMassfromEigenval(eigenval); // computing new proposed electron effective mass from chosen eigenvalue
+            new_overlap = new_values_matrix.block<3,1>(1,chosen_band); // new proposed band eigenstate
+
+            // compute only overlap term for vertices that go into R_swap evaluation,
+            // the strength term does not change
+            prefactor_num = vertexOverlapTerm(_bands[index_one-1], new_overlap)*vertexOverlapTerm(_bands[index_two], new_overlap);
+            prefactor_den = vertexOverlapTerm(_bands[index_one-1], _bands[index_one])*vertexOverlapTerm(_bands[index_two], _bands[index_one]);
+        }
+
+        // compute energies
+        double energy_final_el = electronEnergy(kx+c1*wx1-c2*wx2, ky+c1*wy1-c2*wy2, kz+c1*wz1-c2*wz2, eff_mass_el_final);
+        double energy_initial_el = electronEnergy(kx, ky, kz, eff_mass_el_initial);
+        double energy_phonons = phononEnergy(_phonon_modes, phonon_index1)*c1-phononEnergy(_phonon_modes, phonon_index2)*c2;
+        
+        // need to address negative values issue
+        // compute transition probability
+        double R_swap = (prefactor_num/prefactor_den)*std::exp(-(energy_final_el-energy_initial_el-energy_phonons)*(tau2-tau1))*_num_bands; // to be fixed
+        double acceptance_ratio = std::min(1.,R_swap);
+
+        if(drawUniformR() > acceptance_ratio){return;}
+        else{
+            // assign new momentum values to propagator
+            _propagators[index_one].el_propagator_kx += c1*wx1-c2*wx2;
+            _propagators[index_one].el_propagator_ky += c1*wy1-c2*wy2;
+            _propagators[index_one].el_propagator_kz += c1*wz1-c2*wz2;
+            
+            // assign new band values
+            _bands[index_one].band_number = chosen_band;
+            _bands[index_one].effective_mass = eff_mass_el_final;
+            _bands[index_one].c1 = new_overlap[0];
+            _bands[index_one].c2 = new_overlap[1];
+            _bands[index_one].c3 = new_overlap[2];
+
+            int linked1 = _vertices[index_one].linked;
+            int linked2 = _vertices[index_two].linked;
+
+            // assing new links to conjugate vertices
+            _vertices[linked1].linked = index_two;         
+            _vertices[linked2].linked = index_one;
+
+            _vertices[index_one].wx = wx2;
+            _vertices[index_one].wy = wy2;
+            _vertices[index_one].wz = wz2;
+            _vertices[index_one].type = c2;
+            _vertices[index_one].linked = linked2;
+            _vertices[index_one].tau = tau1;
+            _vertices[index_one].index = phonon_index2;
+                
+            _vertices[index_two].wx = wx1;
+            _vertices[index_two].wy = wy1;
+            _vertices[index_two].wz = wz1;
+            _vertices[index_two].type = c1;
+            _vertices[index_two].linked = linked1;
+            _vertices[index_two].tau = tau2;
+            _vertices[index_two].index = phonon_index1;
+        }
+    }
+};
+
 void GreenFuncNphBands::shiftPhononPropagator(){
     if(_current_order_int + _current_ph_ext == 0){return;} // reject if no vertices are present
     else{

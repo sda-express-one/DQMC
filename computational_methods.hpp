@@ -5,13 +5,14 @@
 #include "Eigen/Core"
 #include "Eigen/Eigenvalues"
 #include "Eigen/LU"
+#include "MC_data_structures.hpp"
 
 
 // evaluates equality between two double precision values
-static inline bool isEqual(long double a, long double b, long double epsilon = 1e-9L) {return std::fabs(a - b) < epsilon;};
+inline bool isEqual(long double a, long double b, long double epsilon = 1e-9L) {return std::fabs(a - b) < epsilon;};
 
 // returns eigenvalues and eigenvectors of LK matrix in correct order (band 0, 1 and 2)
-void selectionRules(const double A_LK, const double B_LK, const double C_LK,
+inline void selectionRules(const double A_LK, const double B_LK, const double C_LK,
     Eigen::Matrix3d& eigenvector_matrix, Eigen::RowVector3d& eigenvalues){
     
     Eigen::Vector3i order;
@@ -61,7 +62,7 @@ void selectionRules(const double A_LK, const double B_LK, const double C_LK,
 
 
 // diagonalizes LK Hamiltonian and returns eigenvalues and eigenvectors in correct order
-Eigen::Matrix<double, 4, 3> diagonalizeLKHamiltonian(const double kx, const double ky, const double kz,
+inline Eigen::Matrix<double, 4, 3> diagonalizeLKHamiltonian(const double kx, const double ky, const double kz,
     const double A_LK, const double B_LK, const double C_LK){
     
     Eigen::Matrix<double, 4, 3> result;        
@@ -106,12 +107,19 @@ Eigen::Matrix<double, 4, 3> diagonalizeLKHamiltonian(const double kx, const doub
     return result;
 };
 
-double electronEnergy(const double kx, const double ky, const double kz, const double eff_mass){
+// electron effective mass from LK eigenvalue
+inline double computeEffMassfromEigenval(double eigenval){
+    return 1/(2*eigenval);
+};
+
+// electron dispersion
+inline double electronEnergy(const double kx, const double ky, const double kz, const double eff_mass){
     double k_squared = kx*kx + ky*ky + kz*kz;
     return (k_squared/(2*eff_mass));
 };
 
-double extPhononEnergy(const int * num_ext_phonons, const double * phonon_modes, int num_phonon_modes){
+// calc total energy of external phonon, useful at diagram's ends
+inline double extPhononEnergy(const int * num_ext_phonons, const double * phonon_modes, int num_phonon_modes){
     double ext_phonon_energy = 0;
     for(int i=0; i < num_phonon_modes; i++){
         ext_phonon_energy += num_ext_phonons[i]*phonon_modes[i];
@@ -119,8 +127,34 @@ double extPhononEnergy(const int * num_ext_phonons, const double * phonon_modes,
     return ext_phonon_energy;
 }
 
-double phononEnergy(const double * phonon_modes, int phonon_mode_index){
+// single phonon dispersion (constant)
+inline double phononEnergy(const double * phonon_modes, int phonon_mode_index){
     return phonon_modes[phonon_mode_index];
+};
+
+// vertex evaluation
+// strength term (phonon mode-exclusive part)
+inline double vertexStrengthTerm(double kx, double ky, double kz, double V_BZ, double V_BvK, double phonon_mode, double born_effective_charge, double dielectric_const){
+    return 1/(std::sqrt(kx*kx+ky*ky+kz*kz))*(4*M_PI/V_BZ)*std::pow(2*phonon_mode*V_BvK,-1/2)*born_effective_charge/dielectric_const;
+};
+
+// overlap term (electron band-dependent part)
+// v1
+inline double vertexOverlapTerm(Band band_one, Band band_two){
+    return (band_one.c1*band_two.c1 + band_one.c2*band_two.c2 + band_one.c3*band_two.c3);
+};
+// v2
+inline double vertexOverlapTerm(Band band_one, double c1_new, double c2_new, double c3_new){
+    return (band_one.c1*c1_new + band_one.c2*c2_new + band_one.c3*c3_new);
+};
+// v3
+inline double vertexOverlapTerm(Band band_one, Eigen::Vector3d band_two){
+    return (band_one.c1*band_two(0) + band_one.c2*band_two(1) + band_one.c3*band_two(2));
+};
+
+// vertex square modulus (|V(q)|^2 real and non-negative, V(q) imaginary (i^2=-1))
+inline double calcVertexSquareModulus(double strength, double overlap){
+    return std::pow(strength*overlap,2);
 };
 
 #endif
