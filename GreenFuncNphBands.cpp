@@ -231,6 +231,236 @@ long double GreenFuncNphBands::diagramLengthUpdate(long double tau_init){
     else{return tau_init;}
 };
 
+void GreenFuncNphBands::addInternalPhononPropagator(){
+    if(_current_order_int+1 >= _order_int_max){return;} // reject if already at max order
+    else{
+        // choose random electron propagator for new vertex
+        std::uniform_int_distribution<int> distrib_prop(0, _current_order_int + 2*_current_ph_ext);
+        int propagator = distrib_prop(gen);
+        long double tau_init = _vertices[propagator].tau;
+        long double tau_end = _vertices[propagator+1].tau;
+
+        // choose phonon index
+        std::uniform_int_distribution<int> distrib_phon(0, _num_phonon_modes);
+        int phonon_index = distrib_phon(gen);
+
+        // choose time value of new vertex (between ends of chosen propagator)
+        std::uniform_real_distribution<long double> distrib_unif(tau_init, tau_end);
+        long double tau_one = distrib_unif(gen);
+
+        // choose time value of second vertex, different energy for different phonon modes
+        long double tau_two = tau_one - std::log(1-drawUniformR())/_phonon_modes[phonon_index]; // may be on a different propagator
+
+        if(tau_two >= _vertices[_current_order_int + 2*_current_ph_ext + 1].tau){return;} // reject if phonon vertex goes out of bound
+        else{
+            // sampling momentum values for phonon propagators
+            std::normal_distribution<double> distrib_norm(0, std::sqrt(1/(tau_two-tau_one))); // may need to specify phonon mode
+            double w_x = distrib_norm(gen); 
+            double w_y = distrib_norm(gen);
+            double w_z = distrib_norm(gen);
+            
+            // find position of new tau values
+            int index_one = propagator;
+            int index_two = findVertexPosition(tau_two);
+
+            // control statements to check for double precision point errors
+            if(index_one == -1 || index_two == -1){return;} // reject if tau values are not found in the vertices array
+            if(_current_ph_ext > 0){
+                if( tau_one < _vertices[index_one].tau || isEqual(tau_one, _vertices[index_one].tau) 
+                    || isEqual(tau_one, _vertices[index_one+1].tau) || tau_one > _vertices[index_one+1].tau){return;}
+                if(tau_two < _vertices[index_two].tau || isEqual(tau_two, _vertices[index_two].tau) 
+                    || isEqual(tau_two, _vertices[index_two+1].tau) || tau_two > _vertices[index_two+1].tau){return;}
+            }
+
+            // create arrays of momentum values
+            double* px_init = new double[index_two + 1 - index_one];
+            double* py_init = new double[index_two + 1 - index_one];
+            double* pz_init = new double[index_two + 1 - index_one];
+            double* px_fin = new double[index_two + 1 - index_one];
+            double* py_fin = new double[index_two + 1 - index_one];
+            double* pz_fin = new double[index_two + 1 - index_one];
+
+            // create array of band values
+            Band* band_init = new Band[index_two + 1 - index_one];
+            Band* band_fin = new Band[index_two + 1 - index_one];
+
+            // vertices weights of two diagrams
+            double prefactor_fin = 1;
+            double prefactor_init = 1;
+
+            // temporary variables for new proposed diagram
+            int chosen_band = 0;
+            double c1_new = 1;
+            double c2_new = 0;
+            double c3_new = 0;
+            double eigenval = 1.0;
+            Eigen::Matrix<double,4,3> new_values_matrix;
+            Eigen::Vector3d new_overlap;
+
+            for(int i = index_one; i < index_two + 1; i++){
+                px_init[i - index_one] = _propagators[i].el_propagator_kx;
+                px_fin[i - index_one] = _propagators[i].el_propagator_kx - w_x;
+                py_init[i - index_one] = _propagators[i].el_propagator_ky;
+                py_fin[i - index_one] = _propagators[i].el_propagator_ky - w_y;
+                pz_init[i - index_one] = _propagators[i].el_propagator_kz;
+                pz_fin[i - index_one] = _propagators[i].el_propagator_kz - w_z;
+
+                if(_num_bands == 3){
+                    if(i == index_one || i == index_two){
+                        band_init[i - index_one].band_number = _bands[i].band_number;
+                        band_init[i - index_one].effective_mass = _bands[i].effective_mass;
+                        band_init[i - index_one].c1 = _bands[i].c1;
+                        band_init[i - index_one].c2 = _bands[i].c2;
+                        band_init[i - index_one].c3 = _bands[i].c3;
+
+                        std::uniform_int_distribution<int> unif(0, _num_bands-1);
+                        chosen_band = unif(gen);
+                        new_values_matrix = diagonalizeLKHamiltonian(_propagators[i].el_propagator_kx-w_x, 
+                                                                _propagators[i].el_propagator_ky-w_y, 
+                                                                _propagators[i].el_propagator_kz-w_z, 
+                                                                _A_LK_el, _B_LK_el, _C_LK_el);
+                        eigenval = new_values_matrix(0,chosen_band);
+
+                        // computing new proposed electron effective mass from chosen eigenvalue
+                        band_fin[i - index_one].effective_mass = computeEffMassfromEigenval(eigenval);
+                        // new proposed band eigenstate
+                        new_overlap = new_values_matrix.block<3,1>(1,chosen_band);
+                        band_fin[i - index_one].c1 = new_overlap(0); 
+                        band_fin[i - index_one].c2 = new_overlap(1);
+                        band_fin[i - index_one].c3 = new_overlap(2);
+                        
+                        // compute vertex terms
+                        if(i == index_one){
+                            prefactor_fin = prefactor_fin*vertexOverlapTerm(band_init[0], new_overlap);
+                            if(index_one == index_two){
+                                prefactor_fin = prefactor_fin*vertexOverlapTerm(band_init[0], new_overlap);
+                            }
+                        }
+                        else{
+                            prefactor_init = prefactor_init*vertexOverlapTerm(band_init[index_two - index_one - 1], band_init[index_two - index_one]);
+                            prefactor_fin = prefactor_fin*vertexOverlapTerm(band_init[index_two - index_one], new_overlap);
+                        }
+                    }
+                    else{
+                        band_init[i - index_one].band_number = _bands[i].band_number;
+                        band_init[i - index_one].effective_mass = _bands[i].effective_mass;
+                        band_init[i - index_one].c1 = _bands[i].c1;
+                        band_init[i - index_one].c2 = _bands[i].c2;
+                        band_init[i - index_one].c3 = _bands[i].c3;
+
+                        chosen_band = _bands[i].band_number;
+                        new_values_matrix = diagonalizeLKHamiltonian(_propagators[i].el_propagator_kx-w_x, 
+                                                                    _propagators[i].el_propagator_ky-w_y, 
+                                                                    _propagators[i].el_propagator_kz-w_z, 
+                                                                    _A_LK_el, _B_LK_el, _C_LK_el);
+                        eigenval = new_values_matrix(0,chosen_band);
+                        
+                        // computing new proposed electron effective mass from chosen eigenvalue
+                        band_fin[i - index_one].effective_mass = computeEffMassfromEigenval(eigenval); 
+                        // new proposed band eigenstate
+                        new_overlap = new_values_matrix.block<3,1>(1,chosen_band);
+                        band_fin[i - index_one].c1 = new_overlap(0); 
+                        band_fin[i - index_one].c2 = new_overlap(1); 
+                        band_fin[i - index_one].c3 = new_overlap(2);
+
+                        // compute vertex terms
+                        prefactor_init = prefactor_init*vertexOverlapTerm(band_init[i-1], band_init[i]);
+                        prefactor_fin = prefactor_fin*vertexOverlapTerm(band_fin[i-1], band_fin[i]);
+                    }
+                }
+            }
+
+            // create arrays of energy values
+            double* energy_init = new double[index_two + 1 - index_one];
+            double* energy_fin = new double[index_two + 1 - index_one];
+
+            for(int i = 0; i < index_two - index_one + 1; i++){
+                energy_init[i] = electronEnergy(px_init[i], py_init[i], pz_init[i], band_init[i].effective_mass);
+                energy_fin[i] = electronEnergy(px_fin[i], py_fin[i], pz_fin[i], band_fin[i].effective_mass);
+            }
+
+            delete[] px_init;
+            delete[] py_init;
+            delete[] pz_init;
+            delete[] px_fin;
+            delete[] py_fin;
+            delete[] pz_fin;
+
+            // initial and final action
+            double action_init = 0.;
+            double action_fin = 0.;
+
+            if(index_one == index_two){
+                action_init = energy_init[0]*(tau_two-tau_one);
+                action_fin = energy_fin[0]*(tau_two-tau_one);
+            }
+            else{
+                action_init = energy_init[0]*(_vertices[index_one+1].tau-tau_one);
+                action_fin = energy_fin[0]*(_vertices[index_one+1].tau-tau_one);
+                for(int i = 1; i < index_two - index_one; i++){
+                    action_init += energy_init[i]*(_vertices[index_one+1+i].tau - _vertices[index_one+i].tau);
+                    action_fin += energy_fin[i]*(_vertices[index_one+1+i].tau - _vertices[index_one+i].tau);
+                }
+                action_init += energy_init[index_two - index_one]*(tau_two-_vertices[index_two].tau);
+                action_fin += energy_fin[index_two - index_one]*(tau_two-_vertices[index_two].tau);
+            }
+
+            // delete array of energies
+            delete[] energy_init;
+            delete[] energy_fin;
+
+            double p_B = _p_rem_int*(_current_order_int + 2*_current_ph_ext + 1);
+            double p_A = _p_add_int*(_current_order_int/2 + 1);
+
+            double numerator = p_B*std::exp(-(action_fin - action_init + (phononEnergy(_phonon_modes, phonon_index)*(tau_two - tau_one))))*
+                prefactor_fin*(tau_end-tau_init)*_num_bands*_num_bands*_num_phonon_modes;
+            double denominator = p_A*std::pow(2*M_PI,_D)*_phonon_modes[phonon_index]*std::exp(-_phonon_modes[phonon_index]*(tau_two-tau_one))
+                *std::pow(((tau_two-tau_one)/(2*M_PI)),double(_D)/2.)*std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)
+                *(tau_two-tau_one));
+
+            double R_add = numerator/denominator;
+            
+            if(!(Metropolis(R_add))){delete[] band_init; delete[] band_fin; return;}
+            else{
+                phVertexMakeRoom(index_one, index_two); // make room in vertices array
+                propagatorArrayMakeRoom(index_one, index_two); // make room in electron propagators array
+                bandArrayMakeRoom(index_one, index_two); // make room in bands array
+
+                // assign vertex one values
+                _vertices[index_one+1].tau = tau_one;
+                _vertices[index_one+1].type = +1;
+                _vertices[index_one+1].linked = index_two + 2;
+                _vertices[index_one+1].wx = w_x;
+                _vertices[index_one+1].wy = w_y;
+                _vertices[index_one+1].wz = w_z;
+                _vertices[index_one+1].index = phonon_index;
+
+                // assign vertex two values
+                _vertices[index_two+2].tau = tau_two;
+                _vertices[index_two+2].type = -1;
+                _vertices[index_two+2].linked = index_one + 1;
+                _vertices[index_two+2].wx = w_x;
+                _vertices[index_two+2].wy = w_y;
+                _vertices[index_two+2].wz = w_z;
+                _vertices[index_two+2].index = phonon_index;
+
+                // update electron propagator
+                for(int i=index_one+1; i<index_two+2;i++){
+                    _propagators[i].el_propagator_kx -= w_x;
+                    _propagators[i].el_propagator_ky -= w_y;
+                    _propagators[i].el_propagator_kz -= w_z;
+
+                    _bands[i] = band_fin[i];
+                }
+
+                delete[] band_init; delete[] band_fin;
+                _current_order_int += 2; // update current diagram internal order
+                findLastPhVertex();
+            }
+        } 
+    }
+};
+
 void GreenFuncNphBands::swapPhononPropagator(){
     if(_current_order_int < 4){return;} // swap not possible if internal order is less than 4
     else{
@@ -244,7 +474,7 @@ void GreenFuncNphBands::swapPhononPropagator(){
         int index_two = index_one +1;
 
         // get values of first vertex
-        int c1 = _vertices[index_one].type;
+        int v1 = _vertices[index_one].type;
         long double wx1 = _vertices[index_one].wx;
         long double wy1 = _vertices[index_one].wy;
         long double wz1 = _vertices[index_one].wz;
@@ -252,7 +482,7 @@ void GreenFuncNphBands::swapPhononPropagator(){
         int phonon_index1 = _vertices[index_one].index;
 
         // get values of second vertex
-        int c2 = _vertices[index_two].type;
+        int v2 = _vertices[index_two].type;
         long double wx2 = _vertices[index_two].wx;
         long double wy2 = _vertices[index_two].wy;
         long double wz2 = _vertices[index_two].wz;
@@ -280,7 +510,7 @@ void GreenFuncNphBands::swapPhononPropagator(){
         double prefactor_den = 1;
         
         if(_num_bands == 3){
-            Eigen::Matrix<double,4,3> new_values_matrix = diagonalizeLKHamiltonian(kx+c1*wx1-c2*wx2, ky+c1*wy1-c2*wy2, kz+c1*wz1-c2*wz2, _A_LK_el, _B_LK_el, _C_LK_el);
+            Eigen::Matrix<double,4,3> new_values_matrix = diagonalizeLKHamiltonian(kx+v1*wx1-v2*wx2, ky+v1*wy1-v2*wy2, kz+v1*wz1-v2*wz2, _A_LK_el, _B_LK_el, _C_LK_el);
 
             // choose at random one of the bands
             std::uniform_int_distribution<int> distrib_unif(0,2);
@@ -297,9 +527,9 @@ void GreenFuncNphBands::swapPhononPropagator(){
         }
 
         // compute energies
-        double energy_final_el = electronEnergy(kx+c1*wx1-c2*wx2, ky+c1*wy1-c2*wy2, kz+c1*wz1-c2*wz2, eff_mass_el_final);
+        double energy_final_el = electronEnergy(kx+v1*wx1-v2*wx2, ky+v1*wy1-v2*wy2, kz+v1*wz1-v2*wz2, eff_mass_el_final);
         double energy_initial_el = electronEnergy(kx, ky, kz, eff_mass_el_initial);
-        double energy_phonons = phononEnergy(_phonon_modes, phonon_index1)*c1-phononEnergy(_phonon_modes, phonon_index2)*c2;
+        double energy_phonons = phononEnergy(_phonon_modes, phonon_index1)*v1-phononEnergy(_phonon_modes, phonon_index2)*v2;
         
         // need to address negative values issue
         // compute transition probability
@@ -309,9 +539,9 @@ void GreenFuncNphBands::swapPhononPropagator(){
         if(drawUniformR() > acceptance_ratio){return;}
         else{
             // assign new momentum values to propagator
-            _propagators[index_one].el_propagator_kx += c1*wx1-c2*wx2;
-            _propagators[index_one].el_propagator_ky += c1*wy1-c2*wy2;
-            _propagators[index_one].el_propagator_kz += c1*wz1-c2*wz2;
+            _propagators[index_one].el_propagator_kx += v1*wx1-v2*wx2;
+            _propagators[index_one].el_propagator_ky += v1*wy1-v2*wy2;
+            _propagators[index_one].el_propagator_kz += v1*wz1-v2*wz2;
             
             // assign new band values
             _bands[index_one].band_number = chosen_band;
@@ -330,7 +560,7 @@ void GreenFuncNphBands::swapPhononPropagator(){
             _vertices[index_one].wx = wx2;
             _vertices[index_one].wy = wy2;
             _vertices[index_one].wz = wz2;
-            _vertices[index_one].type = c2;
+            _vertices[index_one].type = v2;
             _vertices[index_one].linked = linked2;
             _vertices[index_one].tau = tau1;
             _vertices[index_one].index = phonon_index2;
@@ -338,7 +568,7 @@ void GreenFuncNphBands::swapPhononPropagator(){
             _vertices[index_two].wx = wx1;
             _vertices[index_two].wy = wy1;
             _vertices[index_two].wz = wz1;
-            _vertices[index_two].type = c1;
+            _vertices[index_two].type = v1;
             _vertices[index_two].linked = linked1;
             _vertices[index_two].tau = tau2;
             _vertices[index_two].index = phonon_index1;
