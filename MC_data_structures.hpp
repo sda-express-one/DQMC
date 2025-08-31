@@ -140,9 +140,9 @@ struct MC_Statistics{
 struct Band{
     int band_number = 0; // band number
     double effective_mass = 1.0; // effective mass of the band
-    double c1 = 0.; // coefficient for wavefunction phi_1 (band number 1)
-    double c2 = 0.; // coefficient for wavefunction phi_2 (band number 2)
-    double c3 = 0.; // coefficient for wavefunction phi_3 (band number 3)
+    double c1 = 1; // coefficient for wavefunction phi_1 (band number 1)
+    double c2 = 0; // coefficient for wavefunction phi_2 (band number 2)
+    double c3 = 0; // coefficient for wavefunction phi_3 (band number 3)
 };
 
 #endif
