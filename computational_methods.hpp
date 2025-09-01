@@ -65,7 +65,16 @@ inline void selectionRules(const double A_LK, const double B_LK, const double C_
 inline Eigen::Matrix<double, 4, 3> diagonalizeLKHamiltonian(const double kx, const double ky, const double kz,
     const double A_LK, const double B_LK, const double C_LK){
     
-    Eigen::Matrix<double, 4, 3> result;        
+    Eigen::Matrix<double, 4, 3> result;
+    
+    // detects free propagators
+    if(isEqual(kx,0) && isEqual(ky,0) && isEqual(kz,0)){
+        result << -2, 1, 1,
+                (1/3), 0, 0,
+                0, (1/3), 0,
+                0, 0, (1/3);
+        return result; 
+    }
     
     double k_modulus = std::sqrt(kx*kx + ky*ky + kz*kz);
     double kx_n = kx/k_modulus;
