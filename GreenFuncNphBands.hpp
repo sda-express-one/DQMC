@@ -36,8 +36,9 @@ class GreenFuncNphBands : public Diagram {
 
     // setters
     // electron bands
-    void setLongitudinalEffectiveMass(double mass_long_el);
-    void setTransversalEffectiveMass(double mass_transv_el);
+    void setEffectiveMassx(double m_x);
+    void setEffectiveMassy(double m_y);
+    void setEffectiveMassz(double m_z);
     void setLuttingerKohnParameters(double A_LK_el, double B_LK_el, double C_LK_el);
     // phonons modes
     void setPhononDispersions(double* phonon_dispersions);
@@ -66,8 +67,9 @@ class GreenFuncNphBands : public Diagram {
 
     // electron band effective mass
     // single band model
-    double _mass_long_el = 1.0;
-    double _mass_transv_el = 1.0;
+    double _m_x_el = 1.0;
+    double _m_y_el = 1.0;
+    double _m_z_el = 1.0;
     // 3-band model, Luttinger-Kohn parameters
     double _A_LK_el = 1.0;
     double _B_LK_el = 1.0;

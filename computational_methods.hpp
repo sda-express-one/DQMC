@@ -121,6 +121,21 @@ inline double computeEffMassfromEigenval(double eigenval){
     return 1/(2*eigenval);
 };
 
+inline double computeEffMassSingleBand(const double kx, const double ky, const double kz, const double m_x, const double m_y, const double m_z){
+    if(isEqual(kx,0) && isEqual(ky,0) && isEqual(kz,0)){
+        return 1.0;
+    }
+    else{
+        double k_norm = std::sqrt(kx*kx + ky*ky + kz*kz); 
+        double kx_norm = kx/k_norm;
+        double ky_norm = ky/k_norm;
+        double kz_norm = kz/k_norm;
+
+        double inv_mass = kx_norm*kx_norm/m_x + ky_norm*ky_norm/m_y + kz_norm*kz_norm/m_z;
+        return (1./inv_mass);
+    }
+};
+
 // electron dispersion
 inline double electronEnergy(const double kx, const double ky, const double kz, const double eff_mass){
     double k_squared = kx*kx + ky*ky + kz*kz;
@@ -143,8 +158,8 @@ inline double phononEnergy(const double * phonon_modes, int phonon_mode_index){
 
 // vertex evaluation
 // strength term (phonon mode-exclusive part)
-inline double vertexStrengthTerm(double kx, double ky, double kz, double V_BZ, double V_BvK, double phonon_mode, double born_effective_charge, double dielectric_const){
-    return 1/(std::sqrt(kx*kx+ky*ky+kz*kz))*(4*M_PI/V_BZ)*std::pow(2*phonon_mode*V_BvK,-1/2)*born_effective_charge/dielectric_const;
+inline double vertexStrengthTerm(double wx, double wy, double wz, double V_BZ, double V_BvK, double phonon_mode, double born_effective_charge, double dielectric_const){
+    return (1./(std::sqrt(wx*wx+wy*wy+wz*wz))*(4.*M_PI/V_BZ)*std::pow(2.*phonon_mode*V_BvK,-1./2)*born_effective_charge/dielectric_const);
 };
 
 // overlap term (electron band-dependent part)
