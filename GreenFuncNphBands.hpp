@@ -36,9 +36,8 @@ class GreenFuncNphBands : public Diagram {
 
     // setters
     // electron bands
-    void setEffectiveMassx(double m_x);
-    void setEffectiveMassy(double m_y);
-    void setEffectiveMassz(double m_z);
+    void setEffectiveMasses(double m_x, double m_y, double m_z);
+
     void setLuttingerKohnParameters(double A_LK_el, double B_LK_el, double C_LK_el);
     // phonons modes
     void setPhononDispersions(double* phonon_dispersions);

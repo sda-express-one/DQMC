@@ -49,15 +49,9 @@ double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int pho
 
 
 // electron bands setters
-void GreenFuncNphBands::setEffectiveMassx(double m_x){
+void GreenFuncNphBands::setEffectiveMasses(double m_x, double m_y, double m_z){
     _m_x_el = m_x;
-};
-
-void GreenFuncNphBands::setEffectiveMassy(double m_y){
     _m_y_el = m_y;
-};
-
-void GreenFuncNphBands::setEffectiveMassz(double m_z){
     _m_z_el = m_z;
 };
 
@@ -905,9 +899,16 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                         prefactor_fin = prefactor_fin*vertexOverlapTerm(bands_one_fin[i-1], new_overlap);
                     }
                 }
+                else if(_num_bands == 1){
+                    bands_one_fin[i].effective_mass = computeEffMassSingleBand(px_one_fin[i], py_one_fin[i], pz_one_fin[i],
+                                                                                _m_x_el, _m_y_el, _m_z_el);   
+                }
+
+                // compute energies
                 energy_one_init[i] = electronEnergy(px_one_init[i], py_one_init[i], pz_one_init[i], bands_one_init[i].effective_mass);
                 energy_one_fin[i] = electronEnergy(px_one_fin[i], py_one_fin[i], pz_one_fin[i], bands_one_fin[i].effective_mass);
 
+                // compute action
                 if(i != index_one){
                     action_one_init += energy_one_init[i]*(_vertices[i+1].tau - _vertices[i].tau);
                     action_one_fin += energy_one_fin[i]*(_vertices[i+1].tau - _vertices[i].tau);
@@ -930,6 +931,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 px_two_init[j] = _propagators[i].el_propagator_kx;
                 px_two_fin[j] = _propagators[i].el_propagator_kx - w_x;
                 py_two_init[j] = _propagators[i].el_propagator_ky;
+
                 py_two_fin[j] = _propagators[i].el_propagator_ky - w_y;
                 pz_two_init[j] = _propagators[i].el_propagator_kz;
                 pz_two_fin[j] = _propagators[i].el_propagator_kz - w_z;
@@ -970,6 +972,10 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                     else{
                         prefactor_fin = prefactor_fin*vertexOverlapTerm(bands_two_init[0], new_overlap);
                     }
+                }
+                else if(_num_bands == 1){
+                    bands_two_fin[j].effective_mass = computeEffMassSingleBand(px_two_fin[j], py_two_fin[j], pz_two_fin[j], 
+                                                                            _m_x_el, _m_y_el, _m_z_el);
                 }
 
                 // calc energy values for propagators above second ph vertex
@@ -1142,6 +1148,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             }*/
 
             for(int i = 0; i < total_order + 3; i++){
+
                 // initial diagram
                 if(i < total_order + 1){
                     px_init[i] = _propagators[i].el_propagator_kx;
@@ -1183,6 +1190,10 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                             prefactor_fin = prefactor_fin*vertexOverlapTerm(bands_fin[i-1], new_overlap);
                         }
                     }
+                    else if(_num_bands == 1){
+                        bands_fin[i].effective_mass = computeEffMassSingleBand(px_fin[i], py_fin[i], pz_fin[i],
+                                                                            _m_x_el, _m_y_el, _m_z_el);
+                    }
 
                     energy_fin[i] = electronEnergy(px_fin[i], py_fin[i], pz_fin[i], bands_fin[i].effective_mass);
 
@@ -1213,6 +1224,10 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                         bands_fin[i].c3 = new_overlap(2);
 
                         prefactor_fin = prefactor_fin*vertexOverlapTerm(bands_fin[i-1], new_overlap);
+                    }
+                    else if(_num_bands == 1){
+                        bands_fin[i].effective_mass = computeEffMassSingleBand(px_fin[i], py_fin[i], pz_fin[i], 
+                                                                            _m_x_el, _m_y_el, _m_z_el);
                     }
 
                     energy_fin[i] = electronEnergy(px_fin[i], py_fin[i], pz_fin[i], bands_fin[i].effective_mass);
@@ -1248,7 +1263,10 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                             bands_fin[total_order + 2] = bands_fin[0];
                         }
                         prefactor_fin = prefactor_fin*vertexOverlapTerm(bands_fin[i-1], new_overlap);
-
+                    }
+                    else if(_num_bands == 1){
+                        bands_fin[i].effective_mass = computeEffMassSingleBand(px_fin[i], py_fin[i], pz_fin[i], 
+                                                                            _m_x_el, _m_y_el, _m_z_el);
                     }
 
                     energy_fin[i] = electronEnergy(px_fin[i], py_fin[i], pz_fin[i], bands_fin[i].effective_mass);
@@ -1440,6 +1458,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                 px_one_init[i] = _propagators[i].el_propagator_kx + w_x;
                 py_one_init[i] = _propagators[i].el_propagator_ky + w_y;
                 pz_one_init[i] = _propagators[i].el_propagator_kz + w_z;
+
                 px_one_fin[i] = _propagators[i].el_propagator_kx;
                 py_one_fin[i] = _propagators[i].el_propagator_ky;
                 pz_one_fin[i] = _propagators[i].el_propagator_kz;
@@ -1483,6 +1502,10 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                         prefactor_fin = prefactor_fin*vertexOverlapTerm(bands_one_fin[index_one-1], bands_one_fin[index_one]); 
                     }
                 }
+                else if(_num_bands == 1){
+                    bands_one_init[i].effective_mass = computeEffMassSingleBand(px_one_init[i], py_one_init[i], pz_one_init[i], 
+                                                                                _m_x_el, _m_y_el, _m_z_el);
+                }
 
                 // compute energies
                 energy_one_init[i] = electronEnergy(px_one_init[i], py_one_init[i], pz_one_init[i], bands_one_init[i].effective_mass);
@@ -1509,7 +1532,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                     if(i != index_two && i != total_order){
                         chosen_band = band_number(gen);
 
-                        new_values_matrix = diagonalizeLKHamiltonian(px_two_init[i], py_two_init[i], pz_two_init[i],
+                        new_values_matrix = diagonalizeLKHamiltonian(px_two_init[j], py_two_init[j], pz_two_init[j],
                                                                     _A_LK_el, _B_LK_el, _C_LK_el);
                         if(new_values_matrix(0,0) == -2){
                             bands_two_init[j].band_number = -1;
@@ -1524,7 +1547,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                             bands_two_init[j].band_number = chosen_band;
                             
                             eigenval = new_values_matrix(0,chosen_band);
-                            bands_two_init[i].effective_mass = computeEffMassfromEigenval(eigenval);
+                            bands_two_init[j].effective_mass = computeEffMassfromEigenval(eigenval);
                     
                             new_overlap = new_values_matrix.block<3,1>(1,chosen_band);
                             bands_two_init[j].c1 = new_overlap(0); 
@@ -1546,8 +1569,12 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                         prefactor_fin = prefactor_fin*vertexOverlapTerm(bands_two_fin[j], bands_two_fin[j-1]);
                     }
                 }
+                else if(_num_bands == 1){
+                    bands_two_init[j].effective_mass = computeEffMassSingleBand(px_two_init[j], py_two_init[j], pz_two_init[j],
+                                                                                _m_x_el, _m_y_el, _m_z_el);
+                }
 
-                energy_two_init[j] = electronEnergy(px_two_init[i], py_two_init[i], pz_two_init[i], bands_two_init[j].effective_mass);
+                energy_two_init[j] = electronEnergy(px_two_init[j], py_two_init[j], pz_two_init[j], bands_two_init[j].effective_mass);
                 energy_two_fin[j] = electronEnergy(px_two_fin[j], py_two_fin[j], pz_two_fin[j], bands_two_fin[j].effective_mass);
 
                 action_two_init += energy_two_init[j]*(_vertices[i+1].tau - _vertices[i].tau);
@@ -1723,6 +1750,10 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                             }
 
                         }
+                        else if(_num_bands == 1){
+                            bands_init[i].effective_mass = computeEffMassSingleBand(px_init[i], py_init[i], pz_init[i], 
+                                                                                    _m_x_el, _m_y_el, _m_z_el);
+                        }
                     }
                     else{
                         px_init[i] = _propagators[i].el_propagator_kx + 2*w_x;
@@ -1769,6 +1800,10 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                                 prefactor_init = prefactor_init*vertexOverlapTerm(bands_init[total_order-1], new_overlap);
                                 prefactor_fin = prefactor_fin*vertexOverlapTerm(bands_fin[total_order-1], bands_fin[total_order]);
                             }
+                        }
+                        else if(_num_bands == 1){
+                            bands_init[i].effective_mass = computeEffMassSingleBand(px_init[i], py_init[i], pz_init[i], 
+                                                                                    _m_x_el, _m_y_el, _m_z_el);
                         }
                     }
                     energy_init[i] = electronEnergy(px_init[i], py_init[i], pz_init[i], bands_init[i].effective_mass);
@@ -1935,24 +1970,36 @@ void GreenFuncNphBands::swapPhononPropagator(){
         new_overlap << 1, 0 ,0;
 
         // vertex terms that go into R_swap evaluation
-        double prefactor_num = 1;
-        double prefactor_den = 1;
+        double prefactor_fin = 1;
+        double prefactor_init = 1;
         
         if(_num_bands == 3){
             Eigen::Matrix<double,4,3> new_values_matrix = diagonalizeLKHamiltonian(kx+v1*wx1-v2*wx2, ky+v1*wy1-v2*wy2, kz+v1*wz1-v2*wz2, _A_LK_el, _B_LK_el, _C_LK_el);
 
-            // choose at random one of the bands
-            std::uniform_int_distribution<int> distrib_unif(0,2);
-            chosen_band = distrib_unif(gen);
+            // check if free propagator
+            if(new_values_matrix(0,0) == -2){
+                chosen_band = -1;
+                eff_mass_el_final = 1.0;
+                new_overlap << (1./3), (1./3), (1./3);
+            }
+            else{
+                // choose at random one of the bands
+                std::uniform_int_distribution<int> distrib_unif(0,2);
+                chosen_band = distrib_unif(gen);
 
-            double eigenval = new_values_matrix(0,chosen_band);
-            eff_mass_el_final = computeEffMassfromEigenval(eigenval); // computing new proposed electron effective mass from chosen eigenvalue
-            new_overlap = new_values_matrix.block<3,1>(1,chosen_band); // new proposed band eigenstate
+                double eigenval = new_values_matrix(0,chosen_band);
+                eff_mass_el_final = computeEffMassfromEigenval(eigenval); // computing new proposed electron effective mass from chosen eigenvalue
+                new_overlap = new_values_matrix.block<3,1>(1,chosen_band); // new proposed band eigenstate
+            }
 
             // compute only overlap term for vertices that go into R_swap evaluation,
             // the strength term does not change
-            prefactor_num = vertexOverlapTerm(_bands[index_one-1], new_overlap)*vertexOverlapTerm(_bands[index_two], new_overlap);
-            prefactor_den = vertexOverlapTerm(_bands[index_one-1], _bands[index_one])*vertexOverlapTerm(_bands[index_two], _bands[index_one]);
+            prefactor_fin = vertexOverlapTerm(_bands[index_one-1], new_overlap)*vertexOverlapTerm(_bands[index_two], new_overlap);
+            prefactor_init = vertexOverlapTerm(_bands[index_one-1], _bands[index_one])*vertexOverlapTerm(_bands[index_two], _bands[index_one]);
+        }
+        else if(_num_bands == 1){
+            eff_mass_el_final = computeEffMassSingleBand(kx+v1*wx1-v2*wx2, ky+v1*wy1-v2*wy2, kz+v1*wz1-v2*wz2,
+                                                        _m_x_el, _m_y_el, _m_z_el);
         }
 
         // compute energies
@@ -1962,7 +2009,7 @@ void GreenFuncNphBands::swapPhononPropagator(){
         
         // need to address negative values issue
         // compute transition probability
-        double R_swap = (prefactor_num/prefactor_den)*std::exp(-(energy_final_el-energy_initial_el-energy_phonons)*(tau2-tau1))*_num_bands; // to be fixed
+        double R_swap = (prefactor_fin/prefactor_init)*std::exp(-(energy_final_el-energy_initial_el-energy_phonons)*(tau2-tau1)); //*_num_bands // to be fixed
         double acceptance_ratio = std::min(1.,R_swap);
 
         if(drawUniformR() > acceptance_ratio){return;}
@@ -2110,3 +2157,4 @@ long double GreenFuncNphBands::stretchDiagramLength(long double tau_init){
     delete[] new_taus;
     return tau_fin; // return new length of diagram
 };
+
