@@ -81,14 +81,14 @@ class GreenFuncNphBands : public Diagram {
     double* _born_effective_charges; // Born effective charges for each phonon mode
 
     // transition probabilities
-    double _p_length = 1./8.;
-    double _p_add_int = 1./8.;
-    double _p_rem_int = 1./8.;
-    double _p_add_ext = 1./8.;
-    double _p_rem_ext = 1./8.;
-    double _p_swap = 1./8.;
-    double _p_shift = 1./8.;
-    double _p_stretch = 1./8.;
+    double _p_length = (1./8.);
+    double _p_add_int = (1./8.);
+    double _p_rem_int = (1./8.);
+    double _p_add_ext = (1./8.);
+    double _p_rem_ext = (1./8.);
+    double _p_swap = (1./8.);
+    double _p_shift = (1./8.);
+    double _p_stretch = (1./8.);
 
     // important variables to keep
     long double _last_vertex = 0.; // last current phonon vertex (0 if no vertices are present)

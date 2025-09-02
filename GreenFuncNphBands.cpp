@@ -2158,3 +2158,34 @@ long double GreenFuncNphBands::stretchDiagramLength(long double tau_init){
     return tau_fin; // return new length of diagram
 };
 
+void GreenFuncNphBands::writeDiagram(std::string filename, int i, double r) const {
+    std::ofstream file(filename, std::ofstream::app);
+
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open file for writing.\n";
+        return;
+    }
+
+    file << "Iteration: " << i << "\n";
+
+    for(int j=0; j<_current_order_int+2*_current_ph_ext+1; j++){
+        file << "index: " << j << " time: " << _vertices[j].tau << " wx: " << _vertices[j].wx << " wy: " 
+        << _vertices[j].wy << " wz: " << _vertices[j].wz <<" type: " << _vertices[j].type << " linked: " << _vertices[j].linked << 
+        " phonon mode: " << _vertices[j].index <<"\n";
+        file << "propagator: " << j << "          kx: " << _propagators[j].el_propagator_kx << " ky: " << _propagators[j].el_propagator_ky 
+        << " kz: " << _propagators[j].el_propagator_kz << "\n";
+        file << "band: " << j << " band number: " << _bands[j].band_number << " el eff mass: " << _bands[j].effective_mass 
+        << " (c1, c2, c3): (" << _bands[j].c1 << ", " << _bands[j].c2 << ", " << _bands[j].c3 << ")\n";
+    }
+    int final_vertex = _current_order_int+2*_current_ph_ext+1;
+
+    file << "index: " << final_vertex << " time: " << _vertices[final_vertex].tau << " wx: " << _vertices[final_vertex].wx 
+    << " wy: " << _vertices[final_vertex].wy << " wz: " << _vertices[final_vertex].wz 
+    << " type: " << _vertices[final_vertex].type << " linked: " << _vertices[final_vertex].linked 
+    << " phonon mode: " << _vertices[final_vertex].index << "\n";
+
+    file << "ext phonons: " << _current_ph_ext << " int order: " << _current_order_int << " chosen update: " << r <<"\n";
+
+    file << std::endl;
+    file.close();
+};
