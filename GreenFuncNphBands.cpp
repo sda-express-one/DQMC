@@ -2189,3 +2189,52 @@ void GreenFuncNphBands::writeDiagram(std::string filename, int i, double r) cons
     file << std::endl;
     file.close();
 };
+
+void GreenFuncNphBands::writeMCStatistics(std::string filename) const {
+    std::ofstream file(filename, std::ofstream::app);
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open file for writing.\n";
+        return;
+    }
+    file << "Monte Carlo statistics:\n";
+    file << "chemical potential: " << _chem_potential << ", number of degenerate electronic bands: " << _num_bands << "\n";
+    if(_num_bands == 1){
+        file << "electronic effective masses: mx_el = " << _m_x_el << ", my_el = " << _m_y_el << ", mz_el = " << _m_z_el << "\n";
+    }
+    else if(_num_bands == 3){
+        file << "electronic Luttinger-Kohn parameters: A_LK_el = " << _A_LK_el << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << "\n";
+    }
+    file << "total momentum: kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << "\n";
+    file << "\n";
+    file << "1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " << _dielectric_const << "\n";
+    file << "\n";
+    file << "number of phonon modes: " << _num_phonon_modes << "\n";
+    for(int i=0; i<_num_phonon_modes; i++){
+        file << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+        << _born_effective_charges[i] << "\n";
+    }
+    file << "\n";
+    file << "Cutoff for statistics: " << _tau_cutoff_statistics << "\n";
+    file << "Number of diagrams (taken into account): " << _mc_statistics.num_diagrams << "\n";
+    file << "\n";
+    file << "Average length of diagrams: " << _mc_statistics.avg_tau << "\n";
+    file << "Std dev length of diagrams: " << std::sqrt(_mc_statistics.avg_tau_squared - _mc_statistics.avg_tau*_mc_statistics.avg_tau) << "\n";
+    file << "\n";
+    file << "Average order of diagrams: " << static_cast<long double>(_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams) << "\n";
+    file << "Std dev order of diagrams: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_order_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
+    - static_cast<long double>(_mc_statistics.avg_order*_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << "\n";
+    file << "\n";
+    file << "Average number of internal phonons: " << static_cast<long double>(_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams) << "\n";
+    file << "Std dev number of internal phonons: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_ph_int_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
+    - static_cast<long double>(_mc_statistics.avg_ph_int*_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << "\n";
+    file << "\n";
+    file << "Average number of external phonons: " << static_cast<long double>(_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams) << "\n";
+    file << "Std dev number of external phonons: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_ph_ext_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
+    - static_cast<long double>(_mc_statistics.avg_ph_ext*_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << "\n";
+    file << "\n";
+    file << "Number of zero order diagrams: " << _mc_statistics.zero_order_diagrams << "\n";
+    file << "\n";
+
+    file.close();
+    std::cout << "Values' statistics written to file " << filename << "." << std::endl;
+};

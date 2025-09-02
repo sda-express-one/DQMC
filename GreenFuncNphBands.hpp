@@ -51,6 +51,11 @@ class GreenFuncNphBands : public Diagram {
     // main simulation method
     void MarkovChainMC();
 
+    // write to file
+    void writeMCStatistics(std::string filename) const;
+
+    // statistics method
+
     private:
 
     // diagram features
@@ -112,6 +117,7 @@ class GreenFuncNphBands : public Diagram {
     MC_Benchmarking * _benchmark_th; // time benchmarking object for thermalization
     MC_Statistics _mc_statistics; // statistics of the simulation
     long double _tau_cutoff_statistics = 0.; // cutoff for statistics, if tau < tau_cutoff statistics is not calculated
+
 
     // manage diagram
     inline void findLastPhVertex(){_last_vertex = _vertices[_current_order_int + 2*_current_ph_ext].tau;};
