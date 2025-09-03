@@ -2739,7 +2739,7 @@ void GreenFuncNphBands::markovChainMC(){
             << _born_effective_charges[i] << std::endl;
         }
         std::cout << std::endl;
-        
+
         std::cout << "Cutoff for statistics: " << _tau_cutoff_statistics << std::endl;
         std::cout << "Number of diagrams (taken into account): " << _mc_statistics.num_diagrams << std::endl;
         std::cout << "Average length of diagrams: " << _mc_statistics.avg_tau << std::endl;
@@ -2756,6 +2756,74 @@ void GreenFuncNphBands::markovChainMC(){
         std::cout << "Number of zero order diagrams: " << _mc_statistics.zero_order_diagrams << std::endl;
         std::cout << std::endl;
         writeMCStatistics("MC_Statistics.txt");
+    }
+};
+
+double GreenFuncNphBands::calcGroundStateEnergy(long double tau_length){
+    if(tau_length <= _tau_cutoff_energy){return 0;} // reject if below cutoff
+    else{
+
+        // compute electron bare propagators action
+        int current_order = _current_order_int + 2*_current_ph_ext; // total order of diagrams (number of phonon vertices)
+        double electron_energy = 0;
+        double electron_action = 0., phonon_action = 0.;
+
+        // phonon bare propagators action
+        int i = 0;
+        int index_two = 0;
+        int phonon_index = -1;
+        long double tau_one = 0;
+        long double tau_two = 0;
+        // int int_count = 0;
+        // int ext_count = 0;  
+        // bool int_flag = false;
+        // bool ext_flag = false;
+
+        // main loop
+        for(int i=0; i<current_order+1; i++){
+            electron_energy = electronEnergy(_propagators[i].el_propagator_kx, _propagators[i].el_propagator_ky, 
+                _propagators[i].el_propagator_kz, _bands[i].effective_mass);
+            electron_action += electron_energy*(_vertices[i+1].tau - _vertices[i].tau);
+
+            if(_vertices[i].type = +1){
+                index_two = _vertices[i].linked;
+                phonon_index = _vertices[i].index;
+                tau_one = _vertices[i].tau;  
+                tau_two = _vertices[index_two].tau;
+                phonon_action += phononEnergy(_phonon_modes, phonon_index)*(tau_two - tau_one);
+            }
+            else if(_vertices[i].type == -2){
+                index_two = _vertices[i].linked;
+                tau_one = _vertices[i].tau;  
+                tau_two = _vertices[index_two].tau;
+                phonon_action += phononEnergy(_phonon_modes, phonon_index)*(tau_length + tau_one - tau_two);
+            }
+        }
+
+        /*while(i < current_order + 1 && !(int_flag && ext_flag)){
+            if(_vertices[i].type == +1){
+                index_two = _vertices[i].linked;
+                phonon_index = _vertices[i].index;
+                tau_one = _vertices[i].tau;  
+                tau_two = _vertices[index_two].tau;
+                phonon_action += phononEnergy(_phonon_modes, phonon_index)*(tau_two - tau_one);
+                int_count++;
+                if(int_count == _current_order_int/2){int_flag = true;}
+            }
+            else if(_vertices[i].type == -2){
+                index_two = _vertices[i].linked;
+                tau_one = _vertices[i].tau;  
+                tau_two = _vertices[index_two].tau;
+                phonon_action += phononEnergy(_phonon_modes, phonon_index)*(tau_length + tau_one - tau_two);
+                ext_count++;
+                if(ext_count == _current_ph_ext){ext_flag = true;}
+            }
+            i++;
+        }*/
+
+        double diagram_energy = (electron_action + phonon_action - static_cast<double>(current_order))/tau_length; // energy of current diagram
+        _gs_energy_count++; // update number of computed exact energy estimators
+        return diagram_energy; // return energy of current diagram
     }
 };
 
