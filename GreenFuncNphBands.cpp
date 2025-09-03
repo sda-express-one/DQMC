@@ -2158,6 +2158,607 @@ long double GreenFuncNphBands::stretchDiagramLength(long double tau_init){
     return tau_fin; // return new length of diagram
 };
 
+void GreenFuncNphBands::markovChainMC(){
+
+    unsigned long long int N_diags = getNdiags(); // number of diagrams to be generated
+    unsigned long long int N_relax = getRelaxSteps(); // number of thermalization steps
+
+    if((!(isEqual(_kx,0)) || !(isEqual(_ky,0)) || !(isEqual(_kz,0))) && _flags.effective_mass){
+        std::cerr << "Warning: kx, ky and kz should be equal to 0 to calculate effective mass." << std::endl;
+        std::cerr << "Effective mass calculation is not possible." << std::endl;
+        _flags.effective_mass = false;
+    }
+
+    if(_flags.Z_factor && _ph_ext_max == 0){
+        std::cerr << "Warning: number of maximum external phonon must be greater than 0 to calculate Z factor." << std::endl;
+        std::cerr << "Z factor calculation is not possible." << std::endl;
+        _flags.Z_factor = false;
+    }
+
+    // print simulation parameters
+    std::cout <<"Starting simulation..." << std::endl;
+    std::cout << std::endl;
+    std::cout << "Number of thermalization steps: " << getRelaxSteps() << std::endl;
+    std::cout << "Number of diagrams to be generated: " << N_diags << std::endl;
+    std::cout << "Maximum length of diagram: " << _tau_max << std::endl;
+    std::cout << "Maximum number of internal phonons: " << _order_int_max/2 << std::endl;
+    std::cout << "Maximum number of external phonons: " << _ph_ext_max << std::endl;
+    std::cout << "Maximum diagram order: " << _order_int_max + 2*_ph_ext_max << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands: " << _num_bands << std::endl;
+    if(_num_bands == 1){
+        std::cout << "electronic effective masses: mx_el = " << _m_x_el << ", my_el = " << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+    }
+    else if(_num_bands == 3){
+        std::cout << "electronic Luttinger-Kohn parameters: A_LK_el = " 
+        << _A_LK_el << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+    }
+    if(_D == 3){
+        std::cout << "Free electron momentum: kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << std::endl;
+    }
+    std::cout << std::endl;
+
+    std::cout << "1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " << _dielectric_const << std::endl;
+    std::cout << "number of phonon modes: " << _num_phonon_modes << std::endl;
+    for(int i=0; i<_num_phonon_modes; i++){
+        std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+        << _born_effective_charges[i] << std::endl;
+    }
+    std::cout << "Number of dimensions: " << _D << std::endl;
+    std::cout << std::endl;
+
+    // print MC update probabilities
+    std::cout << "Update probabilities:" << std::endl;
+    std::cout << "length update: " << _p_length << ", add internal update: " << _p_add_int <<
+    ", remove internal update: " << _p_rem_int << "," << std::endl;
+    std::cout << "add external update: " << _p_add_ext << ", remove external update: " << _p_rem_ext <<
+    ", swap update: " << _p_swap << "," << std::endl;
+    std::cout << "shift update: " << _p_shift << ", stretch update: " << _p_stretch << std::endl; 
+    std::cout << std::endl;
+
+    double bin_width_inv = 1./_bin_width;
+
+    if(_flags.gf_exact){
+        std::cout << "Green Function will be calculated exactly." << std::endl;
+        std::cout << "Number of computed points: " << _num_points << std::endl;
+
+        if(_selected_order >= 0){
+            std::cout << "The selected number of external phonons is: " << _selected_order << std::endl;
+        }
+        else {
+            std::cout << "GF will be calculated for every number of external phonons." << std::endl;
+        }
+
+        _points = new long double[_num_points];
+        _points_gf_exact = new long double[_num_points];
+
+        // initialize GF
+        for(int i=0; i<_num_points; i++){
+            _points[i] = _points_center + i*_points_step;
+            _points_gf_exact[i] = 0;
+        }
+        std::cout << std::endl;
+    }
+
+    if(_flags.histo){
+        std::cout << "Green Function will be computed using the histogram method" << std::endl;
+        std::cout << "Number of bins: " << _N_bins << std::endl;
+        _histogram = new double[_N_bins];
+        _bin_count = new unsigned long long int[_N_bins];
+        _green_func = new double[_N_bins];
+        for(int i=0; i<_N_bins; i++){
+            _histogram[i] = _bin_center + i*_bin_width;
+            _bin_count[i] = 0;
+            _green_func[i] = 0;
+        }
+        std::cout << std::endl;
+    }
+
+    if(_flags.gs_energy){
+        std::cout << "Ground state energy will be calculated using the exact estimator" << std::endl;
+        std::cout << "Free electron momentum: kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << std::endl;
+        std::cout << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+        if(_num_bands == 1){
+            std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
+                    << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+        }
+        else if(_num_bands == 3){
+            std::cout << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
+                    << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+        }
+        std::cout <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
+        << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
+        std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+
+        for(int i=0; i<_num_phonon_modes; i++){
+            std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+            << _born_effective_charges[i] << std::endl;
+        }
+        std::cout << std::endl;
+    }
+
+    if(_flags.effective_mass){
+        std::cout << "Effective mass will be calculated using the exact estimator" << std::endl;
+        std::cout << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+        if(_num_bands == 1){
+            std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
+                    << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+        }
+        else if(_num_bands == 3){
+            std::cout << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
+                    << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+        }
+        std::cout <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
+        << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
+        std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+
+        for(int i=0; i<_num_phonon_modes; i++){
+            std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+            << _born_effective_charges[i] << std::endl;
+        std::cout << std::endl;
+        }
+    }
+
+    /*if(_flags.Z_factor){
+        std::cout << "Z factor will be calculated using the exact estimator" << std::endl;
+        std::cout << "Coupling strength: " << _alpha << ", chemical potential: " << _chem_potential << ", max number of phonons: " << 
+        _ph_ext_max << std::endl;
+        initializeZFactorArray();
+        std::cout << std::endl;
+    }*/
+
+    if(_flags.write_diagrams){
+        if(N_diags > 25000){
+            _flags.write_diagrams = false; // if too many diagrams are generated they are not printed to txt file
+            std::cerr << "Warning: too many diagrams generated (> 25000), diagrams will not be printed to .txt file." << std::endl;
+        }
+        else{
+            std::cout << "The diagrams generated in the simulation process will be printed in the Diagrams.txt file" << std::endl;
+            std::cout << std::endl;
+        }    
+    }
+
+    if(_flags.time_benchmark){
+        _benchmark_sim = new MC_Benchmarking(N_diags, 8);
+        _benchmark_th = new MC_Benchmarking(N_relax, 8);
+        std::cout << "Time benchmark will be performed." << std::endl;
+        std::cout << std::endl;
+    }
+
+    if(_flags.mc_statistics){
+        std::cout << "Monte Carlo statistics will be calculated (simulation)." << std::endl;
+        std::cout << "Average length of diagram, average order, average number of internal" << 
+        " and external phonons and number of order 0 diagrams will be calculated." << std::endl;
+        std::cout << "Cutoff for diagram length is set to: " << _tau_cutoff_statistics << std::endl;
+        std::cout << std::endl;
+    }
+
+    // input variables
+    //std::uniform_real_distribution<long double> distrib(0,_tau_max);
+    //long double tau_length = distrib(gen);
+    long double tau_length = diagramLengthUpdate(_tau_max/100);
+    double r = 0.5;
+    unsigned long long int i = 0;
+
+    if(_flags.fix_tau_value){
+        std::cout << "Length of diagrams is fixed to: " << _tau_max << std::endl;
+        tau_length = _tau_max - 1e-7L; // fix length of diagrams to tau_max
+        _vertices[1].tau = tau_length; // assign fixed time value to first vertex
+        std::cout << "All diagrams will have the same length (tau_max)." << std::endl;
+        std::cout << std::endl;
+        if(_p_length > 0 || _p_stretch > 0){
+            std::cerr << "Warning: probabilities for length and stretch updates are set to non-zero values, but they will not be used." << std::endl;
+            std::cerr << "Length and stretch updates will not be performed." << std::endl;
+            double probs = _p_length + _p_stretch;
+            _p_length = 0;
+            _p_stretch = 0;
+            _p_add_int += probs/6;
+            _p_rem_int += probs/6;
+            _p_add_ext += probs/6;
+            _p_rem_ext += probs/6;
+            _p_swap += probs/6;
+            _p_shift += probs/6;
+            std::cerr << "Update probabilities have been adjusted to have a fixed diagram length." << std::endl;
+            std::cerr << "New update probabilities: add internal update = " << _p_add_int << ", remove internal update = " << _p_rem_int <<
+            ", add external update = " << _p_add_ext << ", remove external update = " << _p_rem_ext <<
+            ", swap update = " << _p_swap << ", shift update = " << _p_shift << std::endl;
+            std::cerr << std::endl;
+        }
+    }
+
+    std::cout << "Starting thermalization process" << std::endl;
+    std::cout << std::endl;
+
+    if(_flags.time_benchmark){
+        std::cout << "Benchmarking thermalization time..." << std::endl;
+        std::cout << std::endl;
+        _benchmark_th->startTimer();
+    }
+
+    ProgressBar bar(N_relax, 70);
+    while(i < N_relax){
+
+        r = drawUniformR();
+
+        if(r <= _p_length){
+            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
+            tau_length = diagramLengthUpdate(tau_length);
+            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(0);}
+        }
+        else if(r <= _p_length + _p_add_int){
+            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
+            addInternalPhononPropagator();
+            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(1);}
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int){
+            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
+            removeInternalPhononPropagator();
+            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(2);}
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext){
+            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
+            addExternalPhononPropagator();
+            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(3);}
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext){
+            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
+            removeExternalPhononPropagator();
+            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(4);}
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap){
+            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
+            swapPhononPropagator();
+            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(5);}
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift){
+            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
+            shiftPhononPropagator();
+            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(6);}
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift + _p_stretch){
+            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
+            tau_length = stretchDiagramLength(tau_length);
+            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(7);}
+        }
+
+        if(static_cast<int>(i%(N_relax/100)) == 0){bar.update(i);}
+
+        i++;
+    }
+    bar.finish();
+
+    if(_flags.time_benchmark){_benchmark_th->stopTimer();}
+
+    std::cout << std::endl;
+    std::cout << "Thermalization process finished" << std::endl;
+    std::cout << std::endl;
+
+    if(_flags.time_benchmark){
+        _benchmark_th->printResults();
+        _benchmark_th->writeResultsToFile("thermalization_benchmark.txt");
+        delete _benchmark_th;
+        std::cout << std::endl;
+    }
+
+    i = 0;
+    std::cout << "Starting simulation process" << std::endl;
+    std::cout << std::endl;
+
+    bar.setTotal(N_diags);
+
+    if(_flags.time_benchmark){
+        std::cout << "Benchmarking simulation time..." << std::endl;
+        std::cout << std::endl;
+        _benchmark_sim->startTimer();
+    }
+
+    while(i < N_diags){
+        r = drawUniformR();
+        if(_flags.write_diagrams){
+            writeChosenUpdate("Updates.txt", i, r);
+        }
+        if(r <= _p_length){
+            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
+            tau_length = diagramLengthUpdate(tau_length);
+            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(0);}
+        }
+        else if(r <= _p_length + _p_add_int){
+            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
+            addInternalPhononPropagator();
+            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(1);}
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int){
+            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
+            removeInternalPhononPropagator();
+            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(2);}
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext){
+            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
+            addExternalPhononPropagator();
+            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(3);}
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext){
+            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
+            removeExternalPhononPropagator();
+            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(4);}
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap){
+            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
+            swapPhononPropagator();
+            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(5);}
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift){
+            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
+            shiftPhononPropagator();
+            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(6);}
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift + _p_stretch){
+            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
+            tau_length = stretchDiagramLength(tau_length);
+            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(7);}
+        }
+
+        /*if(_flags.gf_exact && (_current_ph_ext == _selected_order || _selected_order < 0)){
+            exactEstimatorGF(tau_length, _selected_order); // calculate Green function
+            _gf_exact_count++; // count number of diagrams for normalization
+        }*/
+
+        if(_flags.histo){
+            // select correct bin for histogram
+            tau_length = (tau_length < 0.) ? 0. : (tau_length >= _tau_max) ? _tau_max - 1e-9 : tau_length;
+            int bin = (int)((tau_length - 0.) * bin_width_inv);
+            _bin_count[bin]++;
+        }
+
+        if(_flags.gs_energy){
+            _gs_energy += calcGroundStateEnergy(tau_length); // accumulate energy of diagrams
+        }
+
+        if(_flags.effective_mass){
+            _effective_mass += calcEffectiveMass(tau_length); // accumulate effective mass of diagrams
+        }
+
+        // if(_flags.Z_factor){updateZFactor();} // accumulate Z factor data
+
+        if(_flags.write_diagrams){
+            writeDiagram("Diagrams.txt", i, r); // method to visualize diagram structure
+        }
+
+        if(_current_order_int == 0 && _current_ph_ext == 0){
+                _N0++;
+        }
+
+        if(_flags.mc_statistics && (tau_length >= _tau_cutoff_statistics)){
+            _mc_statistics.num_diagrams++; // accumulate number of diagrams
+            _mc_statistics.avg_tau += tau_length; // accumulate average length of diagrams
+            _mc_statistics.avg_tau_squared += tau_length*tau_length; // accumulate average squared length of diagrams
+            _mc_statistics.avg_order += _current_order_int + 2*_current_ph_ext; // accumulate average order of diagrams
+            _mc_statistics.avg_order_squared += (_current_order_int + 2*_current_ph_ext)*(_current_order_int + 2*_current_ph_ext); // accumulate average squared order of diagrams
+            _mc_statistics.avg_ph_ext += _current_ph_ext; // accumulate average number of external phonons
+            _mc_statistics.avg_ph_ext_squared += _current_ph_ext*_current_ph_ext; // accumulate average squared number of external phonons
+            _mc_statistics.avg_ph_int += _current_order_int/2; // accumulate average number of internal phonons
+            _mc_statistics.avg_ph_int_squared += (_current_order_int/2)*(_current_order_int/2); // accumulate average squared number of internal phonons
+            if(_current_order_int + 2*_current_ph_ext == 0){
+                _mc_statistics.zero_order_diagrams++; // accumulate number of zero order diagrams
+            }
+        }
+
+        if(static_cast<int>(i%(N_diags/100)) == 0){bar.update(i);}
+
+        i++;
+    }
+
+    bar.finish();
+
+    std::cout << std::endl;
+
+    if(_flags.time_benchmark){
+        _benchmark_sim->stopTimer();
+        std::cout << "Simulation time benchmark finished." << std::endl;
+        _benchmark_sim->printResults(); 
+        _benchmark_sim->writeResultsToFile("simulation_benchmark.txt");
+        delete _benchmark_sim;
+        std::cout << std::endl;
+    }
+
+    /*if(_flags.gf_exact){
+        calcNormConst();
+        std::cout << "Exact Green's function computed." << std::endl;
+        for(int i=0; i<_num_points; i++){
+            //_points_gf_exact[i] = _points_gf_exact[i]/((double)_gf_exact_count);
+            _points_gf_exact[i] = _points_gf_exact[i]*_norm_const/_N0; // right normalization
+        }
+        std::string a = "GF_";
+        auto b = std::to_string(_selected_order);
+        if(_selected_order < 0){
+            b = "total";
+        }
+        std::string c = "_exact.txt";
+        writeExactGF(a+b+c); // write Green function to file
+        std::cout << std::endl;
+    }*/
+
+    /*if(_flags.histo){
+        std::cout << "Histogram computed." << std::endl;
+        calcNormConst();
+        normalizeHistogram();
+        writeHistogram("histo.txt");
+        std::cout << std::endl;
+    }*/
+
+    if(_flags.gs_energy){
+        _gs_energy = _gs_energy/(double)_gs_energy_count; // average energy of diagrams
+        std::cout << "Ground state energy of the system is: " << _gs_energy << ". Input parameters are: kx = " << _kx << 
+        ", ky = " << _ky << ", kz = " << _kz << std::endl;
+        std::cout << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+        if(_num_bands == 1){
+            std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
+                    << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+        }
+        else if(_num_bands == 3){
+            std::cout << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
+                    << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+        }
+        std::cout <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
+        << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
+        std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+
+        for(int i=0; i<_num_phonon_modes; i++){
+            std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+            << _born_effective_charges[i] << std::endl;
+        }
+
+        std::cout << " minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
+
+        std::string filename = "gs_energy.txt";
+        std::ofstream file(filename, std::ofstream::app);
+
+        if(!file.is_open()){
+            std::cerr << "Could not gs_energy.txt open file " << filename << std::endl;
+        }
+        else{
+            file << "Ground state energy of the system is: " << _gs_energy << " . Input parameters are: kx = " << _kx << 
+            ", ky = " << _ky << ", kz = " << _kz << std::endl;
+            file << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+            if(_num_bands == 1){
+                file << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
+                    << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+            }
+            else if(_num_bands == 3){
+                file << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
+                    << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+            }
+            file << "1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
+            << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
+            file << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+
+            for(int i=0; i<_num_phonon_modes; i++){
+                file << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+                << _born_effective_charges[i] << std::endl;
+            }
+            file << " minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
+            file << std::endl;
+            file.close();
+        }
+        std::cout << std::endl;
+    }
+
+    if(_flags.effective_mass){
+        long double effective_mass_inv = _effective_mass/(double)_effective_mass_count; // average effective mass of diagrams
+        _effective_mass = 1./effective_mass_inv; // effective mass is inverse of the value calculated
+        std::cout << "Effective mass of system is: " << _effective_mass << "." << std::endl;
+        std::cout << "Input parameters are: chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+
+        if(_num_bands == 1){
+            std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
+                    << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+        }
+
+        else if(_num_bands == 3){
+            std::cout << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
+                    << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+        }
+
+        std::cout <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
+        << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
+        std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+        for(int i=0; i<_num_phonon_modes; i++){
+            std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+            << _born_effective_charges[i] << std::endl;
+        }
+        std::cout << std::endl;
+        std::cout << "Inverse effective mass of system is: " << effective_mass_inv << "." << std::endl;
+
+        std::string filename = "effective_mass.txt";
+        std::ofstream file(filename, std::ofstream::app);
+
+        if(!file.is_open()){
+            std::cerr << "Could not effective_mass.txt open file " << filename << std::endl;
+        }
+        else{
+            file << "Effective mass of the system is: " << _effective_mass << "." << std::endl;
+            file << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+            if(_num_bands == 1){
+                file << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
+                        << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+            }
+            else if(_num_bands == 3){
+                file << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
+                        << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+            }
+            file <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
+            << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
+            file << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+
+            for(int i=0; i<_num_phonon_modes; i++){
+                file << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+                << _born_effective_charges[i] << std::endl;
+            }
+            file << std::endl;
+
+            file << "Inverse effective mass of the system is: " << effective_mass_inv << "." << std::endl;
+            file << std::endl;
+
+            file.close();
+        }
+        std::cout << std::endl;
+    }
+
+    /*if(_flags.Z_factor){
+        std::string a = "Z_factor_alpha";
+        auto b = std::to_string(_alpha);
+        std::string c = ".txt";
+        std::string filename = a + b + c;
+        writeZFactor(filename);
+        std::cout << "Z factor calculated." << std::endl;
+        std::cout << std::endl;
+    }*/
+
+    if(_flags.mc_statistics){
+        _mc_statistics.avg_tau /= static_cast<long double>(_mc_statistics.num_diagrams); // average length of diagrams
+        _mc_statistics.avg_tau_squared /= static_cast<long double>(_mc_statistics.num_diagrams); // average squared length of diagrams
+
+        std::cout << "Monte Carlo statistics:" << std::endl;
+       
+        std::cout << "chemical potential: " << _chem_potential << ", number of degenerate electronic bands: " << _num_bands << std::endl;
+        if(_num_bands == 1){
+            std::cout << "electronic effective masses: mx_el = " << _m_x_el << ", my_el = " << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+        }
+        else if(_num_bands == 3){
+            std::cout << "electronic Luttinger-Kohn parameters: A_LK_el = " << _A_LK_el << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+        }
+
+        std::cout << "total momentum: kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << std::endl;
+        std::cout << std::endl;
+        std::cout << "1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " << _dielectric_const << std::endl;
+        std::cout << std::endl;
+        std::cout << "number of phonon modes: " << _num_phonon_modes << std::endl;
+        for(int i=0; i<_num_phonon_modes; i++){
+            std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+            << _born_effective_charges[i] << std::endl;
+        }
+        std::cout << std::endl;
+        
+        std::cout << "Cutoff for statistics: " << _tau_cutoff_statistics << std::endl;
+        std::cout << "Number of diagrams (taken into account): " << _mc_statistics.num_diagrams << std::endl;
+        std::cout << "Average length of diagrams: " << _mc_statistics.avg_tau << std::endl;
+        std::cout << "Std dev length of diagrams: " << std::sqrt(_mc_statistics.avg_tau_squared - _mc_statistics.avg_tau*_mc_statistics.avg_tau) << std::endl;
+        std::cout << "Average order of diagrams: " << static_cast<long double>(_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams) << std::endl;
+        std::cout << "Std dev order of diagrams: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_order_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
+        - static_cast<long double>(_mc_statistics.avg_order*_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << std::endl;
+        std::cout << "Average number of internal phonons: " << static_cast<long double>(_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams) << std::endl;
+        std::cout << "Std dev number of internal phonons: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_ph_int_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
+        - static_cast<long double>(_mc_statistics.avg_ph_int*_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << std::endl;
+        std::cout << "Average number of external phonons: " << static_cast<long double>(_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams) << std::endl;
+        std::cout << "Std dev number of external phonons: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_ph_ext_squared)/static_cast<long double>(_mc_statistics.num_diagrams) 
+        - static_cast<long double>(_mc_statistics.avg_ph_ext*_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << std::endl;
+        std::cout << "Number of zero order diagrams: " << _mc_statistics.zero_order_diagrams << std::endl;
+        std::cout << std::endl;
+        writeMCStatistics("MC_Statistics.txt");
+    }
+};
+
 void GreenFuncNphBands::writeDiagram(std::string filename, int i, double r) const {
     std::ofstream file(filename, std::ofstream::app);
 

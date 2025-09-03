@@ -49,7 +49,7 @@ class GreenFuncNphBands : public Diagram {
 
 
     // main simulation method
-    void MarkovChainMC();
+    void markovChainMC();
 
     // write to file
     void writeMCStatistics(std::string filename) const;
@@ -102,15 +102,34 @@ class GreenFuncNphBands : public Diagram {
 
     Flags _flags; // flags for different calculations
 
+    // histogram method
+    int _N_bins = 100; // number of bins for histogram
+    double _bin_width = _tau_max/_N_bins; // width of each bin
+    double _bin_center = _bin_width/2; // center of each bin
+    double* _histogram; // histogram time lengths
+    unsigned long long int* _bin_count; // number of diagrams in each bin
+    double _norm_const = 1.0;
+    double* _green_func;
+
     // direct estimator variables
     // renormalized gs energy
     long double _tau_cutoff_energy = _tau_max/10; // cutoff for energy estimator, if tau < tau_cutoff energy estimator is not calculated
     long double _gs_energy = 0.0; // ground state energy estimator of the system
     unsigned long long int _gs_energy_count = 0; // number of times the ground state energy estimator is calculated
+
     // renormalized effective mass
     long double _tau_cutoff_mass = _tau_max/10; // cutoff for effective mass estimator, if tau < tau_cutoff mass estimator is not calculated
     long double _effective_mass = 0; // effective mass of polaron (in electron mass units)
     unsigned long long int _effective_mass_count = 0; // number of times the effective mass estimator is calculated
+
+    // Green function exact estimator
+    int _num_points = 100;
+    int _selected_order = 0;
+    long double _points_step = _tau_max/_num_points;
+    long double _points_center = _points_step/2;
+    long double* _points; // array of evaluated points
+    long double* _points_gf_exact; // gf values for evaluated points
+    unsigned long long int _gf_exact_count = 0;
 
     // collect MC statistics
     MC_Benchmarking * _benchmark_sim; // time benchmarking object
