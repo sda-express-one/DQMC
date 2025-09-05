@@ -70,9 +70,9 @@ inline Eigen::Matrix<double, 4, 3> diagonalizeLKHamiltonian(const double kx, con
     // detects free propagators
     if(isEqual(kx,0) && isEqual(ky,0) && isEqual(kz,0)){
         result << -2, 1, 1,
-                (1/3), 0, 0,
-                0, (1/3), 0,
-                0, 0, (1/3);
+                (1./3), 0, 0,
+                0, (1./3), 0,
+                0, 0, (1./3);
         return result; 
     }
     
@@ -114,6 +114,43 @@ inline Eigen::Matrix<double, 4, 3> diagonalizeLKHamiltonian(const double kx, con
 
     result << eigenvalues, eigenvectors;
     return result;
+};
+
+// diagonalizes LK Hamiltonian and returns eigenvalues (no eigenvectors), for effective mass exact estimator
+inline Eigen::RowVector3d diagonalizeLKHamiltonianEigenval(const double kx, const double ky, const double kz,
+    const double A_LK, const double B_LK, const double C_LK){
+
+    Eigen::RowVector3d eigenvalues;
+        
+    // LK Hamiltonian undefined for k=(0,0,0)
+    if(isEqual(kx,0) && isEqual(ky,0) && isEqual(kz,0)){
+        eigenvalues << -1, 1, 1;
+        return eigenvalues; 
+    }
+    
+    double k_modulus = std::sqrt(kx*kx + ky*ky + kz*kz);
+    double kx_n = kx/k_modulus;
+    double ky_n = ky/k_modulus;
+    double kz_n = kz/k_modulus;
+
+
+    // build LK Hamiltonian matrix (3x3)
+    Eigen::Matrix3d LK_matrix;
+    LK_matrix << A_LK*kx_n*kx_n + B_LK*(ky_n*ky_n + kz_n*kz_n), C_LK*kx_n*ky_n, C_LK*kx_n*kz_n,
+                 C_LK*kx_n*ky_n, A_LK*ky_n*ky_n + B_LK*(kx_n*kx_n + kz_n*kz_n), C_LK*ky_n*kz_n,
+                 C_LK*kx_n*kz_n, C_LK*ky_n*kz_n, A_LK*kz_n*kz_n + B_LK*(kx_n*kx_n + ky_n*ky_n);
+
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigensolver; 
+    eigensolver.compute(LK_matrix, Eigen::EigenvaluesOnly); // compute eigenvalues and eigenvectors
+
+    if(eigensolver.info() != 0){
+        eigenvalues << -1, 1, 1;
+        return eigenvalues; // return error values
+    }
+
+    Eigen::RowVector3d eigenvalues = eigensolver.eigenvalues().transpose(); // eigenvalues row vector (from smallest to largest
+
+    return eigenvalues;
 };
 
 // electron effective mass from LK eigenvalue

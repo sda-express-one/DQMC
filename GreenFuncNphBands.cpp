@@ -2288,6 +2288,9 @@ void GreenFuncNphBands::markovChainMC(){
         else if(_num_bands == 3){
             std::cout << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
                     << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+            _effective_masses_bands << 0, 0, 0,
+                                       0, 0, 0,
+                                       0, 0, 0;
         }
         std::cout <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
         << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
@@ -2512,11 +2515,11 @@ void GreenFuncNphBands::markovChainMC(){
         }
 
         if(_flags.gs_energy){
-            _gs_energy += calcGroundStateEnergy(tau_length); // accumulate energy of diagrams
+            _gs_energy += groundStateEnergyExactEstimator(tau_length); // accumulate energy of diagrams
         }
 
         if(_flags.effective_mass){
-            _effective_mass += calcEffectiveMass(tau_length); // accumulate effective mass of diagrams
+            _effective_mass += effectiveMassExactEstimator(tau_length); // accumulate effective mass of diagrams
         }
 
         // if(_flags.Z_factor){updateZFactor();} // accumulate Z factor data
@@ -2647,9 +2650,8 @@ void GreenFuncNphBands::markovChainMC(){
     if(_flags.effective_mass){
         long double effective_mass_inv = _effective_mass/(double)_effective_mass_count; // average effective mass of diagrams
         _effective_mass = 1./effective_mass_inv; // effective mass is inverse of the value calculated
-        std::cout << "Effective mass of system is: " << _effective_mass << "." << std::endl;
+        //std::cout << "Effective mass of system is: " << _effective_mass << "." << std::endl;
         std::cout << "Input parameters are: chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
-
         if(_num_bands == 1){
             std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
                     << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
@@ -2659,7 +2661,6 @@ void GreenFuncNphBands::markovChainMC(){
             std::cout << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
                     << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
         }
-
         std::cout <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
         << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
         std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
@@ -2667,6 +2668,15 @@ void GreenFuncNphBands::markovChainMC(){
             std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
             << _born_effective_charges[i] << std::endl;
         }
+
+        if(_num_bands == 1){
+            std::cout << "Polaronic effective masses are: mx_pol = " << (1./_effective_masses[0]) << " my_pol = " 
+                    << _effective_masses[1] << "mz_pol = " << _effective_masses[2] << std::endl; 
+        }
+        else if(_num_bands == 3){
+
+        }
+
         std::cout << std::endl;
         std::cout << "Inverse effective mass of system is: " << effective_mass_inv << "." << std::endl;
 
@@ -2759,7 +2769,7 @@ void GreenFuncNphBands::markovChainMC(){
     }
 };
 
-double GreenFuncNphBands::calcGroundStateEnergy(long double tau_length){
+double GreenFuncNphBands::groundStateEnergyExactEstimator(long double tau_length){
     if(tau_length <= _tau_cutoff_energy){return 0;} // reject if below cutoff
     else{
 
@@ -2825,6 +2835,386 @@ double GreenFuncNphBands::calcGroundStateEnergy(long double tau_length){
         _gs_energy_count++; // update number of computed exact energy estimators
         return diagram_energy; // return energy of current diagram
     }
+};
+
+double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
+    if(tau_length <= _tau_cutoff_mass){return 0;}
+    else{
+        int current_order = _current_order_int + 2*_current_ph_ext; // total order of diagrams (number of phonon vertices)
+        double electron_average_kx = 0; double electron_average_ky = 0; double electron_average_kz = 0;
+        
+
+        for(int i=0; i<current_order+1; i++){
+            electron_average_kx += _propagators[i].el_propagator_kx*(_vertices[i+1].tau - _vertices[i].tau);
+            electron_average_ky += _propagators[i].el_propagator_ky*(_vertices[i+1].tau - _vertices[i].tau);
+            electron_average_kz += _propagators[i].el_propagator_kz*(_vertices[i+1].tau - _vertices[i].tau);
+
+            if(_num_bands == 3){
+                
+            }
+        }
+
+        electron_average_kx = electron_average_kx/tau_length;
+        electron_average_ky = electron_average_ky/tau_length;
+        electron_average_kz = electron_average_kz/tau_length;
+
+        if(_num_bands == 3){
+            Eigen::Vector3d unit;
+            unit << 1, 1, 1;
+
+            _effective_masses_bands.row(0) += (unit - tau_length*std::pow(electron_average_kx,2)
+                            *diagonalizeLKHamiltonianEigenval(1,0,0,_A_LK_el,_B_LK_el,_C_LK_el)); // (100) direction
+            _effective_masses_bands.row(1) += (unit - tau_length*(std::pow(electron_average_kx,2)+std::pow(electron_average_ky,2))
+                            *diagonalizeLKHamiltonianEigenval(1,1,0,_A_LK_el,_B_LK_el,_C_LK_el)/(2.)); // (110) direction
+            _effective_masses_bands.row(2) += (unit - tau_length*(std::pow(electron_average_kx,2)+std::pow(electron_average_ky,2)+std::pow(electron_average_kz,2))
+                            *diagonalizeLKHamiltonianEigenval(1,1,1,_A_LK_el,_B_LK_el,_C_LK_el)/(2.)); // (111) direction
+        }
+        else if(_num_bands == 1){
+            _effective_masses[0] += (1 - tau_length*std::pow(electron_average_kx,2)); // x component
+            _effective_masses[1] += (1 - tau_length*std::pow(electron_average_ky,2)); // y component
+            _effective_masses[2] += (1 - tau_length*std::pow(electron_average_kz,2)); // z component
+        }
+
+        _effective_mass_count++;
+
+        // return inverse of effective mass, _D dimensionality of the system
+        return (1-tau_length*(std::pow(electron_average_kx,2) + std::pow(electron_average_ky,2) + std::pow(electron_average_kz,2))/_D);
+    }
+};
+
+void GreenFuncNphBands::calcGroundStateEnergy(std::string filename){
+    _gs_energy = _gs_energy/(double)_gs_energy_count; // average energy of diagrams
+    std::cout << "Ground state energy of the system is: " << _gs_energy << ". Input parameters are: kx = " << _kx << 
+    ", ky = " << _ky << ", kz = " << _kz << std::endl;
+    std::cout << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+
+    if(_num_bands == 1){
+        std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
+                << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+    }
+    else if(_num_bands == 3){
+        std::cout << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
+                << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+    }
+
+    std::cout <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
+    << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
+    std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+
+    for(int i=0; i<_num_phonon_modes; i++){
+        std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+        << _born_effective_charges[i] << std::endl;
+    }
+
+    std::cout << " minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
+
+    std::ofstream file(filename, std::ofstream::app);
+
+    if(!file.is_open()){
+        std::cerr << "Could not gs_energy.txt open file " << filename << std::endl;
+    }
+    else{
+        file << "Ground state energy of the system is: " << _gs_energy << " . Input parameters are: kx = " << _kx << 
+        ", ky = " << _ky << ", kz = " << _kz << std::endl;
+        file << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+        if(_num_bands == 1){
+            file << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
+                << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+        }
+        else if(_num_bands == 3){
+            file << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
+                << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+        }
+        file << "1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
+            << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
+        file << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+
+        for(int i=0; i<_num_phonon_modes; i++){
+            file << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+            << _born_effective_charges[i] << std::endl;
+        }
+        file << " minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
+        file << std::endl;
+        file.close();
+    }
+    std::cout << std::endl;
+};
+
+void GreenFuncNphBands::calcEffectiveMasses(std::string filename){
+    long double effective_mass_inv = _effective_mass/(double)_effective_mass_count; // average effective mass of diagrams
+    _effective_mass = 1./effective_mass_inv; // effective mass is inverse of the value calculated
+    //std::cout << "Effective mass of system is: " << _effective_mass << "." << std::endl;
+    std::cout << "Input parameters are: chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+
+    if(_num_bands == 1){
+        std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
+            << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+    }
+    else if(_num_bands == 3){
+        std::cout << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
+            << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+    }
+
+    std::cout <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
+    << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
+    std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+
+    for(int i=0; i<_num_phonon_modes; i++){
+        std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+        << _born_effective_charges[i] << std::endl;
+    }
+
+    if(_num_bands == 1){
+        std::cout << "Polaronic effective masses are: mx_pol = " << (1./_effective_masses[0]) << " my_pol = " 
+            << (1./_effective_masses[1]) << "mz_pol = " << (1./_effective_masses[2]) << std::endl; 
+    }
+    else if(_num_bands == 3){
+        double A_LK_pol = 0;
+        double B_LK_pol = 0;
+        double C_LK_pol = 0;
+        std::cout << "Computed polaronic inverse masses for (100), (110) and (111) high symmetry directions." << std::endl;
+        std::cout << "(100)" << std::endl;
+
+        if(_A_LK_el >= _B_LK_el){
+            std::cout << "2A = " << _effective_masses_bands(0,0) << ", 2B = " << _effective_masses_bands(0,1) 
+                << ", 2B = " << _effective_masses_bands(0,2) << std::endl;
+            A_LK_pol = _effective_masses_bands(0,0)/2;
+            B_LK_pol = _effective_masses_bands(0,1)/2;
+
+            std::cout << "(110)" << std::endl;
+
+            if(_C_LK_el >= 0){
+                if(_A_LK_el - _C_LK_el >= _B_LK_el){
+                    std::cout << "A + B + C = " << _effective_masses_bands(1,0) << ", A + B - C = " << _effective_masses_bands(1,1) 
+                    << ", 2B = " << _effective_masses_bands(1,2) << std::endl;
+                    C_LK_pol = (_effective_masses_bands(1,0) - _effective_masses_bands(1,1))/2;
+                }
+                else{
+                    std::cout << "A + B + C = " << _effective_masses_bands(1,0) << ", 2B = " << _effective_masses_bands(1,1) 
+                    << ", A + B - C = " << _effective_masses_bands(1,2) << std::endl;
+                    C_LK_pol = (_effective_masses_bands(1,0) - _effective_masses_bands(1,2))/2;
+                }
+                std::cout << "(111)" << std::endl;
+                std::cout << "(2/3)(A + 2B + 2C) = " << _effective_masses_bands(2,0) << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,1)
+                << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,2) << std::endl;
+            }
+            else{
+                if(_A_LK_el + _C_LK_el > _B_LK_el){
+                    std::cout << "A + B - C = " << _effective_masses_bands(1,0) << ", A + B + C = " << _effective_masses_bands(1,1) 
+                    << ", 2B = " << _effective_masses_bands(1,2) << std::endl;
+                    C_LK_pol = (_effective_masses_bands(1,1) - _effective_masses_bands(1,0))/2;
+                }
+            else{
+                    std::cout << "A + B - C = " << _effective_masses_bands(1,0) << ", 2B = " << _effective_masses_bands(1,1) 
+                    << ", A + B + C = " << _effective_masses_bands(1,2) << std::endl;
+                    C_LK_pol = (_effective_masses_bands(1,2) - _effective_masses_bands(1,0))/2;
+                }
+                std::cout << "(111)" << std::endl;
+                std::cout << "(2/3)(A + 2B - C) = " << _effective_masses_bands(2,0) << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,1)
+                << ", (2/3)(A + 2B + 2C) = " << _effective_masses_bands(2,2) << std::endl;
+            }
+        }
+        else{
+            std::cout << "2B = " << _effective_masses_bands(0,0) << ", 2B = " << _effective_masses_bands(0,1) 
+            << ", 2A = " << _effective_masses_bands(0,2) << std::endl;
+            A_LK_pol = _effective_masses_bands(0,2)/2;
+            B_LK_pol = _effective_masses_bands(0,0)/2;
+
+            std::cout << "(110)" << std::endl;
+        
+            if(_C_LK_el >= 0){
+                if(_A_LK_el - _C_LK_el >= _B_LK_el){
+                    std::cout << "A + B + C = " << _effective_masses_bands(1,0) << ", A + B - C = " << _effective_masses_bands(1,1) 
+                    << ", 2B = " << _effective_masses_bands(1,2) << std::endl;
+                    C_LK_pol = (_effective_masses_bands(1,0) - _effective_masses_bands(1,1))/2;
+                }
+                else if(_A_LK_el + _C_LK_el >= _B_LK_el){
+                    std::cout << "A + B + C = " << _effective_masses_bands(1,0) << ", 2B = " << _effective_masses_bands(1,1) 
+                    << ", A + B - C = " << _effective_masses_bands(1,2) << std::endl;
+                    C_LK_pol = (_effective_masses_bands(1,0) - _effective_masses_bands(1,2))/2;
+                }
+                else{
+                    std::cout << "2B = " << _effective_masses_bands(1,0) << ", A + B + C = " << _effective_masses_bands(1,1) 
+                    << ", A + B - C = " << _effective_masses_bands(1,2) << std::endl;
+                    C_LK_pol = (_effective_masses_bands(1,1) - _effective_masses_bands(1,2))/2;
+                }
+
+                std::cout << "(111)" << std::endl;
+                std::cout << "(2/3)(A + 2B + 2C) = " << _effective_masses_bands(2,0) << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,1)
+                << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,2) << std::endl;
+            }
+            else{
+                if(_A_LK_el + _C_LK_el >= _B_LK_el){
+                    std::cout << "A + B - C = " << _effective_masses_bands(1,0) << ", A + B + C = " << _effective_masses_bands(1,1) 
+                    << ", 2B = " << _effective_masses_bands(1,2) << std::endl;
+                    C_LK_pol = (_effective_masses_bands(1,1) - _effective_masses_bands(1,0))/2;
+                }
+                else if(_A_LK_el - _C_LK_el >= _B_LK_el){
+                    std::cout << "A + B - C = " << _effective_masses_bands(1,0) << ", 2B = " << _effective_masses_bands(1,1) 
+                    << ", A + B + C = " << _effective_masses_bands(1,2) << std::endl;
+                    C_LK_pol = (_effective_masses_bands(1,2) - _effective_masses_bands(1,0))/2;
+                }
+                else{
+                    std::cout << "2B = " << _effective_masses_bands(1,0) << ", A + B - C = " << _effective_masses_bands(1,1) 
+                    << ", A + B + C = " << _effective_masses_bands(1,2) << std::endl;
+                    C_LK_pol = (_effective_masses_bands(1,2) - _effective_masses_bands(1,0))/2;
+                }
+
+                std::cout << "(111)" << std::endl;
+                std::cout << "(2/3)(A + 2B - C) = " << _effective_masses_bands(2,0) << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,1)
+                << ", (2/3)(A + 2B + 2C) = " << _effective_masses_bands(2,2) << std::endl;
+            }
+        }
+        std::cout << "Polaronic Luttinger-Kohn parameters are:" << std::endl;
+        std::cout << "A_LK_pol = " << A_LK_pol << ", B_LK_pol = " << B_LK_pol << ", C_LK_pol = " << C_LK_pol << std::endl;
+    }
+
+    std::cout << std::endl;
+    std::cout << "Inverse effective mass of system is: " << effective_mass_inv << "." << std::endl;
+
+    std::ofstream file(filename, std::ofstream::app);
+
+    if(!file.is_open()){
+        std::cerr << "Could not effective_mass.txt open file " << filename << std::endl;
+    }
+    else{
+        file << "Effective mass of the system is: " << _effective_mass << "." << std::endl;
+        file << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+
+        if(_num_bands == 1){
+            file << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
+                << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+        }
+        else if(_num_bands == 3){
+            file << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
+                << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+        }
+
+        file <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
+            << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
+        file << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+
+        for(int i=0; i<_num_phonon_modes; i++){
+            file << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+                << _born_effective_charges[i] << std::endl;
+        }
+
+        if(_num_bands == 1){
+            file << "Polaronic effective masses are: mx_pol = " << (1./_effective_masses[0]) << " my_pol = " 
+                << (1./_effective_masses[1]) << "mz_pol = " << (1./_effective_masses[2]) << std::endl; 
+        }
+        else if(_num_bands == 3){
+            double A_LK_pol = 0;
+            double B_LK_pol = 0;
+            double C_LK_pol = 0;
+            file << "Computed polaronic inverse masses for (100), (110) and (111) high symmetry directions." << std::endl;
+            file << "(100)" << std::endl;
+
+            if(_A_LK_el >= _B_LK_el){
+                file << "2A = " << _effective_masses_bands(0,0) << ", 2B = " << _effective_masses_bands(0,1) 
+                    << ", 2B = " << _effective_masses_bands(0,2) << std::endl;
+                A_LK_pol = _effective_masses_bands(0,0)/2;
+                B_LK_pol = _effective_masses_bands(0,1)/2;
+
+                file << "(110)" << std::endl;
+
+                if(_C_LK_el >= 0){
+                    if(_A_LK_el - _C_LK_el >= _B_LK_el){
+                        file << "A + B + C = " << _effective_masses_bands(1,0) << ", A + B - C = " << _effective_masses_bands(1,1) 
+                        << ", 2B = " << _effective_masses_bands(1,2) << std::endl;
+                        C_LK_pol = (_effective_masses_bands(1,0) - _effective_masses_bands(1,1))/2;
+                    }
+                    else{
+                        file << "A + B + C = " << _effective_masses_bands(1,0) << ", 2B = " << _effective_masses_bands(1,1) 
+                        << ", A + B - C = " << _effective_masses_bands(1,2) << std::endl;
+                        C_LK_pol = (_effective_masses_bands(1,0) - _effective_masses_bands(1,2))/2;
+                    }
+                file << "(111)" << std::endl;
+                file << "(2/3)(A + 2B + 2C) = " << _effective_masses_bands(2,0) << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,1)
+                << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,2) << std::endl;
+                }
+                else{
+                    if(_A_LK_el + _C_LK_el > _B_LK_el){
+                        file << "A + B - C = " << _effective_masses_bands(1,0) << ", A + B + C = " << _effective_masses_bands(1,1) 
+                        << ", 2B = " << _effective_masses_bands(1,2) << std::endl;
+                        C_LK_pol = (_effective_masses_bands(1,1) - _effective_masses_bands(1,0))/2;
+                    }
+                    else{
+                        file << "A + B - C = " << _effective_masses_bands(1,0) << ", 2B = " << _effective_masses_bands(1,1) 
+                        << ", A + B + C = " << _effective_masses_bands(1,2) << std::endl;
+                        C_LK_pol = (_effective_masses_bands(1,2) - _effective_masses_bands(1,0))/2;
+                    }
+                    file << "(111)" << std::endl;
+                    file << "(2/3)(A + 2B - C) = " << _effective_masses_bands(2,0) << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,1)
+                    << ", (2/3)(A + 2B + 2C) = " << _effective_masses_bands(2,2) << std::endl;
+                }
+            }
+            else{
+                file << "2B = " << _effective_masses_bands(0,0) << ", 2B = " << _effective_masses_bands(0,1) 
+                << ", 2A = " << _effective_masses_bands(0,2) << std::endl;
+                A_LK_pol = _effective_masses_bands(0,2)/2;
+                B_LK_pol = _effective_masses_bands(0,0)/2;
+
+                file << "(110)" << std::endl;
+        
+                if(_C_LK_el >= 0){
+                    if(_A_LK_el - _C_LK_el >= _B_LK_el){
+                        file << "A + B + C = " << _effective_masses_bands(1,0) << ", A + B - C = " << _effective_masses_bands(1,1) 
+                        << ", 2B = " << _effective_masses_bands(1,2) << std::endl;
+                        C_LK_pol = (_effective_masses_bands(1,0) - _effective_masses_bands(1,1))/2;
+                    }
+                    else if(_A_LK_el + _C_LK_el >= _B_LK_el){
+                        file << "A + B + C = " << _effective_masses_bands(1,0) << ", 2B = " << _effective_masses_bands(1,1) 
+                        << ", A + B - C = " << _effective_masses_bands(1,2) << std::endl;
+                        C_LK_pol = (_effective_masses_bands(1,0) - _effective_masses_bands(1,2))/2;
+                    }
+                    else{
+                        file << "2B = " << _effective_masses_bands(1,0) << ", A + B + C = " << _effective_masses_bands(1,1) 
+                        << ", A + B - C = " << _effective_masses_bands(1,2) << std::endl;
+                        C_LK_pol = (_effective_masses_bands(1,1) - _effective_masses_bands(1,2))/2;
+                    }
+
+                    file << "(111)" << std::endl;
+                    file << "(2/3)(A + 2B + 2C) = " << _effective_masses_bands(2,0) << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,1)
+                    << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,2) << std::endl;
+                }
+                else{
+                    if(_A_LK_el + _C_LK_el >= _B_LK_el){
+                        file << "A + B - C = " << _effective_masses_bands(1,0) << ", A + B + C = " << _effective_masses_bands(1,1) 
+                        << ", 2B = " << _effective_masses_bands(1,2) << std::endl;
+                        C_LK_pol = (_effective_masses_bands(1,1) - _effective_masses_bands(1,0))/2;
+                    }
+                    else if(_A_LK_el - _C_LK_el >= _B_LK_el){
+                        file << "A + B - C = " << _effective_masses_bands(1,0) << ", 2B = " << _effective_masses_bands(1,1) 
+                        << ", A + B + C = " << _effective_masses_bands(1,2) << std::endl;
+                        C_LK_pol = (_effective_masses_bands(1,2) - _effective_masses_bands(1,0))/2;
+                    }
+                    else{
+                        file << "2B = " << _effective_masses_bands(1,0) << ", A + B - C = " << _effective_masses_bands(1,1) 
+                        << ", A + B + C = " << _effective_masses_bands(1,2) << std::endl;
+                        C_LK_pol = (_effective_masses_bands(1,2) - _effective_masses_bands(1,0))/2;
+                    }
+
+                    file << "(111)" << std::endl;
+                    file << "(2/3)(A + 2B - C) = " << _effective_masses_bands(2,0) << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,1)
+                    << ", (2/3)(A + 2B + 2C) = " << _effective_masses_bands(2,2) << std::endl;
+                }
+            }
+
+            file << "Polaronic Luttinger-Kohn parameters are:" << std::endl;
+            file << "A_LK_pol = " << A_LK_pol << ", B_LK_pol = " << B_LK_pol << ", C_LK_pol = " << C_LK_pol << std::endl;
+        }
+        
+
+        file << std::endl;
+
+        file << "Inverse effective mass of the system is: " << effective_mass_inv << "." << std::endl;
+        file << std::endl;
+
+        file.close();
+    }
+
+    std::cout << std::endl;
 };
 
 void GreenFuncNphBands::writeDiagram(std::string filename, int i, double r) const {

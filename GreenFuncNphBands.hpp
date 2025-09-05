@@ -117,10 +117,12 @@ class GreenFuncNphBands : public Diagram {
     long double _gs_energy = 0.0; // ground state energy estimator of the system
     unsigned long long int _gs_energy_count = 0; // number of times the ground state energy estimator is calculated
 
-    // renormalized effective mass
+    // renormalized effective mass (polaron)
     long double _tau_cutoff_mass = _tau_max/10; // cutoff for effective mass estimator, if tau < tau_cutoff mass estimator is not calculated
-    long double _effective_mass = 0; // effective mass of polaron (in electron mass units)
+    long double _effective_mass = 0; // isotropic or (1,1,1) direction
+    long double _effective_masses[3] = {0, 0, 0}; // effective masses of polaron (in electron mass units, 1 band model)
     unsigned long long int _effective_mass_count = 0; // number of times the effective mass estimator is calculated
+    Eigen::Matrix3d _effective_masses_bands;
 
     // Green function exact estimator
     int _num_points = 100;
@@ -162,10 +164,12 @@ class GreenFuncNphBands : public Diagram {
     void shiftPhononPropagator();
     long double stretchDiagramLength(long double tau_init);
 
-    // estimator methods
-    double calcGroundStateEnergy(long double tau_length);
-    double calcEffectiveMass(long double tau_length);
-    
+    // exact estimator methods
+    double groundStateEnergyExactEstimator(long double tau_length);
+    void calcGroundStateEnergy(std::string filename);
+    double effectiveMassExactEstimator(long double tau_length);
+    void calcEffectiveMasses(std::string filename);
+
     // debug methods
     void writeDiagram(std::string filename, int i, double r) const;
     void writeChosenUpdate(std::string filename, int i, double r) const;
