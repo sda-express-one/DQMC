@@ -12,6 +12,7 @@
 #include "Diagram.hpp"
 #include "progressbar.hpp"
 #include "MC_Benchmarking.hpp"
+#include "computational_methods.hpp"
 #include <Eigen/Core>        // built with Eigen 3.4.0, download it from https://gitlab.com/libeigen/eigen/-/releases
 #include <Eigen/Eigenvalues> // add Eigen directory inside project directory to compile
 
@@ -37,16 +38,36 @@ class GreenFuncNphBands : public Diagram {
     // setters
     // electron bands
     void setEffectiveMasses(double m_x, double m_y, double m_z);
-
     void setLuttingerKohnParameters(double A_LK_el, double B_LK_el, double C_LK_el);
     // phonons modes
-    void setPhononDispersions(double* phonon_dispersions);
+    void setPhononModes(double* phonon_modes);
     void setBornEffectiveCharges(double* born_effective_charges);
     // other input quantities
     void set1BZVolume(double V_BZ);
     void setBvKVolume(double V_BvK);
     void setDielectricConstant(double dielectric_const);
-
+    // MC updates probability
+    void setProbabilities(double * probs);
+    // calculations performed
+    void setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor, bool fix_tau_value);
+    // exact estimator
+    // histogram method
+    void setN_bins(int N_bins);
+    // exact GF estimator method
+    void setNumPoints(int num_points);
+    void setSelectedOrder(int selected_order);
+    // Energy estimator
+    void setTauCutoffEnergy(long double tau_cutoff_energy);
+    // mass estimator
+    void setTauCutoffMass(long double tau_cutoff_mass);
+    // write to file
+    // write diagrams
+    inline void writeDiagrams(bool write_diagrams = false){_flags.write_diagrams = write_diagrams;};
+    // time benchmarking
+    inline void setBenchmarking(bool time_benchmark = false){_flags.time_benchmark = time_benchmark;};
+    // MC statistics
+    inline void setMCStatistics(bool mc_statistics = false){_flags.mc_statistics = mc_statistics;};
+    void setTauCutoffStatistics(long double tau_cutoff_statistics);
 
     // main simulation method
     void markovChainMC();

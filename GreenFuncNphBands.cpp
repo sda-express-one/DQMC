@@ -61,14 +61,17 @@ void GreenFuncNphBands::setLuttingerKohnParameters(double A_LK_el, double B_LK_e
     _C_LK_el = C_LK_el;
 };
 
-
 // phonon modes setters
-void GreenFuncNphBands::setPhononDispersions(double * phonon_modes){
-    _phonon_modes = phonon_modes;
+void GreenFuncNphBands::setPhononModes(double * phonon_modes){
+    for(int i = 0; i < _num_phonon_modes; i++){
+        _phonon_modes[i] = phonon_modes[i];
+    }
 };
 
 void GreenFuncNphBands::setBornEffectiveCharges(double * born_effective_charges){
-    _born_effective_charges = born_effective_charges;
+    for(int i = 0; i < _num_phonon_modes; i++){
+        _born_effective_charges[i] = born_effective_charges[i];
+    }
 }
 
 // other constant quantities setters
@@ -83,6 +86,105 @@ void GreenFuncNphBands::setBvKVolume(double V_BvK){
 void GreenFuncNphBands::setDielectricConstant(double dielectric_const){
     _dielectric_const = dielectric_const;
 }
+
+// MC updates probability setter
+void GreenFuncNphBands::setProbabilities(double* probs){
+    if(!isEqual(probs[0] + probs[1] + probs[2] + probs[3] + probs[4] + probs[5] + probs[6] + probs[7], 1)){
+        std::cerr << "Invalid probabilities, total probability must add to 1.\n";
+        double normalization = 1/(probs[0] + probs[1] + probs[2] + probs[3] + probs[4] + probs[5] + probs[6] + probs[7]);
+        std::cout << "Probabilities are being riscaled using the value " << normalization <<".\n";
+        for(int i = 0; i < 8; i++){
+            probs[i] = probs[i]*normalization;
+        }
+        std::cout << "New probabilities are: " << probs[0] << " " << probs[1] << " " << probs[2] << " " 
+        << probs[3] << " " << probs[4] << " " << probs[5] << " " << probs[6] << " " << probs[7] << ".\n";
+    }
+    _p_length = probs[0];
+    _p_add_int = probs[1];
+    _p_rem_int = probs[2];
+    _p_add_ext = probs[3];
+    _p_rem_ext = probs[4];
+    _p_swap = probs[5];
+    _p_shift = probs[6];
+    _p_stretch = probs[7];
+};
+
+// calculations setters
+void GreenFuncNphBands::setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor, bool fix_tau_value){
+    _flags.gf_exact = gf_exact;
+    _flags.histo = histo;
+    _flags.gs_energy = gs_energy;
+    _flags.effective_mass = effective_mass;
+    _flags.Z_factor = Z_factor;
+    _flags.fix_tau_value = fix_tau_value;
+};
+
+// histogram setters
+void GreenFuncNphBands::setN_bins(int N_bins){
+    while(N_bins <= 0){
+        std::cout << "Invalid number of bins! Number of bins must be > 0." << std::endl;
+        std::cout << "Enter new number of bins: ";
+        std::cin >> N_bins;
+        std::cout << "\n";
+    }
+    _N_bins = N_bins;
+    _bin_width = _tau_max/_N_bins;
+    _bin_center = _bin_width/2;
+};
+
+// exact GF setters
+void GreenFuncNphBands::setNumPoints(int num_points){
+    while(num_points <= 0){
+        std::cout << "Invalid number of points! Number of points must be > 0." << std::endl;
+        std::cout << "Enter new number of points: ";
+        std::cin >> num_points;
+        std::cout << "\n";
+    }
+    _num_points = num_points;
+    _points_step = _tau_max/(double)_num_points;
+    _points_center = _points_step/2;
+};
+
+void GreenFuncNphBands::setSelectedOrder(int selected_order){
+    if(selected_order > _ph_ext_max){
+        std::cerr << "Invalid order! Order must be <= " << _ph_ext_max << "." << std::endl;
+        std::cerr << "Selected order for exact GF calculation is set to 0." << std::endl;
+        selected_order = 0;
+    }
+    _selected_order = selected_order;
+};
+
+// exact energy estimator setters
+void GreenFuncNphBands::setTauCutoffEnergy(long double tau_cutoff_energy){
+    while(tau_cutoff_energy <= 0 || tau_cutoff_energy >= _tau_max){
+        std::cout << "Invalid energy cutoff! Cutoff must be > 0 and < " << _tau_max << " (max tau value).\n";
+        std::cout << "Enter new energy cutoff: ";
+        std::cin >> tau_cutoff_energy;
+        std::cout << "\n";
+    }
+    _tau_cutoff_energy = tau_cutoff_energy;
+}
+
+// exact mass estimator setters
+void GreenFuncNphBands::setTauCutoffMass(long double tau_cutoff_mass){
+    while(tau_cutoff_mass <= 0 || tau_cutoff_mass >= _tau_max){
+        std::cout << "Invalid mass cutoff! Cutoff must be > 0 and < " << _tau_max << " (max tau value).\n";
+        std::cout << "Enter new mass cutoff: ";
+        std::cin >> tau_cutoff_mass;
+        std::cout << "\n";
+    }
+    _tau_cutoff_mass = tau_cutoff_mass;
+}
+
+// MC statistics setter
+void GreenFuncNphBands::setTauCutoffStatistics(long double tau_cutoff_statistics){
+    while(tau_cutoff_statistics < 0 || tau_cutoff_statistics >= _tau_max){
+        std::cout << "Invalid statistics cutoff! Cutoff must be >= 0 and < " << _tau_max << " (max tau value).\n";
+        std::cout << "The default value is set to 0.\n";
+        tau_cutoff_statistics = 0;
+    }
+    _tau_cutoff_statistics = tau_cutoff_statistics;
+};
 
 int GreenFuncNphBands::findVertexPosition(long double tau){
     int position = 0;

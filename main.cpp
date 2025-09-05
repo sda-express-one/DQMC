@@ -9,15 +9,18 @@
 #include <sstream>
 #include "MC_data_structures.hpp"
 #include "GreenFuncNph.hpp"
+#include "GreenFuncNphBands.hpp"
 
 // read input from .txt file
-double* readProbabilities(const std::string& filename);
+void readProbabilities(const std::string& filename, double * probs, int num_updates);
+void readPhononModes(const std::string& filename, double * phonon_modes, double * born_charges, int num_phonon_modes);
 parameters readSimParameterstxt(const std::string& filename);
 settings readSimSettingstxt(const std::string& filename);
 
 int main(){
     // read simulation parameters from file
-    double* probs = readProbabilities("simulation_probabilities_MC.txt");
+    double probs[8];
+    readProbabilities("simulation_probabilities_MC.txt", probs, 8);
     parameters sim = readSimParameterstxt("simulation_parameters.txt");
     settings sets = readSimSettingstxt("simulation_settings.txt");
 
@@ -25,63 +28,111 @@ int main(){
 
     Diagram::setSeed();
 
-    GreenFuncNph diagram(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, 
-        sim.order_int_max, sim.ph_ext_max, sim.el_eff_mass, sim.ph_dispersion);
-    //diagram.setSeed();
-    // simulations settings
-    diagram.setAlpha(sim.alpha);
-    diagram.setVolume(sim.volume);
-    diagram.setDimension(sim.dimensions);
+    // type == simple standard DMC computation
+    if(sim.type == "simple"){
+        GreenFuncNph diagram(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, 
+            sim.order_int_max, sim.ph_ext_max, sim.el_eff_mass, sim.ph_dispersion);
+        // simulations settings
+        diagram.setAlpha(sim.alpha);
+        diagram.setVolume(sim.volume);
+        diagram.setDimension(sim.dimensions);
 
-    // Markov chain settings
-    diagram.setRelaxSteps(sim.relax_steps);
-    diagram.setProbabilities(probs);
-    delete[] probs;
+        // Markov chain settings
+        diagram.setRelaxSteps(sim.relax_steps);
+        diagram.setProbabilities(probs);
 
-    //histogram settings
-    diagram.setN_bins(sets.num_bins);
+        //histogram settings
+        diagram.setN_bins(sets.num_bins);
 
-    // exact GF estimator settings
-    diagram.setNumPoints(sets.num_points_exact);
-    diagram.setSelectedOrder(sets.selected_order);
+        // exact GF estimator settings
+        diagram.setNumPoints(sets.num_points_exact);
+        diagram.setSelectedOrder(sets.selected_order);
 
-    // set calculations perfomed
-    diagram.setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor, sets.fix_tau_value);
-    // set benchmarking
-    diagram.setBenchmarking(sets.time_benchmark);
-    // set MC statistics
-    diagram.setMCStatistics(sets.mc_statistics);
-    // print diagrams to file
-    diagram.writeDiagrams(sets.write_diagrams);
+        // set calculations perfomed
+        diagram.setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor, sets.fix_tau_value);
+        // set benchmarking
+        diagram.setBenchmarking(sets.time_benchmark);
+        // set MC statistics
+        diagram.setMCStatistics(sets.mc_statistics);
+        // print diagrams to file
+        diagram.writeDiagrams(sets.write_diagrams);
 
-    // exact estimators settings (time cutoffs)
-    diagram.setTauCutoffEnergy(sets.tau_cutoff_energy);
-    diagram.setTauCutoffMass(sets.tau_cutoff_mass);
-    diagram.setTauCutoffStatistics(sets.tau_cutoff_statistics);
+        // exact estimators settings (time cutoffs)
+        diagram.setTauCutoffEnergy(sets.tau_cutoff_energy);
+        diagram.setTauCutoffMass(sets.tau_cutoff_mass);
+        diagram.setTauCutoffStatistics(sets.tau_cutoff_statistics);
 
-    // main simulation
-    diagram.markovChainMC();
+        // main simulation
+        diagram.markovChainMC();
+    }
+    // type == bands anisotropic 1 band model or 3 band LK model
+    else if(sim.type == "bands"){
+        GreenFuncNphBands diagram(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max, 
+            sim.ph_ext_max, sim.num_bands, sim.num_phonon_modes);
 
+        double phonon_modes[sim.num_phonon_modes];
+        double born_charges[sim.num_phonon_modes];
+
+        readPhononModes("simulations_parameters.txt", phonon_modes, born_charges, sim.num_phonon_modes);
+        diagram.setPhononModes(phonon_modes);
+        diagram.setBornEffectiveCharges(born_charges);
+        diagram.set1BZVolume(sim.V_BZ);
+        diagram.setBvKVolume(sim.V_BvK);
+        diagram.setDielectricConstant(sim.dielectric_const);
+
+        if(sim.num_bands == 1){
+            diagram.setEffectiveMasses(sim.m_x, sim.m_y, sim.m_z);
+        }
+        else if(sim.num_bands == 3){
+            diagram.setLuttingerKohnParameters(sim.A_LK, sim.B_LK, sim.C_LK);
+        }
+
+        // Markov chain settings
+        diagram.setRelaxSteps(sim.relax_steps);
+        diagram.setProbabilities(probs);
+
+        //histogram settings
+        diagram.setN_bins(sets.num_bins);
+
+        // exact GF estimator settings
+        diagram.setNumPoints(sets.num_points_exact);
+        diagram.setSelectedOrder(sets.selected_order);
+
+        // set calculations perfomed
+        diagram.setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor, sets.fix_tau_value);
+        // set benchmarking
+        diagram.setBenchmarking(sets.time_benchmark);
+        // set MC statistics
+        diagram.setMCStatistics(sets.mc_statistics);
+        // print diagrams to file
+        diagram.writeDiagrams(sets.write_diagrams);
+
+        // exact estimators settings (time cutoffs)
+        diagram.setTauCutoffEnergy(sets.tau_cutoff_energy);
+        diagram.setTauCutoffMass(sets.tau_cutoff_mass);
+        diagram.setTauCutoffStatistics(sets.tau_cutoff_statistics);
+
+        // main simulation
+        diagram.markovChainMC();
+    }
+    
     std::cout << std::endl;
     std::cout << "Terminating the program." << std::endl;
     std::cout << std::endl;
     return 0;
-}
+};
 
 
-double* readProbabilities(const std::string& filename){
-    double* probs = new double[8];
+void readProbabilities(const std::string& filename, double* probs, int num_updates){
     // Default probabilities
-    probs[0] = 1;
-    for(int i = 1; i < 8; i++){
-        probs[i] = 0;
+    for(int i = 0; i < num_updates; i++){
+        probs[i] = (1./num_updates);
     }
 
     std::ifstream file(filename);
     if(!file.is_open()){
         std::cerr << "Error opening file: " << filename << std::endl;
         std::cerr << "Using default probabilities." << std::endl;
-        return probs;
     }
 
     std::string line;
@@ -95,41 +146,40 @@ double* readProbabilities(const std::string& filename){
         if(iss >> key){
             if(key == "length_update" || key == "prob_length"){
                 iss >> value;
-                probs[0] = stringToDouble(value);
+                probs[0%num_updates] = stringToDouble(value);
             } 
             else if(key == "add_internal_update" || key == "prob_add_internal"){
                 iss >> value;
-                probs[1] = stringToDouble(value);
+                probs[1%num_updates] = stringToDouble(value);
             } 
             else if(key == "remove_internal_update" || key == "prob_remove_internal"){
                 iss >> value;
-                probs[2] = stringToDouble(value);
+                probs[2%num_updates] = stringToDouble(value);
             } 
             else if(key == "add_external_update" || key == "prob_add_external"){
                 iss >> value;
-                probs[3] = stringToDouble(value);
+                probs[3%num_updates] = stringToDouble(value);
             } 
             else if(key == "remove_external_update" || key == "prob_remove_external"){
                 iss >> value;
-                probs[4] = stringToDouble(value);
+                probs[4%num_updates] = stringToDouble(value);
             } 
             else if(key == "swap_phonon_update" || key == "prob_swap"){
                 iss >> value;
-                probs[5] = stringToDouble(value);
+                probs[5%num_updates] = stringToDouble(value);
             } 
             else if(key == "shift_phonon_update" || key == "prob_shift"){
                 iss >> value;
-                probs[6] = stringToDouble(value);
+                probs[6%num_updates] = stringToDouble(value);
             } 
             else if(key == "stretch_diagram_update" || key == "prob_stretch"){
                 iss >> value;
-                probs[7] = stringToDouble(value);
+                probs[7%num_updates] = stringToDouble(value);
             }
         }
     }
     file.close();
-    return probs;
-}
+};
 
 parameters readSimParameterstxt(const std::string& filename){
     parameters params;
@@ -149,7 +199,15 @@ parameters readSimParameterstxt(const std::string& filename){
         std::string key;
 
         if(iss >> key){
-            if(key == "simulation_steps" || key == "steps"){
+            if(key == "type"){
+                std::string value;
+                iss >> value;
+                if(value.empty()){
+                    value = "simple";
+                }
+                params.type = value;
+            }
+            else if(key == "simulation_steps" || key == "steps"){
                 std::string value;
                 iss >> value;
                 if(value == "0"){
@@ -176,7 +234,7 @@ parameters readSimParameterstxt(const std::string& filename){
                     params.tau_max = stringToLongDouble(value);
                 }
             } 
-            else if(key == "dimensionality"){
+            else if(key == "dimensionality" || "D"){
                 std::string value;
                 iss >> value;
                 if(value == "2"){
@@ -240,11 +298,66 @@ parameters readSimParameterstxt(const std::string& filename){
                 iss >> value;
                 params.ph_dispersion = stringToDouble(value);
             }
+            else if(key == "num_bands"){
+                std::string value;
+                iss >> value;
+                params.num_bands = stringToInt(value);
+            }
+            else if(key == "num_phonon_modes"){
+                std::string value;
+                iss >> value;
+                params.num_phonon_modes = stringToInt(value);
+            }
+            else if(key == "m_x"){
+                std::string value;
+                iss >> value;
+                params.m_x = stringToDouble(value);
+            }
+            else if(key == "m_y"){
+                std::string value;
+                iss >> value;
+                params.m_y = stringToDouble(value);
+            }
+            else if(key == "m_z"){
+                std::string value;
+                iss >> value;
+                params.m_z = stringToDouble(value);
+            }
+            else if(key == "A_LK"){
+                std::string value;
+                iss >> value;
+                params.A_LK = stringToDouble(value);
+            }
+            else if(key == "B_LK"){
+                std::string value;
+                iss >> value;
+                params.B_LK = stringToDouble(value);
+            }
+            else if(key == "C_LK"){
+                std::string value;
+                iss >> value;
+                params.C_LK = stringToDouble(value);
+            }
+            else if(key == "V_1BZ"){
+                std::string value;
+                iss >> value;
+                params.V_BZ = stringToDouble(value);
+            }
+            else if(key == "V_BvK"){
+                std::string value;
+                iss >> value;
+                params.V_BvK = stringToDouble(value);
+            }
+            else if(key == "dielectric_constant" || key == "dielectric_const" || key == "diel_const"){
+                std::string value;
+                iss >> value;
+                params.dielectric_const = stringToDouble(value);
+            }
         }
     }
     file.close();
     return params;
-}
+};
 
 settings readSimSettingstxt(const std::string& filename){
     settings sets;
@@ -364,4 +477,47 @@ settings readSimSettingstxt(const std::string& filename){
     }
     file.close();
     return sets;
-}
+};
+
+void readPhononModes(const std::string& filename, double * phonon_modes, double * born_charges, int num_phonon_modes){
+    // default
+    for(int i=0; i<num_phonon_modes; i++){
+        phonon_modes[i] = 0;
+    }
+
+    std::ifstream file(filename);
+
+    if(!file.is_open()){
+        std::cerr << "Error opening file: " << filename << std::endl;
+        std::cerr << "Using default parameters." << std::endl;
+        return;
+    }
+
+    int i = 0;
+    int j = 0;
+    std::string line;
+    while(std::getline(file, line) && (i < num_phonon_modes)){
+        if(line.empty() || line[0] == '#') continue; // Skip empty lines and comments
+
+        std::istringstream iss(line);
+        std::string key;
+        auto label_phonon = "phonon_mode(" + std::to_string(i) + ")";
+        auto label_charge = "born_charge(" + std::to_string(j) + ")";
+
+        if(iss >> key){
+            if(key == label_phonon && i < num_phonon_modes){
+                std::string value;
+                iss >> value;
+                phonon_modes[i] = stringToDouble(value);
+                i++;
+            }
+            else if(key == label_charge && j < num_phonon_modes){
+                std::string value;
+                iss >> value;
+                born_charges[i] = stringToDouble(value);
+                j++;
+            }
+        }
+    }
+    file.close();
+};

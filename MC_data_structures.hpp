@@ -8,6 +8,7 @@
 
 // parameters to set in simulation_parameters.txt
 struct parameters{
+    std::string type;
     unsigned long long int N_diags = 100000;
     unsigned long long int relax_steps = 100000;
     int dimensions = 3;
@@ -20,8 +21,19 @@ struct parameters{
     double chem_potential = -2;
     int order_int_max = 0;
     int ph_ext_max = 0;
+    int num_bands = 1;
+    int num_phonon_modes = 1;
     double el_eff_mass = 1;
     double ph_dispersion = 1;
+    double m_x = 1;
+    double m_y = 1;
+    double m_z = 1;
+    double A_LK = 1;
+    double B_LK = 1;
+    double C_LK = 0;
+    double dielectric_const = 1;
+    double V_BZ = 1;
+    double V_BvK = 1;
 };
 
 // parameters to set in simulation_settings.txt
