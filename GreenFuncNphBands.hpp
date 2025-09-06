@@ -13,8 +13,8 @@
 #include "progressbar.hpp"
 #include "MC_Benchmarking.hpp"
 #include "computational_methods.hpp"
-#include <Eigen/Core>        // built with Eigen 3.4.0, download it from https://gitlab.com/libeigen/eigen/-/releases
-#include <Eigen/Eigenvalues> // add Eigen directory inside project directory to compile
+#include "Eigen/Core"        // built with Eigen 3.4.0, download it from https://gitlab.com/libeigen/eigen/-/releases
+#include "Eigen/Eigenvalues" // add Eigen directory inside project directory to compile
 
 class GreenFuncNphBands : public Diagram {
     public:

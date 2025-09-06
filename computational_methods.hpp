@@ -148,7 +148,7 @@ inline Eigen::RowVector3d diagonalizeLKHamiltonianEigenval(const double kx, cons
         return eigenvalues; // return error values
     }
 
-    Eigen::RowVector3d eigenvalues = eigensolver.eigenvalues().transpose(); // eigenvalues row vector (from smallest to largest
+    eigenvalues = eigensolver.eigenvalues().transpose(); // eigenvalues row vector (from smallest to largest
 
     return eigenvalues;
 };

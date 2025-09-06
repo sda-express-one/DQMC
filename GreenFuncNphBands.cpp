@@ -394,9 +394,9 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
 
             // temporary variables for new proposed diagram
             int chosen_band = 0;
-            double c1_new = 1;
-            double c2_new = 0;
-            double c3_new = 0;
+            //double c1_new = 1;
+            //double c2_new = 0;
+            //double c3_new = 0;
             double eigenval = 1.0;
             Eigen::Matrix<double,4,3> new_values_matrix;
             Eigen::Vector3d new_overlap;
@@ -641,9 +641,9 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
 
         // temporary variables for new proposed diagram
         int chosen_band = 0;
-        double c1_new = 1;
-        double c2_new = 0;
-        double c3_new = 0;
+        //double c1_new = 1;
+        //double c2_new = 0;
+        //double c3_new = 0;
         double eigenval = 1.0;
         Eigen::Matrix<double,4,3> new_values_matrix;
         Eigen::Vector3d new_overlap;
@@ -947,9 +947,9 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
 
             // temporary variables for new proposed diagram
             int chosen_band = 0;
-            double c1_new = 1;
-            double c2_new = 0;
-            double c3_new = 0;
+            //double c1_new = 1;
+            //double c2_new = 0;
+            //double c3_new = 0;
             double eigenval = 1.0;
             Eigen::Matrix<double,4,3> new_values_matrix;
             Eigen::Vector3d new_overlap;
@@ -1020,7 +1020,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             action_one_fin += energy_one_fin[index_one]*(tau_one - _vertices[index_one].tau);
 
             // new vertex (left)
-            if(_num_bands = 3){
+            if(_num_bands == 3){
                 prefactor_fin = prefactor_fin*vertexOverlapTerm(bands_one_fin[index_one], _bands[index_one]);
             }
             
@@ -1129,8 +1129,8 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             double R_add = numerator/denominator;
 
             if(!(Metropolis(R_add))){
-                delete[] bands_one_init; delete bands_one_fin;
-                delete[] bands_two_init; delete bands_two_fin;
+                delete[] bands_one_init; delete[] bands_one_fin;
+                delete[] bands_two_init; delete[] bands_two_fin;
                 return;
             }
             else{
@@ -1170,8 +1170,8 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                     _bands[i] = bands_two_fin[i - index_two - 2];
                 }
 
-                delete[] bands_one_init; delete bands_one_fin;
-                delete[] bands_two_init; delete bands_two_fin;
+                delete[] bands_one_init; delete[] bands_one_fin;
+                delete[] bands_two_init; delete[] bands_two_fin;
 
                 _current_ph_ext += 1; // update current number of external phonons
                 findLastPhVertex();
@@ -1209,9 +1209,9 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
 
             // temporary variables for new proposed diagram
             int chosen_band = 0;
-            double c1_new = 1;
-            double c2_new = 0;
-            double c3_new = 0;
+            //double c1_new = 1;
+            //double c2_new = 0;
+            //double c3_new = 0;
             double eigenval = 1.0;
             Eigen::Matrix<double,4,3> new_values_matrix;
             Eigen::Vector3d new_overlap;
@@ -1510,9 +1510,9 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
 
         // temporary variables for new proposed diagram
         int chosen_band = 0;
-        double c1_new = 1;
-        double c2_new = 0;
-        double c3_new = 0;
+        //double c1_new = 1;
+        //double c2_new = 0;
+        //double c3_new = 0;
         double eigenval = 1.0;
         Eigen::Matrix<double,4,3> new_values_matrix;
         Eigen::Vector3d new_overlap;
@@ -2881,7 +2881,7 @@ double GreenFuncNphBands::groundStateEnergyExactEstimator(long double tau_length
         double electron_action = 0., phonon_action = 0.;
 
         // phonon bare propagators action
-        int i = 0;
+        //int i = 0;
         int index_two = 0;
         int phonon_index = -1;
         long double tau_one = 0;
@@ -2897,7 +2897,7 @@ double GreenFuncNphBands::groundStateEnergyExactEstimator(long double tau_length
                 _propagators[i].el_propagator_kz, _bands[i].effective_mass);
             electron_action += electron_energy*(_vertices[i+1].tau - _vertices[i].tau);
 
-            if(_vertices[i].type = +1){
+            if(_vertices[i].type == +1){
                 index_two = _vertices[i].linked;
                 phonon_index = _vertices[i].index;
                 tau_one = _vertices[i].tau;  
@@ -2961,7 +2961,7 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
         electron_average_kz = electron_average_kz/tau_length;
 
         if(_num_bands == 3){
-            Eigen::Vector3d unit;
+            Eigen::RowVector3d unit;
             unit << 1, 1, 1;
 
             _effective_masses_bands.row(0) += (unit - tau_length*std::pow(electron_average_kx,2)
@@ -3348,6 +3348,20 @@ void GreenFuncNphBands::writeDiagram(std::string filename, int i, double r) cons
     file << "ext phonons: " << _current_ph_ext << " int order: " << _current_order_int << " chosen update: " << r <<"\n";
 
     file << std::endl;
+    file.close();
+};
+
+void GreenFuncNphBands::writeChosenUpdate(std::string filename, int i, double r) const {
+    std::ofstream file(filename, std::ofstream::app);
+
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open file for writing.\n";
+        return;
+    }
+
+    file << "Iteration: " << i << " chosen update: " << r << "\n";
+    file << "\n";
+
     file.close();
 };
 

@@ -1,5 +1,6 @@
 # all simulation parameters are written here
 
+type = bands
 thermalization_steps 100000000
 simulation_steps 1000000000
 max_tau_value 50
@@ -12,5 +13,16 @@ coupling_strength 2.0
 chemical_potential -2.20
 max_internal_order 500
 max_num_ext_phonons 50
-electron_effective_mass 1
-optical_phonon_dispersion 1
+# electron_effective_mass 1
+# optical_phonon_dispersion 1
+
+num_bands 1
+num_phonon_modes 1
+phonon_mode(0) 1
+born_charge(0) 1
+m_x 1
+m_y 1
+m_z 1
+V_1BZ 1
+V_BvK 1
+diel_const = 1
