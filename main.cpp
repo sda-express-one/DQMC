@@ -73,7 +73,8 @@ int main(){
         double phonon_modes[sim.num_phonon_modes];
         double born_charges[sim.num_phonon_modes];
 
-        readPhononModes("simulations_parameters.txt", phonon_modes, born_charges, sim.num_phonon_modes);
+        readPhononModes("simulation_parameters.txt", phonon_modes, born_charges, sim.num_phonon_modes);
+        
         diagram.setPhononModes(phonon_modes);
         diagram.setBornEffectiveCharges(born_charges);
         diagram.set1BZVolume(sim.V_BZ);
@@ -234,7 +235,7 @@ parameters readSimParameterstxt(const std::string& filename){
                     params.tau_max = stringToLongDouble(value);
                 }
             } 
-            else if(key == "dimensionality" || "D"){
+            else if(key == "dimensions"){
                 std::string value;
                 iss >> value;
                 if(value == "2"){
@@ -482,7 +483,8 @@ settings readSimSettingstxt(const std::string& filename){
 void readPhononModes(const std::string& filename, double * phonon_modes, double * born_charges, int num_phonon_modes){
     // default
     for(int i=0; i<num_phonon_modes; i++){
-        phonon_modes[i] = 0;
+        phonon_modes[i] = 0.5;
+        born_charges[i] = 0.5;
     }
 
     std::ifstream file(filename);
@@ -496,13 +498,14 @@ void readPhononModes(const std::string& filename, double * phonon_modes, double 
     int i = 0;
     int j = 0;
     std::string line;
-    while(std::getline(file, line) && (i < num_phonon_modes)){
+    while(std::getline(file, line)){
         if(line.empty() || line[0] == '#') continue; // Skip empty lines and comments
+
+        auto label_phonon = "phonon_mode(" + std::to_string(i) + ")";
+        auto label_charge = "born_charge(" + std::to_string(j) + ")";
 
         std::istringstream iss(line);
         std::string key;
-        auto label_phonon = "phonon_mode(" + std::to_string(i) + ")";
-        auto label_charge = "born_charge(" + std::to_string(j) + ")";
 
         if(iss >> key){
             if(key == label_phonon && i < num_phonon_modes){
@@ -510,12 +513,14 @@ void readPhononModes(const std::string& filename, double * phonon_modes, double 
                 iss >> value;
                 phonon_modes[i] = stringToDouble(value);
                 i++;
+                
             }
             else if(key == label_charge && j < num_phonon_modes){
                 std::string value;
                 iss >> value;
-                born_charges[i] = stringToDouble(value);
+                born_charges[j] = stringToDouble(value);
                 j++;
+                
             }
         }
     }

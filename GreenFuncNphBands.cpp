@@ -341,7 +341,7 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
         long double tau_end = _vertices[propagator+1].tau;
 
         // choose phonon index
-        std::uniform_int_distribution<int> distrib_phon(0, _num_phonon_modes);
+        std::uniform_int_distribution<int> distrib_phon(0, _num_phonon_modes-1);
         int phonon_index = distrib_phon(gen);
 
         // choose time value of new vertex (between ends of chosen propagator)
@@ -477,7 +477,7 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
                 }
                 else if(_num_bands == 1){
                     bands_fin[j].effective_mass = computeEffMassSingleBand(px_fin[j], py_fin[j], pz_fin[j],
-                                                                            _m_x_el, _m_y_el, _m_z_el);
+                                                                        _m_x_el, _m_y_el, _m_z_el);
                 }
 
                 energy_init[j] = electronEnergy(px_init[j], py_init[j], pz_init[j], bands_init[j].effective_mass);
@@ -580,7 +580,7 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
                     _propagators[i].el_propagator_ky -= w_y;
                     _propagators[i].el_propagator_kz -= w_z;
 
-                    _bands[i] = bands_fin[i];
+                    _bands[i] = bands_fin[i-(index_one+1)];
                 }
 
                 delete[] bands_init; delete[] bands_fin;
@@ -839,7 +839,7 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
                 _propagators[i].el_propagator_kx += w_x;
                 _propagators[i].el_propagator_ky += w_y;
                 _propagators[i].el_propagator_kz += w_z;
-                _bands[i] = bands_init[i];
+                _bands[i] = bands_init[i-index_one];
             }
 
             phVertexRemoveRoom(index_one, index_two);
@@ -2063,6 +2063,7 @@ void GreenFuncNphBands::swapPhononPropagator(){
         // retrieve value of initial electron effective mass and propose new value of final effective mass
         double eff_mass_el_initial, eff_mass_el_final;
         eff_mass_el_initial = _bands[index_one].effective_mass;
+        eff_mass_el_final = 1.0;
 
         // new proposed band for propagator
         int chosen_band = 0;
@@ -2297,7 +2298,7 @@ void GreenFuncNphBands::markovChainMC(){
         << _A_LK_el << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
     }
     if(_D == 3){
-        std::cout << "Free electron momentum: kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << std::endl;
+        std::cout << "free electron momentum: kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << std::endl;
     }
     std::cout << std::endl;
 
@@ -2684,13 +2685,13 @@ void GreenFuncNphBands::markovChainMC(){
         std::cout << std::endl;
     }*/
 
-    /*if(_flags.histo){
+    if(_flags.histo){
         std::cout << "Histogram computed." << std::endl;
-        calcNormConst();
-        normalizeHistogram();
+        double norm_const = calcNormConst();
+        normalizeHistogram(norm_const);
         writeHistogram("histo.txt");
         std::cout << std::endl;
-    }*/
+    }
 
     if(_flags.gs_energy){
         _gs_energy = _gs_energy/(double)_gs_energy_count; // average energy of diagrams
@@ -3319,6 +3320,44 @@ void GreenFuncNphBands::calcEffectiveMasses(std::string filename){
     std::cout << std::endl;
 };
 
+double GreenFuncNphBands::calcNormConst(){
+    double eff_mass_electron = computeEffMassSingleBand(_kx, _ky, _kz, _m_x_el, _m_y_el, _m_z_el);
+    double numerator = 1 - std::exp(-(electronEnergy(_kx,_ky,_kz, eff_mass_electron)-_chem_potential)*_tau_max);
+    double denominator = electronEnergy(_kx,_ky,_kz,eff_mass_electron)-_chem_potential;
+    //std::cout << "Normalization constant calculated." << std::endl;
+    return (numerator/denominator);
+};
+
+void GreenFuncNphBands::normalizeHistogram(double norm_const){
+    for(int i=0; i<_N_bins; i++){
+        _green_func[i] = _bin_count[i]/(_N0*_bin_width);
+        _green_func[i] = _green_func[i]*norm_const;
+    }
+    std::cout << "Imaginary time Green's function computed (histogram method)." << std::endl;
+};
+
+void GreenFuncNphBands::writeHistogram(const std::string& filename) const {
+    std::ofstream file;
+
+    /*if(filename.empty()){
+        std::cout << "Enter filename: ";
+        std::cin >> filename;
+    }*/
+
+    file.open(filename);
+
+    if(!file.is_open()){
+        std::cout << "Could not open file " << filename << std::endl;
+        return;
+    }
+
+    for(int i=0; i<_N_bins; i++){
+        file << _histogram[i] << " " << _green_func[i] << "\n";
+    }
+    file.close();
+    std::cout << "Histogram written to file " << filename << "." << std::endl;
+};
+
 void GreenFuncNphBands::writeDiagram(std::string filename, int i, double r) const {
     std::ofstream file(filename, std::ofstream::app);
 
@@ -3332,11 +3371,13 @@ void GreenFuncNphBands::writeDiagram(std::string filename, int i, double r) cons
     for(int j=0; j<_current_order_int+2*_current_ph_ext+1; j++){
         file << "index: " << j << " time: " << _vertices[j].tau << " wx: " << _vertices[j].wx << " wy: " 
         << _vertices[j].wy << " wz: " << _vertices[j].wz <<" type: " << _vertices[j].type << " linked: " << _vertices[j].linked << 
-        " phonon mode: " << _vertices[j].index <<"\n";
+        " phonon mode: " << _vertices[j].index << " phonon energy: " << _phonon_modes[_vertices[j].index] << "\n";
+        file << "\n";
         file << "propagator: " << j << "          kx: " << _propagators[j].el_propagator_kx << " ky: " << _propagators[j].el_propagator_ky 
         << " kz: " << _propagators[j].el_propagator_kz << "\n";
         file << "band: " << j << " band number: " << _bands[j].band_number << " el eff mass: " << _bands[j].effective_mass 
         << " (c1, c2, c3): (" << _bands[j].c1 << ", " << _bands[j].c2 << ", " << _bands[j].c3 << ")\n";
+        file << "\n";
     }
     int final_vertex = _current_order_int+2*_current_ph_ext+1;
 
@@ -3344,9 +3385,13 @@ void GreenFuncNphBands::writeDiagram(std::string filename, int i, double r) cons
     << " wy: " << _vertices[final_vertex].wy << " wz: " << _vertices[final_vertex].wz 
     << " type: " << _vertices[final_vertex].type << " linked: " << _vertices[final_vertex].linked 
     << " phonon mode: " << _vertices[final_vertex].index << "\n";
+    file << "\n";
 
     file << "ext phonons: " << _current_ph_ext << " int order: " << _current_order_int << " chosen update: " << r <<"\n";
+    file << "\n";
 
+    file << "\n";
+    file << "\n";
     file << std::endl;
     file.close();
 };

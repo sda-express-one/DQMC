@@ -30,6 +30,12 @@ class GreenFuncNphBands : public Diagram {
         delete[] _ext_phonon_type_num;
         delete[] _born_effective_charges;
         delete[] _bands;
+
+        if(_flags.histo){
+            delete[] _histogram;
+            delete[] _bin_count;
+            delete[] _green_func;
+        }
     };
 
     // getters
@@ -129,7 +135,6 @@ class GreenFuncNphBands : public Diagram {
     double _bin_center = _bin_width/2; // center of each bin
     double* _histogram; // histogram time lengths
     unsigned long long int* _bin_count; // number of diagrams in each bin
-    double _norm_const = 1.0;
     double* _green_func;
 
     // direct estimator variables
@@ -184,6 +189,11 @@ class GreenFuncNphBands : public Diagram {
     void swapPhononPropagator();
     void shiftPhononPropagator();
     long double stretchDiagramLength(long double tau_init);
+
+    // histogram methods
+    double calcNormConst();
+    void normalizeHistogram(double norm_const);
+    void writeHistogram(const std::string& filename) const;
 
     // exact estimator methods
     double groundStateEnergyExactEstimator(long double tau_length);
