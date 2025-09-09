@@ -36,6 +36,10 @@ class GreenFuncNphBands : public Diagram {
             delete[] _bin_count;
             delete[] _green_func;
         }
+        if(_flags.gf_exact){;
+            delete[] _points;
+            delete[] _points_gf_exact;
+        }
     };
 
     // getters
@@ -79,6 +83,8 @@ class GreenFuncNphBands : public Diagram {
     void markovChainMC();
 
     // write to file
+    void writeHistogram(const std::string& filename) const;
+    void writeExactGF(const std::string& filename) const; // write GF with exact method in .txt file
     void writeMCStatistics(std::string filename) const;
 
     // statistics method
@@ -193,9 +199,9 @@ class GreenFuncNphBands : public Diagram {
     // histogram methods
     double calcNormConst();
     void normalizeHistogram(double norm_const);
-    void writeHistogram(const std::string& filename) const;
 
     // exact estimator methods
+    void exactEstimatorGF(long double tau_length, int ext_phonon_order);
     double groundStateEnergyExactEstimator(long double tau_length);
     void calcGroundStateEnergy(std::string filename);
     double effectiveMassExactEstimator(long double tau_length);
