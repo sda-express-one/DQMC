@@ -2532,6 +2532,8 @@ void GreenFuncNphBands::markovChainMC(){
             if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(7);}
         }
 
+        if(static_cast<int>(i%100000) == 0){fixDoublePrecisionErrors(_current_order_int + 2*_current_ph_ext, 1e-9);}
+
         if(static_cast<int>(i%(N_relax/100)) == 0){bar.update(i);}
 
         i++;
@@ -2653,6 +2655,7 @@ void GreenFuncNphBands::markovChainMC(){
                 _mc_statistics.zero_order_diagrams++; // accumulate number of zero order diagrams
             }
         }
+        if(static_cast<int>(i%100000) == 0){fixDoublePrecisionErrors(_current_order_int + 2*_current_ph_ext, 1e-9);}
 
         if(static_cast<int>(i%(N_diags/100)) == 0){bar.update(i);}
 

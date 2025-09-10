@@ -57,6 +57,22 @@ class Diagram {
         inline int getOrderMax() const {return _order_int_max + 2*_ph_ext_max;};
         static inline std::mt19937 getSeed(){return gen;};
 
+
+        // fix double precision floating errors
+        void inline fixDoublePrecisionErrors(int total_order, double error_threshold){
+            for(int i = 0; i < total_order+1; i++){
+                if(std::abs(_propagators[i].el_propagator_kx - _kx) < error_threshold){
+                    _propagators[i].el_propagator_kx = _kx;
+                }
+                if(std::abs(_propagators[i].el_propagator_ky - _ky) < error_threshold){
+                    _propagators[i].el_propagator_ky = _ky;
+                }
+                if(std::abs(_propagators[i].el_propagator_kz - _kz) < error_threshold){
+                    _propagators[i].el_propagator_kz = _kz;
+                }
+            }
+        };
+
     private:
         // number of diagrams generated
         const unsigned long long int _N_diags = 100000000; // number of diagrams
