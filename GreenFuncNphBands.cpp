@@ -188,7 +188,7 @@ void GreenFuncNphBands::setTauCutoffStatistics(long double tau_cutoff_statistics
 
 int GreenFuncNphBands::findVertexPosition(long double tau){
     int position = 0;
-    for(int i = 0; i < _current_order_int + 2*_current_ph_ext + 1; i++){
+    for(int i = 0; i < _current_order_int + 2*_current_ph_ext + 1; ++i){
         if(_vertices[i].tau < tau && _vertices[i+1].tau >= tau){
             position = i;
             return position;
@@ -200,7 +200,7 @@ int GreenFuncNphBands::findVertexPosition(long double tau){
 int * GreenFuncNphBands::findVerticesPosition(long double tau_one, long double tau_two){
     int* positions = new int[2];
     int counts = 0;
-    for(int i = 0; i < _current_order_int + 2*_current_ph_ext + 1; i++){
+    for(int i = 0; i < _current_order_int + 2*_current_ph_ext + 1; ++i){
         if(_vertices[i].tau < tau_one && _vertices[i+1].tau >= tau_one){
             positions[0] = i;
             counts+=1;
@@ -226,7 +226,7 @@ int GreenFuncNphBands::chooseInternalPhononPropagator(){
     std::uniform_int_distribution<int> distrib_unif(1,int(_current_order_int/2)); // chooses one of the internal phonon propagators at random
     int ph_propagator = distrib_unif(gen);
     int counter = 0;
-    for(int i = 0; i < _current_order_int + 2*_current_ph_ext; i++){
+    for(int i = 0; i < _current_order_int + 2*_current_ph_ext; ++i){
         if(_vertices[i].type == +1){
             counter++;
         }
@@ -241,7 +241,7 @@ int GreenFuncNphBands::chooseExternalPhononPropagator(){
     std::uniform_int_distribution<int> distrib_unif(1, _current_ph_ext); // chooses one of the external phonon propagators at random
     int ph_propagator = distrib_unif(gen);
     int counter = 0;
-    for(int i = 0; i < _current_order_int + 2*_current_ph_ext + 1; i++){
+    for(int i = 0; i < _current_order_int + 2*_current_ph_ext + 1; ++i){
         if(_vertices[i].type == -2){
             counter++;
         }
@@ -257,10 +257,10 @@ void GreenFuncNphBands::phVertexMakeRoom(int index_one, int index_two){
     while(i < _current_order_int + 2*_current_ph_ext + 1){
         if(_vertices[i].linked > index_two){_vertices[i].linked += 2;}
         else if(_vertices[i].linked > index_one){_vertices[i].linked += 1;}
-        i++;
+        ++i;
     }
     
-    for(int i = _current_order_int + 2*_current_ph_ext + 1; i > index_one; i--){ 
+    for(int i = _current_order_int + 2*_current_ph_ext + 1; i > index_one; --i){ 
         if(i > index_two){_vertices[i+2] = _vertices[i];}
         else{_vertices[i+1] = _vertices[i];}
   }
@@ -271,17 +271,17 @@ void GreenFuncNphBands::phVertexRemoveRoom(int index_one, int index_two){
     while(i < _current_order_int + 2*_current_ph_ext + 1){
         if(_vertices[i].linked >= index_two){_vertices[i].linked -= 2;}
         else if(_vertices[i].linked >= index_one){_vertices[i].linked -= 1;}
-        i++;
+        ++i;
     }
 
-    for(int i = index_one; i < _current_order_int + 2*_current_ph_ext; i++){
+    for(int i = index_one; i < _current_order_int + 2*_current_ph_ext; ++i){
         if(i < index_two-1){_vertices[i] = _vertices[i+1];}
         else{_vertices[i] = _vertices[i+2];}
     }
 };
 
 void GreenFuncNphBands::propagatorArrayMakeRoom(int index_one, int index_two){
-    for(int i = _current_order_int + 2*_current_ph_ext; i > index_one-1; i--){
+    for(int i = _current_order_int + 2*_current_ph_ext; i > index_one-1; --i){
         if(i > index_two - 1){_propagators[i+2] = _propagators[i];}
         else{_propagators[i+1] = _propagators[i];}
     }
@@ -290,21 +290,21 @@ void GreenFuncNphBands::propagatorArrayMakeRoom(int index_one, int index_two){
 };
 
 void GreenFuncNphBands::propagatorArrayRemoveRoom(int index_one, int index_two){
-    for(int i = index_one; i < _current_order_int + 2*_current_ph_ext; i++){
+    for(int i = index_one; i < _current_order_int + 2*_current_ph_ext; ++i){
         if(i < index_two - 2){_propagators[i] = _propagators[i+1];}
         else{_propagators[i] = _propagators[i+2];}
     }
 };
 
 void GreenFuncNphBands::bandArrayMakeRoom(int index_one, int index_two){
-    for(int i = _current_order_int + 2*_current_ph_ext; i > index_one-1; i--){
+    for(int i = _current_order_int + 2*_current_ph_ext; i > index_one-1; --i){
         if(i > index_two - 1){_bands[i+2] = _bands[i];}
         else{_bands[i+1] = _bands[i];}
     }
 };
 
 void GreenFuncNphBands::bandArrayRemoveRoom(int index_one, int index_two){
-    for(int i = index_one; i < _current_order_int + 2*_current_ph_ext; i++){
+    for(int i = index_one; i < _current_order_int + 2*_current_ph_ext; ++i){
         if(i < index_two - 2){_bands[i] = _bands[i+1];}
         else{_bands[i] = _bands[i+2];}
     }
@@ -408,7 +408,7 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
 
             int j = 0;
             
-            for(int i = index_one; i < index_two + 1; i++){
+            for(int i = index_one; i < index_two + 1; ++i){
                 j = i - index_one;
 
                 // initial diagram momenta
@@ -650,7 +650,7 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
         std::uniform_int_distribution<int> band_number(0, _num_bands - 1);
 
         int j = 0;
-        for(int i = index_one; i < index_two; i++){
+        for(int i = index_one; i < index_two; ++i){
             j = i - index_one;
 
             // proposed new momentum values
@@ -889,7 +889,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
         int phonon_index = distrib_phon(gen);
 
         // time of ingoing vertex of ext phonon propagator
-        long double tau_one = 0. - std::log(1-drawUniformR())/phononEnergy(_phonon_modes, phonon_index); // time of ingoing vertex of ext phonon propagator
+        long double tau_one = 0 - std::log(1-drawUniformR())/phononEnergy(_phonon_modes, phonon_index); // time of ingoing vertex of ext phonon propagator
         if(tau_one >= tau_current){return;} // reject if it goes out of bound
 
         long double tau_two = tau_current + std::log(1-drawUniformR())/phononEnergy(_phonon_modes, phonon_index); // time of outgoing vertex
@@ -968,7 +968,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             double action_two_fin = 0.;
 
             
-            for(int i = 0; i < index_one + 1; i++){
+            for(int i = 0; i < index_one + 1; ++i){
                 // retrieve momentum values for propagators below first ph vertex
                 px_one_init[i] = _propagators[i].el_propagator_kx;
                 px_one_fin[i] = _propagators[i].el_propagator_kx - w_x;
@@ -1014,11 +1014,13 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 if(i != index_one){
                     action_one_init += energy_one_init[i]*(_vertices[i+1].tau - _vertices[i].tau);
                     action_one_fin += energy_one_fin[i]*(_vertices[i+1].tau - _vertices[i].tau);
-               }
+                }
+                else{
+                    action_one_init += energy_one_init[index_one]*(tau_one - _vertices[index_one].tau);
+                    action_one_fin += energy_one_fin[index_one]*(tau_one - _vertices[index_one].tau);
+                }
             }
-            action_one_init += energy_one_init[index_one]*(tau_one - _vertices[index_one].tau);
-            action_one_fin += energy_one_fin[index_one]*(tau_one - _vertices[index_one].tau);
-
+            
             // new vertex (left)
             if(_num_bands == 3){
                 prefactor_fin = prefactor_fin*vertexOverlapTerm(bands_one_fin[index_one], _bands[index_one]);
@@ -1157,7 +1159,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 _vertices[index_two+2].wz = w_z;
 
                 // update electron propagator energies
-                for(int i = 0; i < index_one + 1; i++){
+                for(int i = 0; i < index_one + 1; ++i){
                     _propagators[i].el_propagator_kx -= w_x;
                     _propagators[i].el_propagator_ky -= w_y;
                     _propagators[i].el_propagator_kz -= w_z;
@@ -1249,7 +1251,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 pz_fin[i] = _propagators[i-2].el_propagator_kz - w_z;
             }*/
 
-            for(int i = 0; i < total_order + 3; i++){
+            for(int i = 0; i < total_order + 3; ++i){
 
                 // initial diagram
                 if(i < total_order + 1){
@@ -1460,7 +1462,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 _vertices[index_two+2].index = phonon_index;
 
                 // update electron propagator energies
-                for(int i = 0; i < total_order + 3; i++){
+                for(int i = 0; i < total_order + 3; ++i){
                     _propagators[i].el_propagator_kx = px_fin[i];
                     _propagators[i].el_propagator_ky = py_fin[i];
                     _propagators[i].el_propagator_kz = pz_fin[i];
@@ -1558,7 +1560,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
             double action_two_init = 0.;
             double action_two_fin = 0.;
 
-            for(int i = 0; i < index_one + 1; i++){
+            for(int i = 0; i < index_one + 1; ++i){
                 px_one_init[i] = _propagators[i].el_propagator_kx + w_x;
                 py_one_init[i] = _propagators[i].el_propagator_ky + w_y;
                 pz_one_init[i] = _propagators[i].el_propagator_kz + w_z;
@@ -1621,7 +1623,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
             }
 
             int j = 0;
-            for(int i = index_two; i < total_order + 1; i++){
+            for(int i = index_two; i < total_order + 1; ++i){
                 j = i - index_two;
                 px_two_init[j] = _propagators[i].el_propagator_kx + w_x;
                 py_two_init[j] = _propagators[i].el_propagator_ky + w_y;
@@ -1748,7 +1750,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                     _propagators[i].el_propagator_kz += w_z;
                     _bands[i] = bands_one_init[i];
                 }
-                for(int i=index_two; i<total_order+1;i++){
+                for(int i=index_two; i<total_order+1;++i){
                     _propagators[i].el_propagator_kx += w_x;
                     _propagators[i].el_propagator_ky += w_y;
                     _propagators[i].el_propagator_kz += w_z;
@@ -1807,7 +1809,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                 double action_init = 0.;
                 double action_fin = 0.;
 
-                for(int i = 0; i < total_order + 1; i++){
+                for(int i = 0; i < total_order + 1; ++i){
                     px_fin[i] = _propagators[i].el_propagator_kx;
                     py_fin[i] = _propagators[i].el_propagator_ky;
                     pz_fin[i] = _propagators[i].el_propagator_kz;
@@ -1984,7 +1986,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                     return;
                 }
                 else{
-                    for(int i=0; i < total_order+1; i++){
+                    for(int i=0; i < total_order+1; ++i){
                         _propagators[i].el_propagator_kx = px_init[i];
                         _propagators[i].el_propagator_ky = py_init[i];
                         _propagators[i].el_propagator_kz = pz_init[i];
@@ -2160,10 +2162,10 @@ void GreenFuncNphBands::swapPhononPropagator(){
 };
 
 void GreenFuncNphBands::shiftPhononPropagator(){
-    if(_current_order_int + _current_ph_ext == 0){return;} // reject if no vertices are present
+    if(_current_order_int + 2*_current_ph_ext < 4){return;} // reject if no vertices are present
     else{
         int total_order = _current_order_int + 2*_current_ph_ext;
-        std::uniform_int_distribution<int> distrib(1, total_order);
+        std::uniform_int_distribution<int> distrib(2, total_order-1);
         int vertex_index = distrib(gen); // choose random vertex
 
         // necessary step to address phonon type into evaluation
@@ -2187,22 +2189,82 @@ void GreenFuncNphBands::shiftPhononPropagator(){
         long double kz_outgoing = _propagators[vertex_index].el_propagator_kz;
         double el_eff_mass_outgoing = _bands[vertex_index].effective_mass;
 
-        double energy_delta = electronEnergy(kx_incoming, ky_incoming, kz_incoming, el_eff_mass_incoming) 
-            - electronEnergy(kx_outgoing, ky_outgoing, kz_outgoing, el_eff_mass_outgoing) - phononEnergy(_phonon_modes, phonon_index)*c;
+        if(vertex_index != 1){
+            double energy_delta = electronEnergy(kx_incoming, ky_incoming, kz_incoming, el_eff_mass_incoming) 
+                - electronEnergy(kx_outgoing, ky_outgoing, kz_outgoing, el_eff_mass_outgoing) - phononEnergy(_phonon_modes, phonon_index)*c;
         
-        long double tau_new = tau_init - std::log(1 - drawUniformR()*(1 - std::exp(-energy_delta*(tau_fin - tau_init))))/energy_delta;
+            long double tau_new = tau_init - std::log(1 - drawUniformR()*(1 - std::exp(-energy_delta*(tau_fin - tau_init))))/energy_delta;
 
-        if(isEqual(tau_new, tau_init) || isEqual(tau_new, tau_fin) || tau_new > tau_fin){return;} // check for possible double precision errors
+            if(isEqual(tau_new, tau_init) || isEqual(tau_new, tau_fin) || tau_new < tau_init || tau_new > tau_fin){return;} // check for possible double precision errors
         
-        _vertices[vertex_index].tau = tau_new; // assign new time value to vertex
+            _vertices[vertex_index].tau = tau_new; // assign new time value to vertex
+        }
+        else{
+            long double tau_new = tau_init - std::log(1 - drawUniformR())/(electronEnergy(kx_incoming, ky_incoming, kz_incoming, el_eff_mass_incoming) 
+                - _chem_potential + extPhononEnergy(_ext_phonon_type_num, _phonon_modes, _num_phonon_modes));
+
+            if(isEqual(tau_new, tau_init) || isEqual(tau_new, tau_fin) || tau_new > tau_fin){return;} // check for possible double precision errors
+
+            _vertices[vertex_index].tau = tau_new;
+        }
     }
 };
 
 long double GreenFuncNphBands::stretchDiagramLength(long double tau_init){
+
+    // initialize momentum values for last propagator
+    /*int total_order = _current_order_int + 2*_current_ph_ext;
+    double kx = 0, ky = 0, kz = 0;
+
+    long double * new_taus = new long double[total_order+2];
+    new_taus[0] = 0.L; // first vertex time value is always 0
+
+    int c = 0;
+    int phonon_index = -1;
+    double phonon_lines_energies = 0;
+
+    for(int i=1; i < total_order+2; ++i){
+
+        kx = _propagators[i-1].el_propagator_kx;
+        ky = _propagators[i-1].el_propagator_ky;
+        kz = _propagators[i-1].el_propagator_kz;
+
+        c = _vertices[i-1].type;
+        phonon_index = _vertices[i-1].index;
+        
+        if(c == +1 || c == +2){
+            phonon_lines_energies += phononEnergy(_phonon_modes, phonon_index);
+        }
+        else if( c == -1 || c == -2){
+            phonon_lines_energies -= phononEnergy(_phonon_modes, phonon_index);
+        }
+
+        new_taus[i] = new_taus[i-1] - std::log(1-drawUniformR())/(electronEnergy(kx,ky,kz,_bands[i-1].effective_mass)
+        -_chem_potential + extPhononEnergy(_ext_phonon_type_num, _phonon_modes, _num_phonon_modes) + phonon_lines_energies);
+
+        if(new_taus[i] < new_taus[i-1] || isEqual(new_taus[i], new_taus[i-1])){
+            delete[] new_taus; 
+            return tau_init;
+        }
+    }
+
+    if(isEqual(new_taus[total_order+1], _tau_max) || new_taus[total_order+1] > _tau_max){
+        delete[] new_taus; 
+        return tau_init;
+    }
+
+    for(int i = 0; i < total_order+2; ++i){
+        _vertices[i].tau = new_taus[i];
+    }
+    
+
+    delete[] new_taus;
+    return _vertices[total_order+1].tau;*/
+    
     // initialize momentum values for first electron propagator
-    long double kx = _propagators[0].el_propagator_kx;
-    long double ky = _propagators[0].el_propagator_ky;
-    long double kz = _propagators[0].el_propagator_kz;
+    double kx = _propagators[0].el_propagator_kx;
+    double ky = _propagators[0].el_propagator_ky;
+    double kz = _propagators[0].el_propagator_kz;
 
     // create complete array of new vertex time values
     int total_order = _current_order_int + 2*_current_ph_ext;
@@ -2263,6 +2325,8 @@ long double GreenFuncNphBands::stretchDiagramLength(long double tau_init){
     long double tau_fin = new_taus[total_order+1]; // assign new time value to last vertex
     delete[] new_taus;
     return tau_fin; // return new length of diagram
+
+
 };
 
 void GreenFuncNphBands::markovChainMC(){
@@ -2534,9 +2598,15 @@ void GreenFuncNphBands::markovChainMC(){
 
         if(static_cast<int>(i%100000) == 0){fixDoublePrecisionErrors(_current_order_int + 2*_current_ph_ext, 1e-9);}
 
+        if(static_cast<int>(i%100000) == 0){checkTimeErrors(_current_order_int+2*_current_ph_ext);}
+
+        if(static_cast<int>(i%100000) == 0 && _flags.write_diagrams){
+            writeDiagram("Diagrams.txt", i, r); // method to visualize diagram structure
+        }
+
         if(static_cast<int>(i%(N_relax/100)) == 0){bar.update(i);}
 
-        i++;
+        ++i;
     }
     bar.finish();
 
@@ -2657,9 +2727,11 @@ void GreenFuncNphBands::markovChainMC(){
         }
         if(static_cast<int>(i%100000) == 0){fixDoublePrecisionErrors(_current_order_int + 2*_current_ph_ext, 1e-9);}
 
+        if(static_cast<int>(i%100000) == 0){checkTimeErrors(_current_order_int+2*_current_ph_ext);}
+
         if(static_cast<int>(i%(N_diags/100)) == 0){bar.update(i);}
 
-        i++;
+        ++i;
     }
 
     bar.finish();
@@ -2900,7 +2972,7 @@ double GreenFuncNphBands::groundStateEnergyExactEstimator(long double tau_length
         // bool ext_flag = false;
 
         // main loop
-        for(int i=0; i<current_order+1; i++){
+        for(int i=0; i<current_order+1; ++i){
             electron_energy = electronEnergy(_propagators[i].el_propagator_kx, _propagators[i].el_propagator_ky, 
                 _propagators[i].el_propagator_kz, _bands[i].effective_mass);
             electron_action += electron_energy*(_vertices[i+1].tau - _vertices[i].tau);
@@ -2914,6 +2986,7 @@ double GreenFuncNphBands::groundStateEnergyExactEstimator(long double tau_length
             }
             else if(_vertices[i].type == -2){
                 index_two = _vertices[i].linked;
+                phonon_index = _vertices[i].index;
                 tau_one = _vertices[i].tau;  
                 tau_two = _vertices[index_two].tau;
                 phonon_action += phononEnergy(_phonon_modes, phonon_index)*(tau_length + tau_one - tau_two);
@@ -3005,7 +3078,7 @@ void GreenFuncNphBands::exactEstimatorGF(long double tau_length, int ext_phonon_
     // bool ext_flag = false;
 
     // main loop
-    for(int i=0; i<current_order+1; i++){
+    for(int i=0; i<current_order+1; ++i){
         electron_energy = electronEnergy(_propagators[i].el_propagator_kx, _propagators[i].el_propagator_ky, 
             _propagators[i].el_propagator_kz, _bands[i].effective_mass);
         electron_action += electron_energy*(_vertices[i+1].tau - _vertices[i].tau);
@@ -3017,8 +3090,9 @@ void GreenFuncNphBands::exactEstimatorGF(long double tau_length, int ext_phonon_
             tau_two = _vertices[index_two].tau;
             phonon_action += phononEnergy(_phonon_modes, phonon_index)*(tau_two - tau_one);
         }
-       else if(_vertices[i].type == -2){
+        else if(_vertices[i].type == -2){
             index_two = _vertices[i].linked;
+            phonon_index = _vertices[i].index;
             tau_one = _vertices[i].tau;  
             tau_two = _vertices[index_two].tau;
             phonon_action += phononEnergy(_phonon_modes, phonon_index)*(tau_length + tau_one - tau_two);
@@ -3026,8 +3100,8 @@ void GreenFuncNphBands::exactEstimatorGF(long double tau_length, int ext_phonon_
     }
 
     // compute Green function with exact estimator
-    tau_length = (tau_length < 0.) ? 0. : (tau_length >= _tau_max) ? _tau_max - 1e-9 : tau_length;
-    int bin = (int)((tau_length - 0.) * 1./_points_step);
+    tau_length = (tau_length < 1e-9) ? 1e-9 : (tau_length >= _tau_max) ? _tau_max - 1e-9 : tau_length;
+    int bin = static_cast<int>((tau_length - 0.) * 1./_points_step);
 
     long double prefactor = std::pow(1 + (_points[bin] - tau_length)/tau_length, current_order);
     long double exponential = std::exp(-((_points[bin] - tau_length)/tau_length)*(electron_action + phonon_action));
@@ -3043,7 +3117,7 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
         double electron_average_kx = 0; double electron_average_ky = 0; double electron_average_kz = 0;
         
 
-        for(int i=0; i<current_order+1; i++){
+        for(int i=0; i<current_order+1; ++i){
             electron_average_kx += _propagators[i].el_propagator_kx*(_vertices[i+1].tau - _vertices[i].tau);
             electron_average_ky += _propagators[i].el_propagator_ky*(_vertices[i+1].tau - _vertices[i].tau);
             electron_average_kz += _propagators[i].el_propagator_kz*(_vertices[i+1].tau - _vertices[i].tau);

@@ -59,7 +59,7 @@ class Diagram {
 
 
         // fix double precision floating errors
-        void inline fixDoublePrecisionErrors(int total_order, double error_threshold){
+        inline void fixDoublePrecisionErrors(int total_order, double error_threshold){
             for(int i = 0; i < total_order+1; i++){
                 if(std::abs(_propagators[i].el_propagator_kx - _kx) < error_threshold){
                     _propagators[i].el_propagator_kx = _kx;
@@ -71,6 +71,13 @@ class Diagram {
                     _propagators[i].el_propagator_kz = _kz;
                 }
             }
+        };
+
+        inline void checkTimeErrors(int total_order){
+            for(int i = 1; i < total_order+1; i++)
+                if(_vertices[i].tau < _vertices[i-1].tau){
+                    std::cerr << "time not valid" << std::endl;
+                }
         };
 
     private:
