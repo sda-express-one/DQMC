@@ -2470,8 +2470,8 @@ void GreenFuncNphBands::markovChainMC(){
         for(int i=0; i<_num_phonon_modes; i++){
             std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
             << _born_effective_charges[i] << std::endl;
-        std::cout << std::endl;
         }
+        std::cout << std::endl;
     }
 
     /*if(_flags.Z_factor){
@@ -2794,7 +2794,7 @@ void GreenFuncNphBands::markovChainMC(){
             << _born_effective_charges[i] << std::endl;
         }
 
-        std::cout << " minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
+        std::cout << "minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
 
         std::string filename = "gs_energy.txt";
         std::ofstream file(filename, std::ofstream::app);
@@ -2830,11 +2830,18 @@ void GreenFuncNphBands::markovChainMC(){
     }
 
     if(_flags.effective_mass){
-        long double effective_mass_inv = _effective_mass/(double)_effective_mass_count; // average effective mass of diagrams
+        long double effective_mass_inv = _effective_mass/(long double)_effective_mass_count; // average effective mass of diagrams
         _effective_mass = 1./effective_mass_inv; // effective mass is inverse of the value calculated
         //std::cout << "Effective mass of system is: " << _effective_mass << "." << std::endl;
         std::cout << "Input parameters are: chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+        
         if(_num_bands == 1){
+            _effective_masses[0] = _effective_masses[0]/static_cast<long double>(std::abs((int)_effective_mass_count));
+            _effective_masses[1] = _effective_masses[1]/static_cast<long double>(_effective_mass_count);
+            _effective_masses[2] = _effective_masses[2]/static_cast<long double>(_effective_mass_count);
+            _effective_masses[0] = (1.L)/_effective_masses[0];
+            _effective_masses[1] = (1.L)/_effective_masses[1];
+            _effective_masses[2] = (1.L)/_effective_masses[2];
             std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
                     << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
         }
@@ -2843,6 +2850,7 @@ void GreenFuncNphBands::markovChainMC(){
             std::cout << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
                     << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
         }
+
         std::cout <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
         << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
         std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
@@ -2850,10 +2858,10 @@ void GreenFuncNphBands::markovChainMC(){
             std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
             << _born_effective_charges[i] << std::endl;
         }
-
+        std::cout << std::endl;
         if(_num_bands == 1){
-            std::cout << "Polaronic effective masses are: mx_pol = " << (1./_effective_masses[0]) << " my_pol = " 
-                    << _effective_masses[1] << "mz_pol = " << _effective_masses[2] << std::endl; 
+            std::cout << "Polaronic effective masses are: mx_pol = " << (_effective_masses[0]) << ", my_pol = " 
+                    << _effective_masses[1] << ", mz_pol = " << _effective_masses[2] << std::endl; 
         }
         else if(_num_bands == 3){
 
@@ -2888,6 +2896,14 @@ void GreenFuncNphBands::markovChainMC(){
                 << _born_effective_charges[i] << std::endl;
             }
             file << std::endl;
+
+            if(_num_bands == 1){
+                file << "Polaronic effective masses are: mx_pol = " << _effective_masses[0] << ", my_pol = " 
+                    << _effective_masses[1] << ", mz_pol = " << _effective_masses[2] << std::endl; 
+            }
+            else if(_num_bands == 3){
+
+            }
 
             file << "Inverse effective mass of the system is: " << effective_mass_inv << "." << std::endl;
             file << std::endl;
@@ -3121,10 +3137,6 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
             electron_average_kx += _propagators[i].el_propagator_kx*(_vertices[i+1].tau - _vertices[i].tau);
             electron_average_ky += _propagators[i].el_propagator_ky*(_vertices[i+1].tau - _vertices[i].tau);
             electron_average_kz += _propagators[i].el_propagator_kz*(_vertices[i+1].tau - _vertices[i].tau);
-
-            if(_num_bands == 3){
-                
-            }
         }
 
         electron_average_kx = electron_average_kx/tau_length;
@@ -3213,7 +3225,7 @@ void GreenFuncNphBands::calcGroundStateEnergy(std::string filename){
     std::cout << std::endl;
 };
 
-void GreenFuncNphBands::calcEffectiveMasses(std::string filename){
+/*void GreenFuncNphBands::calcEffectiveMasses(std::string filename){
     long double effective_mass_inv = _effective_mass/(double)_effective_mass_count; // average effective mass of diagrams
     _effective_mass = 1./effective_mass_inv; // effective mass is inverse of the value calculated
     //std::cout << "Effective mass of system is: " << _effective_mass << "." << std::endl;
@@ -3488,7 +3500,7 @@ void GreenFuncNphBands::calcEffectiveMasses(std::string filename){
     }
 
     std::cout << std::endl;
-};
+};*/
 
 double GreenFuncNphBands::calcNormConst(){
     double eff_mass_electron = computeEffMassSingleBand(_kx, _ky, _kz, _m_x_el, _m_y_el, _m_z_el);
@@ -3552,7 +3564,6 @@ void GreenFuncNphBands::writeExactGF(const std::string& filename) const {
     file.close();
     std::cout << "Exact Green's function written to file " << filename << "." << std::endl;
 }
-
 
 void GreenFuncNphBands::writeDiagram(std::string filename, int i, double r) const {
     std::ofstream file(filename, std::ofstream::app);
