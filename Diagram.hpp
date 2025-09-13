@@ -42,7 +42,7 @@ class Diagram {
         };
 
         // setters
-        void setRelaxSteps(int relax_steps);
+        void setRelaxSteps(unsigned long long int relax_steps);
 
         // getters
         inline long long unsigned int getNdiags() const {return _N_diags;};

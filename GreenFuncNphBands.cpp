@@ -92,11 +92,11 @@ void GreenFuncNphBands::setProbabilities(double* probs){
     if(!isEqual(probs[0] + probs[1] + probs[2] + probs[3] + probs[4] + probs[5] + probs[6] + probs[7], 1)){
         std::cerr << "Invalid probabilities, total probability must add to 1.\n";
         double normalization = 1/(probs[0] + probs[1] + probs[2] + probs[3] + probs[4] + probs[5] + probs[6] + probs[7]);
-        std::cout << "Probabilities are being riscaled using the value " << normalization <<".\n";
+        std::cerr << "Probabilities are being riscaled using the value " << normalization <<".\n";
         for(int i = 0; i < 8; i++){
             probs[i] = probs[i]*normalization;
         }
-        std::cout << "New probabilities are: " << probs[0] << " " << probs[1] << " " << probs[2] << " " 
+        std::cerr << "New probabilities are: " << probs[0] << " " << probs[1] << " " << probs[2] << " " 
         << probs[3] << " " << probs[4] << " " << probs[5] << " " << probs[6] << " " << probs[7] << ".\n";
     }
     _p_length = probs[0];
@@ -542,7 +542,7 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
             double p_A = _p_add_int*(_current_order_int/2 + 1);
 
             double numerator = p_B*std::exp(-(action_fin - action_init + (phononEnergy(_phonon_modes, phonon_index)*(tau_two - tau_one))))*
-                (tau_end-tau_init)*prefactor_fin; //*_num_bands*_num_bands*_num_phonon_modes
+                (tau_end-tau_init)*prefactor_fin; //*_num_bands*_num_bands
             double denominator = p_A*std::pow(2*M_PI,_D)*phononEnergy(_phonon_modes, phonon_index)
                 *std::exp(-phononEnergy(_phonon_modes, phonon_index)*(tau_two-tau_one))
                 *std::pow(((tau_two-tau_one)/(2*M_PI)),double(_D)/2.)*std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)
@@ -829,7 +829,7 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
                 *std::pow(((tau_two-tau_one)/(2*M_PI)),double(_D)/2.)*std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)
                 *(tau_two-tau_one))*prefactor_init;
         double denominator = p_B*std::exp(-(action_fin - action_init + (phononEnergy(_phonon_modes, phonon_index)*(tau_two - tau_one))))*
-                (tau_end-tau_init)*prefactor_fin; //*_num_bands*_num_bands*_num_phonon_modes
+                (tau_end-tau_init)*prefactor_fin; //*_num_bands*_num_bands
 
         double R_rem = numerator/denominator;
 
@@ -1125,7 +1125,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                                         _born_effective_charges[phonon_index], _dielectric_const);
 
             double numerator = p_B*std::exp(-(action_two_fin + action_one_fin - action_two_init - action_one_init + 
-                phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))*prefactor_fin; // *_num_bands*_num_bands*_num_phonon_modes
+                phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))*prefactor_fin; // *_num_bands*_num_bands
 
             double denominator = p_A*std::pow(2*M_PI,_D)
                 *phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*tau_one)
@@ -1430,7 +1430,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                                         _born_effective_charges[phonon_index], _dielectric_const);
 
             double numerator = p_B*std::exp(-(action_fin - action_init + phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))
-                                *prefactor_fin; // *_num_bands*_num_bands*_num_phonon_modes
+                                *prefactor_fin; // *_num_bands*_num_bands
 
             double denominator = p_A*std::pow(2*M_PI,_D)*phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*tau_one)
                                 *phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two))
@@ -1740,7 +1740,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                 *std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one))*prefactor_init;
 
             double denominator = p_B*std::exp(-(action_two_fin + action_one_fin - action_two_init - action_one_init + 
-                phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))*prefactor_fin; // *_num_bands*_num_bands*_num_phonon_modes
+                phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))*prefactor_fin; // *_num_bands*_num_bands
             
             double R_rem = numerator/denominator;
 
@@ -1982,7 +1982,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                                 *std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one))*prefactor_init;
                 
                 double denominator = p_B*std::exp(-(action_fin - action_init + phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))
-                                *prefactor_fin; // *_num_bands*_num_bands*_num_phonon_modes
+                                *prefactor_fin; // *_num_bands*_num_bands
 
                 double R_rem = numerator/denominator;
 
@@ -2203,7 +2203,7 @@ void GreenFuncNphBands::shiftPhononPropagator(){
         if(isEqual(tau_new, tau_init) || isEqual(tau_new, tau_fin) || tau_new < tau_init || tau_new > tau_fin){return;} // check for possible double precision errors
         
         _vertices[vertex_index].tau = tau_new; // assign new time value to vertex
-        
+
         findLastPhVertex();
         return;
     }
@@ -2773,6 +2773,8 @@ void GreenFuncNphBands::markovChainMC(){
         std::cout << "Ground state energy of the system is: " << _gs_energy << ". Input parameters are: kx = " << _kx << 
         ", ky = " << _ky << ", kz = " << _kz << std::endl;
         std::cout << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+        std::cout << "minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
+        std::cout << "Number of diagrams used for ground state energy calculation: " << _gs_energy_count << std::endl;
         if(_num_bands == 1){
             std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
                     << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
@@ -2783,14 +2785,13 @@ void GreenFuncNphBands::markovChainMC(){
         }
         std::cout <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
         << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
-        std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+        std::cout << std::endl;
 
+        std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
         for(int i=0; i<_num_phonon_modes; i++){
             std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
             << _born_effective_charges[i] << std::endl;
         }
-
-        std::cout << "minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
 
         std::string filename = "gs_energy.txt";
         std::ofstream file(filename, std::ofstream::app);
@@ -2802,6 +2803,9 @@ void GreenFuncNphBands::markovChainMC(){
             file << "Ground state energy of the system is: " << _gs_energy << " . Input parameters are: kx = " << _kx << 
             ", ky = " << _ky << ", kz = " << _kz << std::endl;
             file << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+            file << " minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
+            file << "Number of diagrams used for ground state energy calculation: " << _gs_energy_count << std::endl;
+
             if(_num_bands == 1){
                 file << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
                     << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
@@ -2812,13 +2816,13 @@ void GreenFuncNphBands::markovChainMC(){
             }
             file << "1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
             << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
-            file << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+            file << std::endl;
 
+            file << "Number of phonon modes: " << _num_phonon_modes << std::endl;
             for(int i=0; i<_num_phonon_modes; i++){
                 file << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
                 << _born_effective_charges[i] << std::endl;
             }
-            file << " minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
             file << std::endl;
             file.close();
         }
@@ -2828,9 +2832,8 @@ void GreenFuncNphBands::markovChainMC(){
     if(_flags.effective_mass){
         long double effective_mass_inv = _effective_mass/(long double)_effective_mass_count; // average effective mass of diagrams
         _effective_mass = 1./effective_mass_inv; // effective mass is inverse of the value calculated
-        //std::cout << "Effective mass of system is: " << _effective_mass << "." << std::endl;
         std::cout << "Input parameters are: chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
-        
+        std::cout << "Number of diagrams used for effective mass calculation: " << _effective_mass_count << std::endl;
         if(_num_bands == 1){
             _effective_masses[0] = _effective_masses[0]/static_cast<long double>(std::abs((int)_effective_mass_count));
             _effective_masses[1] = _effective_masses[1]/static_cast<long double>(_effective_mass_count);
@@ -2849,6 +2852,8 @@ void GreenFuncNphBands::markovChainMC(){
 
         std::cout <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
         << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
+        std::cout << std::endl;
+
         std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
         for(int i=0; i<_num_phonon_modes; i++){
             std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
@@ -2862,9 +2867,9 @@ void GreenFuncNphBands::markovChainMC(){
         else if(_num_bands == 3){
 
         }
-
         std::cout << std::endl;
-        std::cout << "Inverse effective mass of system is: " << effective_mass_inv << "." << std::endl;
+        std::cout << "Average effective mass of diagrams is: " << _effective_mass << "." << std::endl;
+        std::cout << "Average inverse effective mass of system is: " << effective_mass_inv << "." << std::endl;
 
         std::string filename = "effective_mass.txt";
         std::ofstream file(filename, std::ofstream::app);
@@ -2875,9 +2880,10 @@ void GreenFuncNphBands::markovChainMC(){
         else{
             file << "Effective mass of the system is: " << _effective_mass << "." << std::endl;
             file << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+            file << "Number of diagrams used for effective mass calculation: " << _effective_mass_count << std::endl;
             if(_num_bands == 1){
                 file << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
-                        << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+                    << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
             }
             else if(_num_bands == 3){
                 file << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
@@ -2885,8 +2891,9 @@ void GreenFuncNphBands::markovChainMC(){
             }
             file <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
             << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
-            file << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+            file << std::endl;
 
+            file << "Number of phonon modes: " << _num_phonon_modes << std::endl;
             for(int i=0; i<_num_phonon_modes; i++){
                 file << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
                 << _born_effective_charges[i] << std::endl;
@@ -2900,8 +2907,9 @@ void GreenFuncNphBands::markovChainMC(){
             else if(_num_bands == 3){
 
             }
-
-            file << "Inverse effective mass of the system is: " << effective_mass_inv << "." << std::endl;
+            file << std::endl;
+            file << "Average effective mass of diagrams is: " << _effective_mass << "." << std::endl;
+            file << "Average inverse effective mass of the system is: " << effective_mass_inv << "." << std::endl;
             file << std::endl;
 
             file.close();

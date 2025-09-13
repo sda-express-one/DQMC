@@ -31,11 +31,11 @@ Diagram::Diagram(unsigned long long int N_diags, long double tau_max, double kx,
 
     // setters
     
-    void Diagram::setRelaxSteps(int relax_steps){
-        if(relax_steps < 0){
+    void Diagram::setRelaxSteps(unsigned long long int relax_steps){
+        /*if(relax_steps < 0){
             std::cerr << "Invalid number of relaxation steps! Number of steps must be >= 0." << std::endl;
             std::cerr << "Reverting to default value of " << _N_relax_steps << "." << std::endl;
             return;
-        }
+        }*/
         _N_relax_steps = relax_steps;
     }
