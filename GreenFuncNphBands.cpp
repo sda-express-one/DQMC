@@ -542,11 +542,11 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
             double p_A = _p_add_int*(_current_order_int/2 + 1);
 
             double numerator = p_B*std::exp(-(action_fin - action_init + (phononEnergy(_phonon_modes, phonon_index)*(tau_two - tau_one))))*
-                prefactor_fin*(tau_end-tau_init)*_num_bands*_num_bands*_num_phonon_modes;
+                (tau_end-tau_init)*prefactor_fin; //*_num_bands*_num_bands*_num_phonon_modes
             double denominator = p_A*std::pow(2*M_PI,_D)*phononEnergy(_phonon_modes, phonon_index)
                 *std::exp(-phononEnergy(_phonon_modes, phonon_index)*(tau_two-tau_one))
                 *std::pow(((tau_two-tau_one)/(2*M_PI)),double(_D)/2.)*std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)
-                *(tau_two-tau_one));
+                *(tau_two-tau_one))*prefactor_init;
 
             double R_add = numerator/denominator;
             
@@ -827,9 +827,9 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
         double numerator = p_A*std::pow(2*M_PI,_D)*phononEnergy(_phonon_modes, phonon_index)
                 *std::exp(-phononEnergy(_phonon_modes, phonon_index)*(tau_two-tau_one))
                 *std::pow(((tau_two-tau_one)/(2*M_PI)),double(_D)/2.)*std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)
-                *(tau_two-tau_one));
+                *(tau_two-tau_one))*prefactor_init;
         double denominator = p_B*std::exp(-(action_fin - action_init + (phononEnergy(_phonon_modes, phonon_index)*(tau_two - tau_one))))*
-                prefactor_fin*(tau_end-tau_init)*_num_bands*_num_bands*_num_phonon_modes;
+                (tau_end-tau_init)*prefactor_fin; //*_num_bands*_num_bands*_num_phonon_modes
 
         double R_rem = numerator/denominator;
 
@@ -890,12 +890,14 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
 
         // time of ingoing vertex of ext phonon propagator
         long double tau_one = 0 - std::log(1-drawUniformR())/phononEnergy(_phonon_modes, phonon_index); // time of ingoing vertex of ext phonon propagator
-        if(tau_one >= tau_current){return;} // reject if it goes out of bound
+        if(isEqual(tau_one, tau_current) || tau_one >= tau_current){return;} // reject if it goes out of bound
 
         long double tau_two = tau_current + std::log(1-drawUniformR())/phononEnergy(_phonon_modes, phonon_index); // time of outgoing vertex
-        if(tau_two <= 0){return;} // reject if it goes out of bound
-        if(isEqual(tau_one, tau_two)){return;} // reject if both vertices are equal (should not happen)
 
+        if(isEqual(tau_two,0) || tau_two <= 0){return;} // reject if it goes out of bound
+
+        if(isEqual(tau_one, tau_two)){return;} // reject if both vertices are equal (should not happen)
+        
         // sampling momentum values for phonon propagators
         std::normal_distribution<double> distrib_norm(0, std::sqrt(1/(tau_current-tau_two+tau_one)));
         double w_x = distrib_norm(gen);
@@ -912,7 +914,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
 
             // control statements to check for floating point errors
             if(index_one == -1 || index_two == -1){return;} // reject if tau values are not found in the vertices array
-            if( tau_one < _vertices[index_one].tau || isEqual(tau_one, _vertices[index_one].tau) 
+            if(tau_one < _vertices[index_one].tau || isEqual(tau_one, _vertices[index_one].tau) 
                 || isEqual(tau_one, _vertices[index_one+1].tau) || tau_one > _vertices[index_one+1].tau){return;}
             if(tau_two < _vertices[index_two].tau || isEqual(tau_two, _vertices[index_two].tau) 
                 || isEqual(tau_two, _vertices[index_two+1].tau) || tau_two > _vertices[index_two+1].tau){return;} 
@@ -972,8 +974,10 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 // retrieve momentum values for propagators below first ph vertex
                 px_one_init[i] = _propagators[i].el_propagator_kx;
                 px_one_fin[i] = _propagators[i].el_propagator_kx - w_x;
+
                 py_one_init[i] = _propagators[i].el_propagator_ky;
                 py_one_fin[i] = _propagators[i].el_propagator_ky - w_y;
+
                 pz_one_init[i] = _propagators[i].el_propagator_kz;
                 pz_one_fin[i] = _propagators[i].el_propagator_kz - w_z;
 
@@ -1028,15 +1032,16 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             
             int j = 0;
             
-            for(int i = index_two; i < total_order + 1; i++){
+            for(int i = index_two; i < total_order + 1; ++i){
                 j = i-index_two;
 
                 // retrieve momentum values for propagators above second ph vertex
                 px_two_init[j] = _propagators[i].el_propagator_kx;
                 px_two_fin[j] = _propagators[i].el_propagator_kx - w_x;
-                py_two_init[j] = _propagators[i].el_propagator_ky;
 
+                py_two_init[j] = _propagators[i].el_propagator_ky;
                 py_two_fin[j] = _propagators[i].el_propagator_ky - w_y;
+
                 pz_two_init[j] = _propagators[i].el_propagator_kz;
                 pz_two_fin[j] = _propagators[i].el_propagator_kz - w_z;
 
@@ -1120,13 +1125,13 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                                         _born_effective_charges[phonon_index], _dielectric_const);
 
             double numerator = p_B*std::exp(-(action_two_fin + action_one_fin - action_two_init - action_one_init + 
-                phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))*prefactor_fin;
+                phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))*prefactor_fin; // *_num_bands*_num_bands*_num_phonon_modes
 
             double denominator = p_A*std::pow(2*M_PI,_D)
                 *phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*tau_one)
                 *phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two))
                 *std::pow(((tau_current-tau_two+tau_one)/(2*M_PI)), (double)_D/2.)
-                *std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one));
+                *std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one))*prefactor_init;
 
             double R_add = numerator/denominator;
 
@@ -1425,12 +1430,12 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                                         _born_effective_charges[phonon_index], _dielectric_const);
 
             double numerator = p_B*std::exp(-(action_fin - action_init + phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))
-                                *prefactor_fin;
+                                *prefactor_fin; // *_num_bands*_num_bands*_num_phonon_modes
 
             double denominator = p_A*std::pow(2*M_PI,_D)*phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*tau_one)
                                 *phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two))
                                 *std::pow(((tau_current-tau_two+tau_one)/(2*M_PI)), (double)_D/2.)
-                                *std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one));
+                                *std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one))*prefactor_init;
 
             double R_add = numerator/denominator;
 
@@ -1520,6 +1525,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
         double eigenval = 1.0;
         Eigen::Matrix<double,4,3> new_values_matrix;
         Eigen::Vector3d new_overlap;
+        new_overlap << 1,0,0;
         std::uniform_int_distribution<int> band_number(0, _num_bands-1);
 
         if(_vertices[index_one].type == -2){
@@ -1731,10 +1737,10 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                 *phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*tau_one)
                 *phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two))
                 *std::pow(((tau_current-tau_two+tau_one)/(2*M_PI)), (double)_D/2.)
-                *std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one));
+                *std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one))*prefactor_init;
 
             double denominator = p_B*std::exp(-(action_two_fin + action_one_fin - action_two_init - action_one_init + 
-                phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))*prefactor_fin;
+                phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))*prefactor_fin; // *_num_bands*_num_bands*_num_phonon_modes
             
             double R_rem = numerator/denominator;
 
@@ -1973,10 +1979,10 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                 double numerator = p_A*std::pow(2*M_PI,_D)*phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*tau_one)
                                 *phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two))
                                 *std::pow(((tau_current-tau_two+tau_one)/(2*M_PI)), (double)_D/2.)
-                                *std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one));
+                                *std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one))*prefactor_init;
                 
                 double denominator = p_B*std::exp(-(action_fin - action_init + phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))
-                                *prefactor_fin;
+                                *prefactor_fin; // *_num_bands*_num_bands*_num_phonon_modes
 
                 double R_rem = numerator/denominator;
 
@@ -2162,10 +2168,10 @@ void GreenFuncNphBands::swapPhononPropagator(){
 };
 
 void GreenFuncNphBands::shiftPhononPropagator(){
-    if(_current_order_int + 2*_current_ph_ext < 4){return;} // reject if no vertices are present
+    if(_current_order_int + 2*_current_ph_ext <= 0){return;} // reject if no vertices are present
     else{
         int total_order = _current_order_int + 2*_current_ph_ext;
-        std::uniform_int_distribution<int> distrib(2, total_order-1);
+        std::uniform_int_distribution<int> distrib(1, total_order);
         int vertex_index = distrib(gen); // choose random vertex
 
         // necessary step to address phonon type into evaluation
@@ -2189,31 +2195,22 @@ void GreenFuncNphBands::shiftPhononPropagator(){
         long double kz_outgoing = _propagators[vertex_index].el_propagator_kz;
         double el_eff_mass_outgoing = _bands[vertex_index].effective_mass;
 
-        if(vertex_index != 1){
-            double energy_delta = electronEnergy(kx_incoming, ky_incoming, kz_incoming, el_eff_mass_incoming) 
-                - electronEnergy(kx_outgoing, ky_outgoing, kz_outgoing, el_eff_mass_outgoing) - phononEnergy(_phonon_modes, phonon_index)*c;
+        double energy_delta = electronEnergy(kx_incoming, ky_incoming, kz_incoming, el_eff_mass_incoming) 
+            - electronEnergy(kx_outgoing, ky_outgoing, kz_outgoing, el_eff_mass_outgoing) - phononEnergy(_phonon_modes, phonon_index)*c;
         
-            long double tau_new = tau_init - std::log(1 - drawUniformR()*(1 - std::exp(-energy_delta*(tau_fin - tau_init))))/energy_delta;
+        long double tau_new = tau_init - std::log(1 - drawUniformR()*(1 - std::exp(-energy_delta*(tau_fin - tau_init))))/energy_delta;
 
-            if(isEqual(tau_new, tau_init) || isEqual(tau_new, tau_fin) || tau_new < tau_init || tau_new > tau_fin){return;} // check for possible double precision errors
+        if(isEqual(tau_new, tau_init) || isEqual(tau_new, tau_fin) || tau_new < tau_init || tau_new > tau_fin){return;} // check for possible double precision errors
         
-            _vertices[vertex_index].tau = tau_new; // assign new time value to vertex
-        }
-        else{
-            long double tau_new = tau_init - std::log(1 - drawUniformR())/(electronEnergy(kx_incoming, ky_incoming, kz_incoming, el_eff_mass_incoming) 
-                - _chem_potential + extPhononEnergy(_ext_phonon_type_num, _phonon_modes, _num_phonon_modes));
-
-            if(isEqual(tau_new, tau_init) || isEqual(tau_new, tau_fin) || tau_new > tau_fin){return;} // check for possible double precision errors
-
-            _vertices[vertex_index].tau = tau_new;
-        }
+        _vertices[vertex_index].tau = tau_new; // assign new time value to vertex
+        
+        findLastPhVertex();
+        return;
     }
 };
 
 long double GreenFuncNphBands::stretchDiagramLength(long double tau_init){
-
-    // initialize momentum values for last propagator
-    /*int total_order = _current_order_int + 2*_current_ph_ext;
+    int total_order = _current_order_int + 2*_current_ph_ext;
     double kx = 0, ky = 0, kz = 0;
 
     long double * new_taus = new long double[total_order+2];
@@ -2256,13 +2253,12 @@ long double GreenFuncNphBands::stretchDiagramLength(long double tau_init){
     for(int i = 0; i < total_order+2; ++i){
         _vertices[i].tau = new_taus[i];
     }
-    
-
+    findLastPhVertex();
     delete[] new_taus;
-    return _vertices[total_order+1].tau;*/
-    
+    return _vertices[total_order+1].tau;
+
     // initialize momentum values for first electron propagator
-    double kx = _propagators[0].el_propagator_kx;
+    /*double kx = _propagators[0].el_propagator_kx;
     double ky = _propagators[0].el_propagator_ky;
     double kz = _propagators[0].el_propagator_kz;
 
@@ -2326,7 +2322,7 @@ long double GreenFuncNphBands::stretchDiagramLength(long double tau_init){
     delete[] new_taus;
     return tau_fin; // return new length of diagram
 
-
+    */
 };
 
 void GreenFuncNphBands::markovChainMC(){
@@ -3040,43 +3036,6 @@ void GreenFuncNphBands::exactEstimatorGF(long double tau_length, int ext_phonon_
 
     if(ext_phonon_order < 0){ext_phonon_order = _current_ph_ext;}
 
-    //int current_order = _current_order_int + 2*ext_phonon_order; // total order of diagrams (number of phonon vertices)
-    //double electron_action = 0, phonon_action = 0;
-
-    // compute electron bare propagators action
-    /*for(int i=0; i<current_order+1; i++){
-        double electron_energy = electronEnergy(_propagators[i].el_propagator_kx, _propagators[i].el_propagator_ky, 
-            _propagators[i].el_propagator_kz, _bands[i].effective_mass);
-        electron_action += electron_energy*(_vertices[i+1].tau - _vertices[i].tau);
-    }
-
-    // compute phonon bare propagators action
-    int i = 0;
-    int int_count = 0;
-    int ext_count = 0;
-    bool int_flag = false;
-    bool ext_flag = false;
-
-    while(i < current_order + 1 && !(int_flag && ext_flag)){
-        if(_vertices[i].type == +1){
-            int index_two = _vertices[i].linked;
-            long double tau_one = _vertices[i].tau;  
-            long double tau_two = _vertices[index_two].tau;
-            phonon_action += phononEnergy(_phonon_modes,_vertices[i].index)*(tau_two - tau_one);
-            int_count++;
-            if(int_count == _current_order_int/2){int_flag = true;}
-        }
-        else if(_vertices[i].type == -2){
-            int index_two = _vertices[i].linked;
-            long double tau_one = _vertices[i].tau;  
-            long double tau_two = _vertices[index_two].tau;
-            phonon_action += phononEnergy(_phonon_modes, _vertices[i].index)*(tau_length + tau_one - tau_two);
-            ext_count++;
-            if(ext_count == ext_phonon_order){ext_flag = true;}
-        }
-        i++;
-    }*/
-
     // compute electron bare propagators action
     int current_order = _current_order_int + 2*_current_ph_ext; // total order of diagrams (number of phonon vertices)
     double electron_energy = 0;
@@ -3502,6 +3461,95 @@ void GreenFuncNphBands::calcGroundStateEnergy(std::string filename){
     std::cout << std::endl;
 };*/
 
+/*{
+    //int current_order = _current_order_int + 2*ext_phonon_order; // total order of diagrams (number of phonon vertices)
+    //double electron_action = 0, phonon_action = 0;
+*/
+    // compute electron bare propagators action
+    /*for(int i=0; i<current_order+1; i++){
+        double electron_energy = electronEnergy(_propagators[i].el_propagator_kx, _propagators[i].el_propagator_ky, 
+            _propagators[i].el_propagator_kz, _bands[i].effective_mass);
+        electron_action += electron_energy*(_vertices[i+1].tau - _vertices[i].tau);
+    }
+
+    // compute phonon bare propagators action
+    int i = 0;
+    int int_count = 0;
+    int ext_count = 0;
+    bool int_flag = false;
+    bool ext_flag = false;
+
+    while(i < current_order + 1 && !(int_flag && ext_flag)){
+        if(_vertices[i].type == +1){
+            int index_two = _vertices[i].linked;
+            long double tau_one = _vertices[i].tau;  
+            long double tau_two = _vertices[index_two].tau;
+            phonon_action += phononEnergy(_phonon_modes,_vertices[i].index)*(tau_two - tau_one);
+            int_count++;
+            if(int_count == _current_order_int/2){int_flag = true;}
+        }
+        else if(_vertices[i].type == -2){
+            int index_two = _vertices[i].linked;
+            long double tau_one = _vertices[i].tau;  
+            long double tau_two = _vertices[index_two].tau;
+            phonon_action += phononEnergy(_phonon_modes, _vertices[i].index)*(tau_length + tau_one - tau_two);
+            ext_count++;
+            if(ext_count == ext_phonon_order){ext_flag = true;}
+        }
+        i++;
+    }
+
+}
+}*/
+
+    /*int total_order = _current_order_int + 2*_current_ph_ext;
+    double kx = 0, ky = 0, kz = 0;
+
+    long double * new_taus = new long double[total_order+2];
+    new_taus[0] = 0.L; // first vertex time value is always 0
+
+    int c = 0;
+    int phonon_index = -1;
+    double phonon_lines_energies = 0;
+
+    for(int i=1; i < total_order+2; ++i){
+
+        kx = _propagators[i-1].el_propagator_kx;
+        ky = _propagators[i-1].el_propagator_ky;
+        kz = _propagators[i-1].el_propagator_kz;
+
+        c = _vertices[i-1].type;
+        phonon_index = _vertices[i-1].index;
+        
+        if(c == +1 || c == +2){
+            phonon_lines_energies += phononEnergy(_phonon_modes, phonon_index);
+        }
+        else if( c == -1 || c == -2){
+            phonon_lines_energies -= phononEnergy(_phonon_modes, phonon_index);
+        }
+
+        new_taus[i] = new_taus[i-1] - std::log(1-drawUniformR())/(electronEnergy(kx,ky,kz,_bands[i-1].effective_mass)
+        -_chem_potential + extPhononEnergy(_ext_phonon_type_num, _phonon_modes, _num_phonon_modes) + phonon_lines_energies);
+
+        if(new_taus[i] < new_taus[i-1] || isEqual(new_taus[i], new_taus[i-1])){
+            delete[] new_taus; 
+            return tau_init;
+        }
+    }
+
+    if(isEqual(new_taus[total_order+1], _tau_max) || new_taus[total_order+1] > _tau_max){
+        delete[] new_taus; 
+        return tau_init;
+    }
+
+    for(int i = 0; i < total_order+2; ++i){
+        _vertices[i].tau = new_taus[i];
+    }
+    
+
+    delete[] new_taus;
+    return _vertices[total_order+1].tau;*/
+
 double GreenFuncNphBands::calcNormConst(){
     double eff_mass_electron = computeEffMassSingleBand(_kx, _ky, _kz, _m_x_el, _m_y_el, _m_z_el);
     double numerator = 1 - std::exp(-(electronEnergy(_kx,_ky,_kz, eff_mass_electron)-_chem_potential)*_tau_max);
@@ -3520,11 +3568,6 @@ void GreenFuncNphBands::normalizeHistogram(double norm_const){
 
 void GreenFuncNphBands::writeHistogram(const std::string& filename) const {
     std::ofstream file;
-
-    /*if(filename.empty()){
-        std::cout << "Enter filename: ";
-        std::cin >> filename;
-    }*/
 
     file.open(filename);
 
