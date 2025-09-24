@@ -2520,20 +2520,23 @@ void GreenFuncNphBands::markovChainMC(){
         if(_p_length > 0 || _p_stretch > 0){
             std::cerr << "Warning: probabilities for length and stretch updates are set to non-zero values, but they will not be used." << std::endl;
             std::cerr << "Length and stretch updates will not be performed." << std::endl;
-            double probs = _p_length + _p_stretch;
-            _p_length = 0;
+            //double probs = _p_length + _p_stretch;
+            double probs[8] = {0., _p_add_int, _p_rem_int, _p_add_ext, _p_rem_ext, _p_swap, _p_shift, 0.};
+            setProbabilities(probs);
+            /*_p_length = 0;
             _p_stretch = 0;
             _p_add_int += probs/6;
             _p_rem_int += probs/6;
             _p_add_ext += probs/6;
             _p_rem_ext += probs/6;
             _p_swap += probs/6;
-            _p_shift += probs/6;
-            std::cerr << "Update probabilities have been adjusted to have a fixed diagram length." << std::endl;
-            std::cerr << "New update probabilities: add internal update = " << _p_add_int << ", remove internal update = " << _p_rem_int <<
+            _p_shift += probs/6;*/
+            std::cout << "Update probabilities have been adjusted to have a fixed diagram length." << std::endl;
+            std::cout << "p_length = 0, p_stretch = 0" << std::endl;
+            std::cout << "New update probabilities: add internal update = " << _p_add_int << ", remove internal update = " << _p_rem_int <<
             ", add external update = " << _p_add_ext << ", remove external update = " << _p_rem_ext <<
             ", swap update = " << _p_swap << ", shift update = " << _p_shift << std::endl;
-            std::cerr << std::endl;
+            std::cout << std::endl;
         }
     }
 

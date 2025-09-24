@@ -33,3 +33,6 @@ Updates.hpp
 
 # ignore folders
 Eigen
+
+#ignore unrelated files
+matrix.cpp
