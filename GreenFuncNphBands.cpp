@@ -2772,7 +2772,7 @@ void GreenFuncNphBands::markovChainMC(){
     }
 
     if(_flags.gs_energy){
-        _gs_energy = _gs_energy/(double)_gs_energy_count; // average energy of diagrams
+        _gs_energy = _gs_energy/static_cast<long double>(_gs_energy_count); // average energy of diagrams
         std::cout << "Ground state energy of the system is: " << _gs_energy << ". Input parameters are: kx = " << _kx << 
         ", ky = " << _ky << ", kz = " << _kz << std::endl;
         std::cout << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
@@ -2838,12 +2838,13 @@ void GreenFuncNphBands::markovChainMC(){
         std::cout << "Input parameters are: chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
         std::cout << "Number of diagrams used for effective mass calculation: " << _effective_mass_count << std::endl;
         if(_num_bands == 1){
-            _effective_masses[0] = _effective_masses[0]/static_cast<long double>(std::abs((int)_effective_mass_count));
-            _effective_masses[1] = _effective_masses[1]/static_cast<long double>(_effective_mass_count);
-            _effective_masses[2] = _effective_masses[2]/static_cast<long double>(_effective_mass_count);
-            _effective_masses[0] = (1.L)/_effective_masses[0];
-            _effective_masses[1] = (1.L)/_effective_masses[1];
-            _effective_masses[2] = (1.L)/_effective_masses[2];
+            long double effective_masses_inv[3] =  {0., 0., 0.};
+            effective_masses_inv[0] = _effective_masses[0]/static_cast<long double>(_effective_mass_count);
+            effective_masses_inv[1] = _effective_masses[1]/static_cast<long double>(_effective_mass_count);
+            effective_masses_inv[2] = _effective_masses[2]/static_cast<long double>(_effective_mass_count);
+            _effective_masses[0] = (1.L)/effective_masses_inv[0];
+            _effective_masses[1] = (1.L)/effective_masses_inv[1];
+            _effective_masses[2] = (1.L)/effective_masses_inv[2];
             std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
                     << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
         }
