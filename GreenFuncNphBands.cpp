@@ -835,7 +835,7 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
 
         if(!(Metropolis(R_rem))){delete[] bands_init; delete[] bands_fin; return;}
         else{
-            for(int i=index_one; i<index_two;i++){
+            for(int i=index_one; i<index_two; ++i){
                 _propagators[i].el_propagator_kx += w_x;
                 _propagators[i].el_propagator_ky += w_y;
                 _propagators[i].el_propagator_kz += w_z;
@@ -1170,7 +1170,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                     _propagators[i].el_propagator_kz -= w_z;
                     _bands[i] = bands_one_fin[i];
                 }
-                for(int i = index_two+2; i < total_order + 3; i++){
+                for(int i = index_two+2; i < total_order + 3; ++i){
                     _propagators[i].el_propagator_kx -= w_x;
                     _propagators[i].el_propagator_ky -= w_y;
                     _propagators[i].el_propagator_kz -= w_z;
@@ -1750,7 +1750,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                 return;
             }
             else{
-                for(int i=0; i<index_one;i++){
+                for(int i=0; i<index_one;++i){
                     _propagators[i].el_propagator_kx += w_x;
                     _propagators[i].el_propagator_ky += w_y;
                     _propagators[i].el_propagator_kz += w_z;
@@ -3101,8 +3101,7 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
     if(tau_length <= _tau_cutoff_mass){return 0;}
     else{
         int current_order = _current_order_int + 2*_current_ph_ext; // total order of diagrams (number of phonon vertices)
-        double electron_average_kx = 0; double electron_average_ky = 0; double electron_average_kz = 0;
-        
+        double electron_average_kx = 0; double electron_average_ky = 0; double electron_average_kz = 0;        
 
         for(int i=0; i<current_order+1; ++i){
             electron_average_kx += _propagators[i].el_propagator_kx*(_vertices[i+1].tau - _vertices[i].tau);
@@ -3126,15 +3125,15 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
                             *diagonalizeLKHamiltonianEigenval(1,1,1,_A_LK_el,_B_LK_el,_C_LK_el)/(2.)); // (111) direction
         }
         else if(_num_bands == 1){
-            _effective_masses[0] += (1 - tau_length*std::pow(electron_average_kx,2)); // x component
-            _effective_masses[1] += (1 - tau_length*std::pow(electron_average_ky,2)); // y component
-            _effective_masses[2] += (1 - tau_length*std::pow(electron_average_kz,2)); // z component
+            _effective_masses[0] += ((1./_m_x_el) - tau_length*std::pow(electron_average_kx,2)); // x component
+            _effective_masses[1] += ((1./_m_y_el) - tau_length*std::pow(electron_average_ky,2)); // y component
+            _effective_masses[2] += ((1./_m_z_el) - tau_length*std::pow(electron_average_kz,2)); // z component
         }
 
         _effective_mass_count++;
 
         // return inverse of effective mass, _D dimensionality of the system
-        return (1-tau_length*(std::pow(electron_average_kx,2) + std::pow(electron_average_ky,2) + std::pow(electron_average_kz,2))/_D);
+        return ((3./(_m_x_el+_m_y_el+_m_z_el))-tau_length*(std::pow(electron_average_kx,2) + std::pow(electron_average_ky,2) + std::pow(electron_average_kz,2))/_D);
     }
 };
 
