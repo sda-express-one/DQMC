@@ -2842,9 +2842,9 @@ void GreenFuncNphBands::markovChainMC(){
             effective_masses_inv[0] = _effective_masses[0]/static_cast<long double>(_effective_mass_count);
             effective_masses_inv[1] = _effective_masses[1]/static_cast<long double>(_effective_mass_count);
             effective_masses_inv[2] = _effective_masses[2]/static_cast<long double>(_effective_mass_count);
-            _effective_masses[0] = (1.L)/effective_masses_inv[0];
-            _effective_masses[1] = (1.L)/effective_masses_inv[1];
-            _effective_masses[2] = (1.L)/effective_masses_inv[2];
+            _effective_masses[0] = static_cast<long double>(_m_x_el)*(1.L)/effective_masses_inv[0];
+            _effective_masses[1] = static_cast<long double>(_m_y_el)*(1.L)/effective_masses_inv[1];
+            _effective_masses[2] = static_cast<long double>(_m_z_el)*(1.L)/effective_masses_inv[2];
             std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
                     << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
         }
@@ -2872,7 +2872,7 @@ void GreenFuncNphBands::markovChainMC(){
 
         }
         std::cout << std::endl;
-        std::cout << "Average effective mass of diagrams is: " << _effective_mass << "." << std::endl;
+        std::cout << "Average effective mass of diagrams is: " << static_cast<long double>(_m_x_el/3.+_m_y_el/3.+_m_z_el/3.)*_effective_mass << "." << std::endl;
         std::cout << "Average inverse effective mass of system is: " << effective_mass_inv << "." << std::endl;
 
         std::string filename = "effective_mass.txt";
@@ -2982,7 +2982,7 @@ double GreenFuncNphBands::groundStateEnergyExactEstimator(long double tau_length
         // compute electron bare propagators action
         int current_order = _current_order_int + 2*_current_ph_ext; // total order of diagrams (number of phonon vertices)
         double electron_energy = 0;
-        double electron_action = 0., phonon_action = 0.;
+        double electron_action = 0, phonon_action = 0;
 
         // phonon bare propagators action
         //int i = 0;
@@ -3125,15 +3125,15 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
                             *diagonalizeLKHamiltonianEigenval(1,1,1,_A_LK_el,_B_LK_el,_C_LK_el)/(2.)); // (111) direction
         }
         else if(_num_bands == 1){
-            _effective_masses[0] += ((1./_m_x_el) - tau_length*std::pow(electron_average_kx,2)); // x component
-            _effective_masses[1] += ((1./_m_y_el) - tau_length*std::pow(electron_average_ky,2)); // y component
-            _effective_masses[2] += ((1./_m_z_el) - tau_length*std::pow(electron_average_kz,2)); // z component
+            _effective_masses[0] += (1. - tau_length*std::pow(electron_average_kx,2)); // x component
+            _effective_masses[1] += (1. - tau_length*std::pow(electron_average_ky,2)); // y component
+            _effective_masses[2] += (1. - tau_length*std::pow(electron_average_kz,2)); // z component
         }
 
         _effective_mass_count++;
 
         // return inverse of effective mass, _D dimensionality of the system
-        return ((3./(_m_x_el+_m_y_el+_m_z_el))-tau_length*(std::pow(electron_average_kx,2) + std::pow(electron_average_ky,2) + std::pow(electron_average_kz,2))/_D);
+        return (1.-tau_length*(std::pow(electron_average_kx,2) + std::pow(electron_average_ky,2) + std::pow(electron_average_kz,2))/_D);
     }
 };
 
