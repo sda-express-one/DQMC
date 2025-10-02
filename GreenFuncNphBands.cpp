@@ -20,7 +20,8 @@ double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int pho
     // initialize arrays
     _phonon_modes = new double[_num_phonon_modes];
     _ext_phonon_type_num = new int[_num_phonon_modes];
-    _born_effective_charges = new double[_num_phonon_modes];
+    _dielectric_responses = new double[_num_phonon_modes];
+
 
     for(int i=0; i < _num_phonon_modes; i++){
         _ext_phonon_type_num[i] = 0;
@@ -68,9 +69,9 @@ void GreenFuncNphBands::setPhononModes(double * phonon_modes){
     }
 };
 
-void GreenFuncNphBands::setBornEffectiveCharges(double * born_effective_charges){
+void GreenFuncNphBands::setDielectricResponses(double * dielectric_responses){
     for(int i = 0; i < _num_phonon_modes; i++){
-        _born_effective_charges[i] = born_effective_charges[i];
+        _dielectric_responses[i] = dielectric_responses[i];
     }
 }
 
@@ -532,11 +533,14 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
             delete[] energy_init;
             delete[] energy_fin;
 
+            double mass_q = 1;
+            if(_num_bands == 1){mass_q = computeEffMassSingleBand(w_x, w_y, w_z, _m_x_el, _m_y_el, _m_z_el);}
+
             // multiply prefactor final by strength term of 2 extrema
             prefactor_fin = prefactor_fin*vertexStrengthTerm(w_x, w_y, w_z, _V_BZ, _V_BvK, _phonon_modes[phonon_index],
-                                         _born_effective_charges[phonon_index], _dielectric_const)
+                                         _dielectric_responses[phonon_index], _dielectric_const, mass_q)
                                          *vertexStrengthTerm(w_x, w_y, w_z, _V_BZ, _V_BvK, _phonon_modes[phonon_index],
-                                         _born_effective_charges[phonon_index], _dielectric_const);
+                                         _dielectric_responses[phonon_index], _dielectric_const, mass_q);
 
             double p_B = _p_rem_int*(_current_order_int + 2*_current_ph_ext + 1);
             double p_A = _p_add_int*(_current_order_int/2 + 1);
@@ -815,11 +819,14 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
 
         delete[] energy_init; delete[] energy_fin;
 
+        double mass_q = 1;
+        if(_num_bands == 1){mass_q = computeEffMassSingleBand(w_x, w_y, w_z, _m_x_el, _m_y_el, _m_z_el);}
+
         // multiply prefactor final by strength term of 2 extrema
         prefactor_fin = prefactor_fin*vertexStrengthTerm(w_x, w_y, w_z, _V_BZ, _V_BvK, _phonon_modes[phonon_index],
-                                    _born_effective_charges[phonon_index], _dielectric_const)
+                                    _dielectric_responses[phonon_index], _dielectric_const, mass_q)
                                     *vertexStrengthTerm(w_x, w_y, w_z, _V_BZ, _V_BvK, _phonon_modes[phonon_index],
-                                    _born_effective_charges[phonon_index], _dielectric_const);
+                                    _dielectric_responses[phonon_index], _dielectric_const, mass_q);
 
         double p_A = _p_add_int*((_current_order_int - 2)/2 + 1);
         double p_B = _p_rem_int*(_current_order_int + 2*_current_ph_ext - 1);
@@ -1118,11 +1125,14 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             double p_B = _p_rem_ext;
             double p_A = _p_add_ext*(_current_ph_ext+1);
 
+            double mass_q = 1;
+            if(_num_bands == 1){mass_q = computeEffMassSingleBand(w_x, w_y, w_z, _m_x_el, _m_y_el, _m_z_el);}
+
             // multiply prefactor final by strength term of 2 extrema
             prefactor_fin = prefactor_fin*vertexStrengthTerm(w_x, w_y, w_z, _V_BZ, _V_BvK, _phonon_modes[phonon_index],
-                                        _born_effective_charges[phonon_index], _dielectric_const)
+                                        _dielectric_responses[phonon_index], _dielectric_const, mass_q)
                                         *vertexStrengthTerm(w_x, w_y, w_z, _V_BZ, _V_BvK, _phonon_modes[phonon_index],
-                                        _born_effective_charges[phonon_index], _dielectric_const);
+                                        _dielectric_responses[phonon_index], _dielectric_const, mass_q);
 
             double numerator = p_B*std::exp(-(action_two_fin + action_one_fin - action_two_init - action_one_init + 
                 phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))*prefactor_fin; // *_num_bands*_num_bands
@@ -1423,11 +1433,14 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             double p_B = _p_rem_ext;
             double p_A = _p_add_ext*(_current_ph_ext+1);
 
+            double mass_q = 1;
+            if(_num_bands == 1){mass_q = computeEffMassSingleBand(w_x, w_y, w_z, _m_x_el, _m_y_el, _m_z_el);}
+
             // multiply prefactor final by strength term of 2 extrema
             prefactor_fin = prefactor_fin*vertexStrengthTerm(w_x, w_y, w_z, _V_BZ, _V_BvK, _phonon_modes[phonon_index],
-                                        _born_effective_charges[phonon_index], _dielectric_const)
+                                        _dielectric_responses[phonon_index], _dielectric_const, mass_q)
                                         *vertexStrengthTerm(w_x, w_y, w_z, _V_BZ, _V_BvK, _phonon_modes[phonon_index],
-                                        _born_effective_charges[phonon_index], _dielectric_const);
+                                        _dielectric_responses[phonon_index], _dielectric_const, mass_q);
 
             double numerator = p_B*std::exp(-(action_fin - action_init + phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))
                                 *prefactor_fin; // *_num_bands*_num_bands
@@ -1727,11 +1740,14 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
             double p_A = _p_add_ext*_current_ph_ext;
             double p_B = _p_rem_ext;
 
+            double mass_q = 1;
+            if(_num_bands == 1){mass_q = computeEffMassSingleBand(w_x, w_y, w_z, _m_x_el, _m_y_el, _m_z_el);}
+
             // multiply prefactor final by strength term of 2 extrema
             prefactor_fin = prefactor_fin*vertexStrengthTerm(w_x, w_y, w_z, _V_BZ, _V_BvK, _phonon_modes[phonon_index],
-                                        _born_effective_charges[phonon_index], _dielectric_const)
+                                        _dielectric_responses[phonon_index], _dielectric_const, mass_q)
                                         *vertexStrengthTerm(w_x, w_y, w_z, _V_BZ, _V_BvK, _phonon_modes[phonon_index],
-                                        _born_effective_charges[phonon_index], _dielectric_const);
+                                        _dielectric_responses[phonon_index], _dielectric_const, mass_q);
 
             double numerator = p_A*std::pow(2*M_PI,_D)
                 *phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*tau_one)
@@ -1970,11 +1986,14 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
 
                 double p_A = _p_add_ext*_current_ph_ext;
                 double p_B = _p_rem_ext;
+
+                double mass_q = 1;
+                if(_num_bands == 1){mass_q = computeEffMassSingleBand(w_x, w_y, w_z, _m_x_el, _m_y_el, _m_z_el);}
                 
                 prefactor_fin = prefactor_fin*vertexStrengthTerm(w_x, w_y, w_z, _V_BZ, _V_BvK, _phonon_modes[phonon_index],
-                                        _born_effective_charges[phonon_index], _dielectric_const)
+                                        _dielectric_responses[phonon_index], _dielectric_const, mass_q)
                                         *vertexStrengthTerm(w_x, w_y, w_z, _V_BZ, _V_BvK, _phonon_modes[phonon_index],
-                                        _born_effective_charges[phonon_index], _dielectric_const);
+                                        _dielectric_responses[phonon_index], _dielectric_const, mass_q);
 
                 double numerator = p_A*std::pow(2*M_PI,_D)*phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*tau_one)
                                 *phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two))
@@ -2370,7 +2389,7 @@ void GreenFuncNphBands::markovChainMC(){
     std::cout << "number of phonon modes: " << _num_phonon_modes << std::endl;
     for(int i=0; i<_num_phonon_modes; i++){
         std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-        << _born_effective_charges[i] << std::endl;
+        << _dielectric_responses[i] << std::endl;
     }
     std::cout << "Number of dimensions: " << _D << std::endl;
     std::cout << std::endl;
@@ -2440,7 +2459,7 @@ void GreenFuncNphBands::markovChainMC(){
 
         for(int i=0; i<_num_phonon_modes; i++){
             std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-            << _born_effective_charges[i] << std::endl;
+            << _dielectric_responses[i] << std::endl;
         }
         std::cout << std::endl;
     }
@@ -2465,7 +2484,7 @@ void GreenFuncNphBands::markovChainMC(){
 
         for(int i=0; i<_num_phonon_modes; i++){
             std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-            << _born_effective_charges[i] << std::endl;
+            << _dielectric_responses[i] << std::endl;
         }
         std::cout << std::endl;
     }
@@ -2793,7 +2812,7 @@ void GreenFuncNphBands::markovChainMC(){
         std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
         for(int i=0; i<_num_phonon_modes; i++){
             std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-            << _born_effective_charges[i] << std::endl;
+            << _dielectric_responses[i] << std::endl;
         }
 
         std::string filename = "gs_energy.txt";
@@ -2824,7 +2843,7 @@ void GreenFuncNphBands::markovChainMC(){
             file << "Number of phonon modes: " << _num_phonon_modes << std::endl;
             for(int i=0; i<_num_phonon_modes; i++){
                 file << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-                << _born_effective_charges[i] << std::endl;
+                << _dielectric_responses[i] << std::endl;
             }
             file << std::endl;
             file.close();
@@ -2861,7 +2880,7 @@ void GreenFuncNphBands::markovChainMC(){
         std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
         for(int i=0; i<_num_phonon_modes; i++){
             std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-            << _born_effective_charges[i] << std::endl;
+            << _dielectric_responses[i] << std::endl;
         }
         std::cout << std::endl;
         if(_num_bands == 1){
@@ -2900,7 +2919,7 @@ void GreenFuncNphBands::markovChainMC(){
             file << "Number of phonon modes: " << _num_phonon_modes << std::endl;
             for(int i=0; i<_num_phonon_modes; i++){
                 file << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-                << _born_effective_charges[i] << std::endl;
+                << _dielectric_responses[i] << std::endl;
             }
             file << std::endl;
 
@@ -2952,7 +2971,7 @@ void GreenFuncNphBands::markovChainMC(){
         std::cout << "number of phonon modes: " << _num_phonon_modes << std::endl;
         for(int i=0; i<_num_phonon_modes; i++){
             std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-            << _born_effective_charges[i] << std::endl;
+            << _dielectric_responses[i] << std::endl;
         }
         std::cout << std::endl;
 
@@ -3181,7 +3200,7 @@ void GreenFuncNphBands::calcGroundStateEnergy(std::string filename){
 
     for(int i=0; i<_num_phonon_modes; i++){
         std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-        << _born_effective_charges[i] << std::endl;
+        << _dielectric_responses[i] << std::endl;
     }
 
     std::cout << " minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
@@ -3209,7 +3228,7 @@ void GreenFuncNphBands::calcGroundStateEnergy(std::string filename){
 
         for(int i=0; i<_num_phonon_modes; i++){
             file << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-            << _born_effective_charges[i] << std::endl;
+            << _dielectric_responses[i] << std::endl;
         }
         file << " minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
         file << std::endl;
@@ -3724,7 +3743,7 @@ void GreenFuncNphBands::writeMCStatistics(std::string filename) const {
     file << "number of phonon modes: " << _num_phonon_modes << "\n";
     for(int i=0; i<_num_phonon_modes; i++){
         file << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-        << _born_effective_charges[i] << "\n";
+        << _dielectric_responses[i] << "\n";
     }
     file << "\n";
     file << "Cutoff for statistics: " << _tau_cutoff_statistics << "\n";

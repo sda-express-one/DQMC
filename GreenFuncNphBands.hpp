@@ -28,7 +28,7 @@ class GreenFuncNphBands : public Diagram {
     ~GreenFuncNphBands(){
         delete[] _phonon_modes;
         delete[] _ext_phonon_type_num;
-        delete[] _born_effective_charges;
+        delete[] _dielectric_responses;
         delete[] _bands;
 
         if(_flags.histo){
@@ -51,7 +51,7 @@ class GreenFuncNphBands : public Diagram {
     void setLuttingerKohnParameters(double A_LK_el, double B_LK_el, double C_LK_el);
     // phonons modes
     void setPhononModes(double* phonon_modes);
-    void setBornEffectiveCharges(double* born_effective_charges);
+    void setDielectricResponses(double* dielectric_responses);
     // other input quantities
     void set1BZVolume(double V_BZ);
     void setBvKVolume(double V_BvK);
@@ -116,7 +116,7 @@ class GreenFuncNphBands : public Diagram {
     int _num_phonon_modes = 1;
     double* _phonon_modes; // assumption: constant phonon dispersion in momentum spaces
     int* _ext_phonon_type_num;
-    double* _born_effective_charges; // Born effective charges for each phonon mode
+    double* _dielectric_responses; // Born effective charges for each phonon mode
 
     // transition probabilities
     double _p_length = (1./8.);

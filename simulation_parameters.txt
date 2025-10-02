@@ -1,7 +1,7 @@
 # all simulation parameters are written here
 
 type bands
-thermalization_steps 1000000000
+thermalization_steps 5000000000
 simulation_steps 10000000000
 max_tau_value 100
 dimensions 3
@@ -23,10 +23,10 @@ phonon_mode(0) 0.0007019116987733083
 #phonon_mode(1) 0.4
 #phonon_mode(2) 0.6
 #phonon_mode(3) 0.8
-born_charge(0) 0.0011076790040543188
-#born_charge(1) 1
-#born_charge(2) 1
-#born_charge(3) 1
+dielectric_response(0) 31.600373563218405
+#dielectric_response(1) 1
+#dielectric_response(2) 1
+#dielectric_response(3) 1
 m_x 0.052
 m_y 0.052
 m_z 0.052

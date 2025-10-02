@@ -13,7 +13,7 @@
 
 // read input from .txt file
 void readProbabilities(const std::string& filename, double * probs, int num_updates);
-void readPhononModes(const std::string& filename, double * phonon_modes, double * born_charges, int num_phonon_modes);
+void readPhononModes(const std::string& filename, double * phonon_modes, double * dielectric_responses, int num_phonon_modes);
 parameters readSimParameterstxt(const std::string& filename);
 settings readSimSettingstxt(const std::string& filename);
 
@@ -71,12 +71,12 @@ int main(){
             sim.ph_ext_max, sim.num_bands, sim.num_phonon_modes);
 
         double phonon_modes[sim.num_phonon_modes];
-        double born_charges[sim.num_phonon_modes];
+        double dielectric_responses[sim.num_phonon_modes];
 
-        readPhononModes("simulation_parameters.txt", phonon_modes, born_charges, sim.num_phonon_modes);
+        readPhononModes("simulation_parameters.txt", phonon_modes, dielectric_responses, sim.num_phonon_modes);
         
         diagram.setPhononModes(phonon_modes);
-        diagram.setBornEffectiveCharges(born_charges);
+        diagram.setDielectricResponses(dielectric_responses);
         diagram.set1BZVolume(sim.V_BZ);
         diagram.setBvKVolume(sim.V_BvK);
         diagram.setDielectricConstant(sim.dielectric_const);
@@ -480,11 +480,11 @@ settings readSimSettingstxt(const std::string& filename){
     return sets;
 };
 
-void readPhononModes(const std::string& filename, double * phonon_modes, double * born_charges, int num_phonon_modes){
+void readPhononModes(const std::string& filename, double * phonon_modes, double * dielectric_responses, int num_phonon_modes){
     // default
     for(int i=0; i<num_phonon_modes; i++){
         phonon_modes[i] = 0.5;
-        born_charges[i] = 0.5;
+        dielectric_responses[i] = 0.5;
     }
 
     std::ifstream file(filename);
@@ -502,7 +502,7 @@ void readPhononModes(const std::string& filename, double * phonon_modes, double 
         if(line.empty() || line[0] == '#') continue; // Skip empty lines and comments
 
         auto label_phonon = "phonon_mode(" + std::to_string(i) + ")";
-        auto label_charge = "born_charge(" + std::to_string(j) + ")";
+        auto label_charge = "dielectric_response(" + std::to_string(j) + ")";
 
         std::istringstream iss(line);
         std::string key;
@@ -518,7 +518,7 @@ void readPhononModes(const std::string& filename, double * phonon_modes, double 
             else if(key == label_charge && j < num_phonon_modes){
                 std::string value;
                 iss >> value;
-                born_charges[j] = stringToDouble(value);
+                dielectric_responses[j] = stringToDouble(value);
                 j++;
                 
             }
