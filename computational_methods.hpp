@@ -195,8 +195,14 @@ inline double phononEnergy(const double * phonon_modes, int phonon_mode_index){
 
 // vertex evaluation
 // strength term (phonon mode-exclusive part)
-inline double vertexStrengthTerm(double wx, double wy, double wz, double V_BZ, double V_BvK, double phonon_mode, double born_effective_charge, double dielectric_const){
+/*inline double vertexStrengthTerm(double wx, double wy, double wz, double V_BZ, double V_BvK, double phonon_mode, double born_effective_charge, double dielectric_const){
     return (1./(std::sqrt(wx*wx+wy*wy+wz*wz))*(4.*M_PI/V_BZ)*std::pow(2.*phonon_mode*V_BvK,-1./2)*born_effective_charge/dielectric_const);
+};*/
+
+inline double vertexStrengthTerm(double wx, double wy, double wz, double V_BZ, double V_BvK, double phonon_mode, double born_effective_charge, double dielectric_const){
+    born_effective_charge = 1;
+    dielectric_const = 1;
+    return(1./std::sqrt(wx*wx+wy*wy+wz*wz)*std::sqrt(2*std::sqrt(2)*M_PI*std::pow(phonon_mode,1.5)*0.1925986/(V_BZ*V_BvK*std::sqrt(0.052))))*dielectric_const*born_effective_charge;
 };
 
 // overlap term (electron band-dependent part)

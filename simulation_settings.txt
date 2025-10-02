@@ -6,18 +6,18 @@
 # if simulation_steps > 25000 in simulation_parameters.txt, write_diagrams is automatically set to false
 # if fix_tau_value = true, please set prob_length = 0 and prob_stretch = 0, otherwise it will be done automatically
 
-exact_GF true
+exact_GF false
 num_points 500
 selected_order_(GF) -1
-histo true
+histo false
 bins_(histogram) 500
 gs_energy true
-cutoff_tau_(gs_energy) 10
+cutoff_tau_(gs_energy) 30
 effective_mass true
-cutoff_tau_(mass) 10
+cutoff_tau_(mass) 30
 Z_factor false
 write_diagrams true
 time_benchmark false
 stats true
 cutoff_tau_stats 0
-fix_tau_value false
+fix_tau_value true

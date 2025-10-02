@@ -2833,8 +2833,8 @@ void GreenFuncNphBands::markovChainMC(){
     }
 
     if(_flags.effective_mass){
-        long double effective_mass_inv = _effective_mass/(long double)_effective_mass_count; // average effective mass of diagrams
-        _effective_mass = 1./effective_mass_inv; // effective mass is inverse of the value calculated
+        long double effective_mass_inv = ((3.L/(static_cast<long double>(_m_x_el)+static_cast<long double>(_m_y_el))+static_cast<long double>(_m_z_el)) - _effective_mass/static_cast<long double>(_effective_mass_count)); // average effective mass of diagrams
+        _effective_mass = 1.L/effective_mass_inv; // effective mass is inverse of the value calculated
         std::cout << "Input parameters are: chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
         std::cout << "Number of diagrams used for effective mass calculation: " << _effective_mass_count << std::endl;
         if(_num_bands == 1){
@@ -2842,9 +2842,9 @@ void GreenFuncNphBands::markovChainMC(){
             effective_masses_inv[0] = _effective_masses[0]/static_cast<long double>(_effective_mass_count);
             effective_masses_inv[1] = _effective_masses[1]/static_cast<long double>(_effective_mass_count);
             effective_masses_inv[2] = _effective_masses[2]/static_cast<long double>(_effective_mass_count);
-            _effective_masses[0] = static_cast<long double>(_m_x_el)*(1.L)/effective_masses_inv[0];
-            _effective_masses[1] = static_cast<long double>(_m_y_el)*(1.L)/effective_masses_inv[1];
-            _effective_masses[2] = static_cast<long double>(_m_z_el)*(1.L)/effective_masses_inv[2];
+            _effective_masses[0] = (1.L)/effective_masses_inv[0];
+            _effective_masses[1] = (1.L)/effective_masses_inv[1];
+            _effective_masses[2] = (1.L)/effective_masses_inv[2];
             std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
                     << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
         }
@@ -2872,7 +2872,7 @@ void GreenFuncNphBands::markovChainMC(){
 
         }
         std::cout << std::endl;
-        std::cout << "Average effective mass of diagrams is: " << static_cast<long double>(_m_x_el/3.+_m_y_el/3.+_m_z_el/3.)*_effective_mass << "." << std::endl;
+        std::cout << "Average effective mass of diagrams is: " << /*static_cast<long double>(_m_x_el/3.+_m_y_el/3.+_m_z_el/3.)**/_effective_mass << "." << std::endl;
         std::cout << "Average inverse effective mass of system is: " << effective_mass_inv << "." << std::endl;
 
         std::string filename = "effective_mass.txt";
@@ -3101,17 +3101,32 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
     if(tau_length <= _tau_cutoff_mass){return 0;}
     else{
         int current_order = _current_order_int + 2*_current_ph_ext; // total order of diagrams (number of phonon vertices)
-        double electron_average_kx = 0; double electron_average_ky = 0; double electron_average_kz = 0;        
+        double electron_average_kx = 0; double electron_average_ky = 0; double electron_average_kz = 0;
+        //double mx, my, mz;
 
-        for(int i=0; i<current_order+1; ++i){
+        /*for(int i=0; i<current_order+1; ++i){
+            if(isEqual(_propagators[i].el_propagator_kx, 0) && isEqual(_propagators[i].el_propagator_ky, 0) && isEqual(_propagators[i].el_propagator_kz, 0)){
+                mx = _m_x_el; my = _m_y_el; mz = _m_z_el;
+            }
+            else{
+                mx = computeEffMassSingleBand(_propagators[i].el_propagator_kx, _propagators[i].el_propagator_ky, _propagators[i].el_propagator_kz, _m_x_el, _m_y_el, _m_z_el);
+                my = mx;
+                mz = mx;
+            }
+            electron_average_kx += ((_vertices[i+1].tau - _vertices[i].tau)/mx - std::pow(_propagators[i].el_propagator_kx,2)*std::pow(_vertices[i+1].tau - _vertices[i].tau,2)/(mx*mx));
+            electron_average_ky += ((_vertices[i+1].tau - _vertices[i].tau)/my - std::pow(_propagators[i].el_propagator_ky,2)*std::pow(_vertices[i+1].tau - _vertices[i].tau,2)/(my*my));
+            electron_average_kz += ((_vertices[i+1].tau - _vertices[i].tau)/mz- std::pow(_propagators[i].el_propagator_kz,2)*std::pow(_vertices[i+1].tau - _vertices[i].tau,2)/(mz*mz));
+        }*/
+
+        for(int i=0; i< current_order+1; ++i){
             electron_average_kx += _propagators[i].el_propagator_kx*(_vertices[i+1].tau - _vertices[i].tau);
             electron_average_ky += _propagators[i].el_propagator_ky*(_vertices[i+1].tau - _vertices[i].tau);
             electron_average_kz += _propagators[i].el_propagator_kz*(_vertices[i+1].tau - _vertices[i].tau);
         }
 
-        electron_average_kx = electron_average_kx/tau_length;
-        electron_average_ky = electron_average_ky/tau_length;
-        electron_average_kz = electron_average_kz/tau_length;
+        electron_average_kx = electron_average_kx/tau_length;  //static_cast<long double>(_m_x_el*_m_x_el);
+        electron_average_ky = electron_average_ky/tau_length;  //static_cast<long double>(_m_y_el*_m_y_el);
+        electron_average_kz = electron_average_kz/tau_length;  //static_cast<long double>(_m_z_el*_m_z_el);
 
         if(_num_bands == 3){
             Eigen::RowVector3d unit;
@@ -3125,15 +3140,23 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
                             *diagonalizeLKHamiltonianEigenval(1,1,1,_A_LK_el,_B_LK_el,_C_LK_el)/(2.)); // (111) direction
         }
         else if(_num_bands == 1){
-            _effective_masses[0] += (1. - tau_length*std::pow(electron_average_kx,2)); // x component
-            _effective_masses[1] += (1. - tau_length*std::pow(electron_average_ky,2)); // y component
-            _effective_masses[2] += (1. - tau_length*std::pow(electron_average_kz,2)); // z component
+            _effective_masses[0] += ((1.L/static_cast<long double>(_m_x_el)) - (tau_length*electron_average_kx*electron_average_kx)/static_cast<long double>(_m_x_el*_m_x_el));
+            _effective_masses[1] += ((1.L/static_cast<long double>(_m_y_el)) - (tau_length*electron_average_ky*electron_average_ky)/static_cast<long double>(_m_y_el*_m_y_el));
+            _effective_masses[2] += ((1.L/static_cast<long double>(_m_z_el)) - (tau_length*electron_average_kz*electron_average_kz)/static_cast<long double>(_m_z_el*_m_z_el));
+            //_effective_masses[0] += 1.L/static_cast<long double>(_m_x_el) - electron_average_kx/tau_length; // x comp
+            //_effective_masses[1] += 1.L/static_cast<long double>(_m_y_el) - electron_average_ky/tau_length; // y comp
+            //_effective_masses[2] += 1.L/static_cast<long double>(_m_z_el) - electron_average_kz/tau_length; // z comp
+            //_effective_masses[0] += (1.L - tau_length*std::pow(electron_average_kx,2))/static_cast<long double>(_m_x_el); // x component
+            //_effective_masses[1] += (1.L - tau_length*std::pow(electron_average_ky,2))/static_cast<long double>(_m_y_el); // y component
+            //_effective_masses[2] += (1.L - tau_length*std::pow(electron_average_kz,2))/static_cast<long double>(_m_z_el); // z component
         }
 
         _effective_mass_count++;
 
         // return inverse of effective mass, _D dimensionality of the system
-        return (1.-tau_length*(std::pow(electron_average_kx,2) + std::pow(electron_average_ky,2) + std::pow(electron_average_kz,2))/_D);
+        //static_cast<long double>(_m_x_el/3.+_m_y_el/3.+_m_z_el/3.)
+        return (tau_length*(std::pow(electron_average_kx,2) + std::pow(electron_average_ky,2) + std::pow(electron_average_kz,2))/_D);
+        //return (1.L/(static_cast<long double>(_m_x_el/3.+_m_y_el/3.+_m_z_el/3.))-tau_length*(std::pow(electron_average_kx,2) + std::pow(electron_average_ky,2) + std::pow(electron_average_kz,2))/_D);
     }
 };
 
