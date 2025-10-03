@@ -3120,8 +3120,42 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
     if(tau_length <= _tau_cutoff_mass){return 0;}
     else{
         int current_order = _current_order_int + 2*_current_ph_ext; // total order of diagrams (number of phonon vertices)
+        double mass_average_inv_x = 0; double mass_average_inv_y = 0; double mass_average_inv_z = 0;
         double electron_average_kx = 0; double electron_average_ky = 0; double electron_average_kz = 0;
-        //double mx, my, mz;
+        double mx, my, mz;
+
+        if(_num_bands == 1){
+            for(int i=0; i< current_order+1; ++i){
+                /*if(isEqual(_propagators[i].el_propagator_kx, 0) && isEqual(_propagators[i].el_propagator_ky, 0) && isEqual(_propagators[i].el_propagator_kz, 0)){
+                    mx = _m_x_el; my = _m_y_el; mz = _m_z_el;
+                }
+                else{*/
+                mx = _m_x_el; my = _m_y_el; mz = _m_z_el;
+                //}
+                mass_average_inv_x += (_vertices[i+1].tau - _vertices[i].tau)/mx;
+                mass_average_inv_y += (_vertices[i+1].tau - _vertices[i].tau)/my;
+                mass_average_inv_z += (_vertices[i+1].tau - _vertices[i].tau)/mz;
+
+                electron_average_kx += _propagators[i].el_propagator_kx*(_vertices[i+1].tau - _vertices[i].tau)/mx;
+                electron_average_ky += _propagators[i].el_propagator_ky*(_vertices[i+1].tau - _vertices[i].tau)/my;
+                electron_average_kz += _propagators[i].el_propagator_kz*(_vertices[i+1].tau - _vertices[i].tau)/mz;
+            }
+
+            mass_average_inv_x = (1./tau_length)*mass_average_inv_x;
+            mass_average_inv_y = (1./tau_length)*mass_average_inv_y;
+            mass_average_inv_z = (1./tau_length)*mass_average_inv_z;
+
+            electron_average_kx = (1./tau_length)*electron_average_kx*electron_average_kx;
+            electron_average_ky = (1./tau_length)*electron_average_ky*electron_average_ky;
+            electron_average_kz = (1./tau_length)*electron_average_kz*electron_average_kz;
+
+            _effective_masses[0] += static_cast<long double>(mass_average_inv_x - electron_average_kx); // x component
+            _effective_masses[1] += static_cast<long double>(mass_average_inv_y - electron_average_ky); // y component
+            _effective_masses[2] += static_cast<long double>(mass_average_inv_z - electron_average_kz); // z component
+        }
+        else if (_num_bands == 3){
+
+        }
 
         /*for(int i=0; i<current_order+1; ++i){
             if(isEqual(_propagators[i].el_propagator_kx, 0) && isEqual(_propagators[i].el_propagator_ky, 0) && isEqual(_propagators[i].el_propagator_kz, 0)){
@@ -3135,7 +3169,7 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
             electron_average_kx += ((_vertices[i+1].tau - _vertices[i].tau)/mx - std::pow(_propagators[i].el_propagator_kx,2)*std::pow(_vertices[i+1].tau - _vertices[i].tau,2)/(mx*mx));
             electron_average_ky += ((_vertices[i+1].tau - _vertices[i].tau)/my - std::pow(_propagators[i].el_propagator_ky,2)*std::pow(_vertices[i+1].tau - _vertices[i].tau,2)/(my*my));
             electron_average_kz += ((_vertices[i+1].tau - _vertices[i].tau)/mz- std::pow(_propagators[i].el_propagator_kz,2)*std::pow(_vertices[i+1].tau - _vertices[i].tau,2)/(mz*mz));
-        }*/
+        }
 
         for(int i=0; i< current_order+1; ++i){
             electron_average_kx += _propagators[i].el_propagator_kx*(_vertices[i+1].tau - _vertices[i].tau);
@@ -3169,7 +3203,9 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
             //_effective_masses[1] += (1.L - tau_length*std::pow(electron_average_ky,2))/static_cast<long double>(_m_y_el); // y component
             //_effective_masses[2] += (1.L - tau_length*std::pow(electron_average_kz,2))/static_cast<long double>(_m_z_el); // z component
         }
-
+        
+        */
+       
         _effective_mass_count++;
 
         // return inverse of effective mass, _D dimensionality of the system
