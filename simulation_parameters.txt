@@ -1,9 +1,9 @@
 # all simulation parameters are written here
 
 type bands
-thermalization_steps 5000000000
-simulation_steps 10000000000
-max_tau_value 100
+thermalization_steps 1000000000
+simulation_steps 1000000000
+max_tau_value 5000
 dimensions 3
 volume 1
 kx 0
@@ -30,6 +30,6 @@ dielectric_response(0) 31.600373563218405
 m_x 0.052
 m_y 0.052
 m_z 0.052
-V_1BZ 12.513
+V_1BZ 489.80627242425
 V_BvK 1
 diel_const 8.89

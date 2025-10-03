@@ -546,7 +546,7 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
             double p_A = _p_add_int*(_current_order_int/2 + 1);
 
             double numerator = p_B*std::exp(-(action_fin - action_init + (phononEnergy(_phonon_modes, phonon_index)*(tau_two - tau_one))))*
-                (tau_end-tau_init)*prefactor_fin; //*_num_bands*_num_bands
+                (tau_end-tau_init)*prefactor_fin*_V_BZ; //*_num_bands*_num_bands
             double denominator = p_A*std::pow(2*M_PI,_D)*phononEnergy(_phonon_modes, phonon_index)
                 *std::exp(-phononEnergy(_phonon_modes, phonon_index)*(tau_two-tau_one))
                 *std::pow(((tau_two-tau_one)/(2*M_PI)),double(_D)/2.)*std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)
@@ -836,7 +836,7 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
                 *std::pow(((tau_two-tau_one)/(2*M_PI)),double(_D)/2.)*std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)
                 *(tau_two-tau_one))*prefactor_init;
         double denominator = p_B*std::exp(-(action_fin - action_init + (phononEnergy(_phonon_modes, phonon_index)*(tau_two - tau_one))))*
-                (tau_end-tau_init)*prefactor_fin; //*_num_bands*_num_bands
+                (tau_end-tau_init)*prefactor_fin*_V_BZ; //*_num_bands*_num_bands
 
         double R_rem = numerator/denominator;
 
@@ -1135,7 +1135,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                                         _dielectric_responses[phonon_index], _dielectric_const, mass_q);
 
             double numerator = p_B*std::exp(-(action_two_fin + action_one_fin - action_two_init - action_one_init + 
-                phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))*prefactor_fin; // *_num_bands*_num_bands
+                phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))*prefactor_fin*_V_BZ; // *_num_bands*_num_bands
 
             double denominator = p_A*std::pow(2*M_PI,_D)
                 *phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*tau_one)
@@ -1443,7 +1443,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                                         _dielectric_responses[phonon_index], _dielectric_const, mass_q);
 
             double numerator = p_B*std::exp(-(action_fin - action_init + phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))
-                                *prefactor_fin; // *_num_bands*_num_bands
+                                *prefactor_fin*_V_BZ; // *_num_bands*_num_bands
 
             double denominator = p_A*std::pow(2*M_PI,_D)*phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*tau_one)
                                 *phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two))
@@ -1756,7 +1756,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                 *std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one))*prefactor_init;
 
             double denominator = p_B*std::exp(-(action_two_fin + action_one_fin - action_two_init - action_one_init + 
-                phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))*prefactor_fin; // *_num_bands*_num_bands
+                phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))*prefactor_fin*_V_BZ; // *_num_bands*_num_bands
             
             double R_rem = numerator/denominator;
 
@@ -2001,7 +2001,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                                 *std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one))*prefactor_init;
                 
                 double denominator = p_B*std::exp(-(action_fin - action_init + phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))
-                                *prefactor_fin; // *_num_bands*_num_bands
+                                *prefactor_fin*_V_BZ; // *_num_bands*_num_bands
 
                 double R_rem = numerator/denominator;
 
