@@ -108,7 +108,7 @@ inline Eigen::Matrix<double, 4, 3> diagonalizeLKHamiltonian(const double kx, con
     }
 
     Eigen::Matrix3d eigenvectors = eigensolver.eigenvectors(); // eigenvector matrix 
-    Eigen::RowVector3d eigenvalues = eigensolver.eigenvalues().transpose(); // eigenvalues row vector (from smallest to largest
+    Eigen::RowVector3d eigenvalues = eigensolver.eigenvalues().transpose(); // eigenvalues row vector (from smallest to largest)
 
     selectionRules(A_LK, B_LK, C_LK, eigenvectors, eigenvalues); // reorder eigenvalues and eigenvectors according to band number
 
@@ -205,7 +205,7 @@ inline double coupling_strength(double phonon_mode, double dielectric_response, 
 
 inline double vertexStrengthTerm(double wx, double wy, double wz, double V_BZ, double V_BvK, double phonon_mode, double dielectric_response, double dielectric_const, double effective_mass){
     dielectric_const = 1;
-    return(1./std::sqrt(wx*wx+wy*wy+wz*wz)*std::sqrt(2*std::sqrt(2)*M_PI*std::pow(phonon_mode,1.5)*coupling_strength(phonon_mode, dielectric_response, effective_mass)/(V_BZ*V_BvK*std::sqrt(effective_mass))))*dielectric_const;
+    return(1./std::sqrt(wx*wx+wy*wy+wz*wz)*std::sqrt(2.*std::sqrt(2.)*M_PI*std::pow(phonon_mode,1.5)*coupling_strength(phonon_mode, dielectric_response, effective_mass)/(V_BZ*V_BvK*std::sqrt(effective_mass))))*dielectric_const;
 };
 
 // overlap term (electron band-dependent part)

@@ -317,7 +317,7 @@ void GreenFuncNph::addInternalPhononPropagator(){
         long double tau_end = _vertices[propagator+1].tau;
         std::uniform_real_distribution<long double> distrib_unif(tau_init, tau_end);
         long double tau_one = distrib_unif(gen);
-        long double tau_two = tau_one - std::log(1-drawUniformR())/1;
+        long double tau_two = tau_one - std::log(1-drawUniformR())/_ph_dispersion;
         if(tau_two >= _vertices[_current_order_int + 2*_current_ph_ext + 1].tau){return;} // reject if phonon vertex goes out of bound
         else{
             // sampling momentum values for phonon propagators
@@ -400,7 +400,7 @@ void GreenFuncNph::addInternalPhononPropagator(){
             double p_A = _p_add_int*(_current_order_int/2 + 1);
 
             double numerator = p_B*std::exp(-(exponent_fin - exponent_init + (phononDispersion(_ph_dispersion))*(tau_two - tau_one)))*calcVertexStrength(w_x,w_y,w_z)*(tau_end-tau_init);
-            double denominator = p_A*std::pow(2*M_PI,_D)*std::exp(-(tau_two-tau_one))*std::pow(((tau_two-tau_one)/(2*M_PI)),double(_D)/2.)*
+            double denominator = p_A*std::pow(2*M_PI,_D)*_ph_dispersion*std::exp(-_ph_dispersion*(tau_two-tau_one))*std::pow(((tau_two-tau_one)/(2*M_PI)),double(_D)/2.)*
             std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_two-tau_one));
 
             double R_add = numerator/denominator;
@@ -518,7 +518,7 @@ void GreenFuncNph::removeInternalPhononPropagator(){
         double p_A = _p_add_int*((_current_order_int - 2)/2 + 1);
         double p_B = _p_rem_int*(_current_order_int + 2*_current_ph_ext - 1);
         
-        double numerator = p_A*std::pow(2*M_PI,_D)*std::exp(-(tau_two-tau_one))*std::pow(((tau_two-tau_one)/(2*M_PI)),double(_D)/2.)*
+        double numerator = p_A*std::pow(2*M_PI,_D)*_ph_dispersion*std::exp(-_ph_dispersion*(tau_two-tau_one))*std::pow(((tau_two-tau_one)/(2*M_PI)),double(_D)/2.)*
         std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_two-tau_one));
         double denominator = p_B*std::exp(-(exponent_fin-exponent_init+(phononDispersion(_ph_dispersion))*(tau_two - tau_one)))*calcVertexStrength(w_x,w_y,w_z)*(tau_end-tau_init);
 
@@ -545,10 +545,10 @@ void GreenFuncNph::addExternalPhononPropagator(){
         int total_order = _current_order_int + 2*_current_ph_ext;
         long double tau_current = _vertices[total_order + 1].tau; // length of current diagram
 
-        long double tau_one = 0. - std::log(1-drawUniformR())/1; // time of ingoing vertex of ext phonon propagator
+        long double tau_one = 0. - std::log(1-drawUniformR())/_ph_dispersion; // time of ingoing vertex of ext phonon propagator
         if(tau_one >= tau_current){return;} // reject if it goes out of bound
 
-        long double tau_two = tau_current + std::log(1-drawUniformR())/1; // time of outgoing vertex
+        long double tau_two = tau_current + std::log(1-drawUniformR())/_ph_dispersion; // time of outgoing vertex
         if(tau_two <= 0){return;} // reject if it goes out of bound
         if(isEqual(tau_one, tau_two)){return;} // reject if both vertices are equal (should not happen)
 
@@ -673,7 +673,7 @@ void GreenFuncNph::addExternalPhononPropagator(){
             double numerator = p_B*std::exp(-(exponent_two_fin + exponent_one_fin - exponent_two_init - exponent_one_init + 
                 phononDispersion(_ph_dispersion)*(tau_current-tau_two+tau_one)))*calcVertexStrength(w_x, w_y, w_z);
 
-            double denominator = p_A*std::pow(2*M_PI,_D)*1*std::exp(-tau_one)*1*std::exp(-(tau_current-tau_two))*
+            double denominator = p_A*std::pow(2*M_PI,_D)*_ph_dispersion*std::exp(-_ph_dispersion*tau_one)*_ph_dispersion*std::exp(-_ph_dispersion*(tau_current-tau_two))*
             std::pow(((tau_current-tau_two+tau_one)/(2*M_PI)), (double)_D/2.)*
             std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one));
 
@@ -810,7 +810,7 @@ void GreenFuncNph::addExternalPhononPropagator(){
             double numerator = p_B*std::exp(-(exponent_fin - exponent_init + phononDispersion(_ph_dispersion)*(tau_current-tau_two+tau_one)))
             *calcVertexStrength(w_x, w_y, w_z);
 
-            double denominator = p_A*std::pow(2*M_PI,_D)*1*std::exp(-tau_one)*1*std::exp(-(tau_current-tau_two))*
+            double denominator = p_A*std::pow(2*M_PI,_D)*_ph_dispersion*std::exp(-_ph_dispersion*tau_one)*_ph_dispersion*std::exp(-_ph_dispersion*(tau_current-tau_two))*
             std::pow(((tau_current-tau_two+tau_one)/(2*M_PI)), (double)_D/2.)*
             std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one));
 
@@ -970,7 +970,7 @@ void GreenFuncNph::removeExternalPhononPropagator(){
             double p_A = _p_add_ext*_current_ph_ext;
             double p_B = _p_rem_ext;
 
-            double numerator = p_A*std::pow(2*M_PI,_D)*1*std::exp(-tau_one)*1*std::exp(-(tau_current-tau_two))*
+            double numerator = p_A*std::pow(2*M_PI,_D)*_ph_dispersion*std::exp(-_ph_dispersion*tau_one)*1*std::exp(-_ph_dispersion*(tau_current-tau_two))*
             std::pow(((tau_current-tau_two+tau_one)/(2*M_PI)), (double)_D/2.)*
             std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one));
 
@@ -1068,7 +1068,7 @@ void GreenFuncNph::removeExternalPhononPropagator(){
                 double p_A = _p_add_ext*_current_ph_ext;
                 double p_B = _p_rem_ext;
 
-                double numerator = p_A*std::pow(2*M_PI,_D)*1*std::exp(-tau_one)*1*std::exp(-(tau_current-tau_two))*
+                double numerator = p_A*std::pow(2*M_PI,_D)*_ph_dispersion*std::exp(-_ph_dispersion*tau_one)*_ph_dispersion*std::exp(-_ph_dispersion*(tau_current-tau_two))*
                 std::pow(((tau_current-tau_two+tau_one)/(2*M_PI)), (double)_D/2.)*
                 std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)*(tau_current-tau_two+tau_one));
 
@@ -1173,6 +1173,7 @@ void GreenFuncNph::swapPhononPropagator(){
             _vertices[index_two].linked = linked1;
             _vertices[index_two].tau = tau2;
         }
+        findLastPhVertex();
     }
 };
 
@@ -1203,6 +1204,7 @@ void GreenFuncNph::shiftPhononPropagator(){
         long double tau_new = tau_init - std::log(1 - drawUniformR()*(1 - std::exp(-energy_delta*(tau_fin - tau_init))))/energy_delta;
         if(isEqual(tau_new, tau_init) || isEqual(tau_new, tau_fin) || tau_new > tau_fin){return;}
         _vertices[vertex_index].tau = tau_new; // assign new time value to vertex
+        findLastPhVertex();
     }
 };
 
@@ -1253,6 +1255,7 @@ long double GreenFuncNph::stretchDiagramLength(long double tau_init){
         _vertices[i].tau = new_taus[i];} // assign new time values to vertices
     long double tau_fin = new_taus[total_order+1]; // assign new time value to last vertex
     delete[] new_taus;
+    findLastPhVertex();
     return tau_fin; // return new length of diagram
 };
 
@@ -1278,6 +1281,8 @@ void GreenFuncNph::markovChainMC(){
     std::cout << std::endl;
     std::cout << "Number of thermalization steps: " << getRelaxSteps() << std::endl;
     std::cout << "Number of diagrams to be generated: " << N_diags << std::endl;
+    std::cout << "Effective mass of electron: " << _el_eff_mass << std::endl;
+    std::cout << "Phonon dispersion: " << _ph_dispersion << std::endl;
     std::cout << "Maximum length of diagram: " << _tau_max << std::endl;
     std::cout << "Maximum number of internal phonons: " << _order_int_max/2 << std::endl;
     std::cout << "Maximum number of external phonons: " << _ph_ext_max << std::endl;
@@ -1793,7 +1798,7 @@ double GreenFuncNph::calcGroundStateEnergy(long double tau_length){
         }
         double diagram_energy = (electron_action + phonon_action - (double)current_order)/tau_length; // energy of current diagram
         _gs_energy_count++;
-        return diagram_energy; // return energy of current diagram
+        return static_cast<long double>(diagram_energy); // return energy of current diagram
     }
 };
 
@@ -1813,7 +1818,7 @@ double GreenFuncNph::calcEffectiveMass(long double tau_length){
 
         _effective_mass_count++;
         // return inverse of effective mass, _D dimensionality of the system
-        return (1-tau_length*(std::pow(electron_average_kx,2) + std::pow(electron_average_ky,2) + std::pow(electron_average_kz,2))/_D);
+        return static_cast<long double>(1/_el_eff_mass-tau_length*(std::pow(electron_average_kx,2) + std::pow(electron_average_ky,2) + std::pow(electron_average_kz,2))/(_D*_el_eff_mass));
     }
 };
 

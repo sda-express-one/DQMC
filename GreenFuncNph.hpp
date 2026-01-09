@@ -154,7 +154,7 @@ class GreenFuncNph : public Diagram {
     // phonon dispersion relation inline
     static inline double phononDispersion(double ph_dispersion){return ph_dispersion;};
      // 3D vertex strength (modulus squared)
-    inline double calcVertexStrength(double w_x, double w_y, double w_z){return (2.*std::sqrt(2.)*M_PI*_alpha/_volume)/(std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2));};
+    inline double calcVertexStrength(double w_x, double w_y, double w_z){return (2.*std::sqrt(2.)*M_PI*_alpha/_volume*(std::pow(_ph_dispersion,1.5)/std::sqrt(_el_eff_mass)))/(std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2));};
      // 2D vertex strength (modulus squared)
     inline double calcVertexStrength(double w_x, double w_y){return (std::sqrt(2)*M_PI*_alpha/_volume)/std::sqrt(pow(w_x,2)+pow(w_y,2));};
     // finds last vertex before diagram end

@@ -2,34 +2,42 @@
 
 type bands
 thermalization_steps 1000000000
-simulation_steps 1000000000
-max_tau_value 5000
+simulation_steps 1000
+max_tau_value 50
 dimensions 3
 volume 1
 kx 0
 ky 0
 kz 0
-#coupling_strength 8.0
-chemical_potential -0.1
+coupling_strength 0.276
+chemical_potential -0.5
 max_internal_order 1000
 max_num_ext_phonons 100
-# electron_effective_mass 1
-# optical_phonon_dispersion 1
+# electron_effective_mass 0.089
+# optical_phonon_dispersion 0.0010767545955004151
 
-num_bands 1
+num_bands 3
 num_phonon_modes 1
-phonon_mode(0) 0.0007019116987733083
-# 0.00173824189
-#phonon_mode(1) 0.4
-#phonon_mode(2) 0.6
-#phonon_mode(3) 0.8
-dielectric_response(0) 31.600373563218405
-#dielectric_response(1) 1
-#dielectric_response(2) 1
-#dielectric_response(3) 1
-m_x 0.052
-m_y 0.052
-m_z 0.052
-V_1BZ 489.80627242425
+
+phonon_mode(0) 1
+# phonon_mode(1) 0.0009554818936181159
+# phonon_mode(2) 0.0012127270188229933
+# phonon_mode(3) 0.0023152061268438963
+
+dielectric_response(0) 1
+# dielectric_response(1) 15.170584738979068
+# dielectric_response(2) 10.968502768962466
+# dielectric_response(3) 6.246252815087144
+
+m_x 8.827
+m_y 8.827
+m_z 8.827
+
+A_LK 1
+B_LK 0.5
+C_LK 0
+
+V_1BZ 1
 V_BvK 1
-diel_const 8.89
+
+diel_const 1

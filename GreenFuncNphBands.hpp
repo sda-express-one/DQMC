@@ -186,6 +186,8 @@ class GreenFuncNphBands : public Diagram {
     void bandArrayRemoveRoom(int index_one, int index_two);
     void updateExternalPhononTypes(int index);
 
+    int choosePhonon();
+
     // MCMC updates
     long double diagramLengthUpdate(long double tau_init);
     void addInternalPhononPropagator();
