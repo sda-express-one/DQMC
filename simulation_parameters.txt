@@ -1,7 +1,7 @@
 # all simulation parameters are written here
 
 type bands
-thermalization_steps 1000000000
+thermalization_steps 1000000
 simulation_steps 1000
 max_tau_value 50
 dimensions 3
@@ -10,7 +10,7 @@ kx 0
 ky 0
 kz 0
 coupling_strength 0.276
-chemical_potential -0.5
+chemical_potential -1.0
 max_internal_order 1000
 max_num_ext_phonons 100
 # electron_effective_mass 0.089
@@ -29,13 +29,13 @@ dielectric_response(0) 1
 # dielectric_response(2) 10.968502768962466
 # dielectric_response(3) 6.246252815087144
 
-m_x 8.827
-m_y 8.827
-m_z 8.827
+m_x 0.827
+m_y 0.827
+m_z 0.827
 
 A_LK 1
-B_LK 0.5
-C_LK 0
+B_LK 0.4
+C_LK 0.2
 
 V_1BZ 1
 V_BvK 1

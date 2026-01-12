@@ -6,7 +6,7 @@
 # if simulation_steps > 25000 in simulation_parameters.txt, write_diagrams is automatically set to false
 # if fix_tau_value = true, please set prob_length = 0 and prob_stretch = 0, otherwise it will be done automatically
 
-exact_GF false
+exact_GF true
 num_points 500
 selected_order_(GF) -1
 histo true

@@ -2649,9 +2649,6 @@ void GreenFuncNphBands::markovChainMC(){
 
     tau_length = configSimulation(tau_length); // print simulation parameters
 
-    std::cout << _bin_width << std::endl;
-    std::cout << _bin_width_inv << std::endl;
-
     //double bin_width_inv = 1./_bin_width;
 
     std::cout << "Starting thermalization process" << std::endl;
