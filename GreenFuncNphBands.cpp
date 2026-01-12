@@ -362,7 +362,6 @@ int GreenFuncNphBands::choosePhonon(){
 };
 */
 
-
 void GreenFuncNphBands::addInternalPhononPropagator(){
     if(_current_order_int+1 >= _order_int_max){return;} // reject if already at max order
     else{
@@ -2346,10 +2345,7 @@ long double GreenFuncNphBands::stretchDiagramLength(long double tau_init){
     */
 };
 
-void GreenFuncNphBands::markovChainMC(){
-
-    unsigned long long int N_diags = getNdiags(); // number of diagrams to be generated
-    unsigned long long int N_relax = getRelaxSteps(); // number of thermalization steps
+long double GreenFuncNphBands::configSimulation(long double tau_length = 1.0L){
 
     if((!(isEqual(_kx,0)) || !(isEqual(_ky,0)) || !(isEqual(_kz,0))) && _flags.effective_mass){
         std::cerr << "Warning: kx, ky and kz should be equal to 0 to calculate effective mass." << std::endl;
@@ -2367,7 +2363,7 @@ void GreenFuncNphBands::markovChainMC(){
     std::cout <<"Starting simulation..." << std::endl;
     std::cout << std::endl;
     std::cout << "Number of thermalization steps: " << getRelaxSteps() << std::endl;
-    std::cout << "Number of diagrams to be generated: " << N_diags << std::endl;
+    std::cout << "Number of diagrams to be generated: " << getNdiags() << std::endl;
     std::cout << "Maximum length of diagram: " << _tau_max << std::endl;
     std::cout << "Maximum number of internal phonons: " << _order_int_max/2 << std::endl;
     std::cout << "Maximum number of external phonons: " << _ph_ext_max << std::endl;
@@ -2404,8 +2400,6 @@ void GreenFuncNphBands::markovChainMC(){
     ", swap update: " << _p_swap << "," << std::endl;
     std::cout << "shift update: " << _p_shift << ", stretch update: " << _p_stretch << std::endl; 
     std::cout << std::endl;
-
-    double bin_width_inv = 1./_bin_width;
 
     if(_flags.gf_exact){
         std::cout << "Green Function will be calculated exactly." << std::endl;
@@ -2500,9 +2494,10 @@ void GreenFuncNphBands::markovChainMC(){
     }*/
 
     if(_flags.write_diagrams){
-        if(N_diags > 25000){
+        if(getNdiags() > 25000){
             _flags.write_diagrams = false; // if too many diagrams are generated they are not printed to txt file
             std::cerr << "Warning: too many diagrams generated (> 25000), diagrams will not be printed to .txt file." << std::endl;
+            std::cerr << std::endl;
         }
         else{
             std::cout << "The diagrams generated in the simulation process will be printed in the Diagrams.txt file" << std::endl;
@@ -2511,8 +2506,8 @@ void GreenFuncNphBands::markovChainMC(){
     }
 
     if(_flags.time_benchmark){
-        _benchmark_sim = new MC_Benchmarking(N_diags, 8);
-        _benchmark_th = new MC_Benchmarking(N_relax, 8);
+        _benchmark_sim = new MC_Benchmarking(getNdiags(), 8);
+        _benchmark_th = new MC_Benchmarking(getRelaxSteps(), 8);
         std::cout << "Time benchmark will be performed." << std::endl;
         std::cout << std::endl;
     }
@@ -2525,13 +2520,6 @@ void GreenFuncNphBands::markovChainMC(){
         std::cout << std::endl;
     }
 
-    // input variables
-    //std::uniform_real_distribution<long double> distrib(0,_tau_max);
-    //long double tau_length = distrib(gen);
-    long double tau_length = diagramLengthUpdate(_tau_max/100);
-    double r = 0.5;
-    unsigned long long int i = 0;
-
     if(_flags.fix_tau_value){
         std::cout << "Length of diagrams is fixed to: " << _tau_max << std::endl;
         tau_length = _tau_max - 1e-7L; // fix length of diagrams to tau_max
@@ -2541,17 +2529,10 @@ void GreenFuncNphBands::markovChainMC(){
         if(_p_length > 0 || _p_stretch > 0){
             std::cerr << "Warning: probabilities for length and stretch updates are set to non-zero values, but they will not be used." << std::endl;
             std::cerr << "Length and stretch updates will not be performed." << std::endl;
-            //double probs = _p_length + _p_stretch;
+
             double probs[8] = {0., _p_add_int, _p_rem_int, _p_add_ext, _p_rem_ext, _p_swap, _p_shift, 0.};
             setProbabilities(probs);
-            /*_p_length = 0;
-            _p_stretch = 0;
-            _p_add_int += probs/6;
-            _p_rem_int += probs/6;
-            _p_add_ext += probs/6;
-            _p_rem_ext += probs/6;
-            _p_swap += probs/6;
-            _p_shift += probs/6;*/
+
             std::cout << "Update probabilities have been adjusted to have a fixed diagram length." << std::endl;
             std::cout << "p_length = 0, p_stretch = 0" << std::endl;
             std::cout << "New update probabilities: add internal update = " << _p_add_int << ", remove internal update = " << _p_rem_int <<
@@ -2560,6 +2541,67 @@ void GreenFuncNphBands::markovChainMC(){
             std::cout << std::endl;
         }
     }
+    return tau_length;
+};
+
+long double GreenFuncNphBands::chooseUpdate(long double tau_length, double r , MC_Benchmarking * benchmark){
+
+    if(r <= _p_length){
+        if(_flags.time_benchmark){benchmark->startUpdateTimer();}
+        tau_length = diagramLengthUpdate(tau_length);
+        if(_flags.time_benchmark){benchmark->stopUpdateTimer(0);}
+    }
+    else if(r <= _p_length + _p_add_int){
+        if(_flags.time_benchmark){benchmark->startUpdateTimer();}
+        addInternalPhononPropagator();
+        if(_flags.time_benchmark){benchmark->stopUpdateTimer(1);}
+    }
+    else if(r <= _p_length + _p_add_int + _p_rem_int){
+        if(_flags.time_benchmark){benchmark->startUpdateTimer();}
+            removeInternalPhononPropagator();
+        if(_flags.time_benchmark){benchmark->stopUpdateTimer(2);}
+    }
+    else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext){
+        if(_flags.time_benchmark){benchmark->startUpdateTimer();}
+        addExternalPhononPropagator();
+        if(_flags.time_benchmark){benchmark->stopUpdateTimer(3);}
+    }
+    else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext){
+        if(_flags.time_benchmark){benchmark->startUpdateTimer();}
+        removeExternalPhononPropagator();
+        if(_flags.time_benchmark){benchmark->stopUpdateTimer(4);}
+    }
+    else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap){
+        if(_flags.time_benchmark){benchmark->startUpdateTimer();}
+        swapPhononPropagator();
+        if(_flags.time_benchmark){benchmark->stopUpdateTimer(5);}
+    }
+    else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift){
+        if(_flags.time_benchmark){benchmark->startUpdateTimer();}
+        shiftPhononPropagator();
+        if(_flags.time_benchmark){benchmark->stopUpdateTimer(6);}
+    }
+    else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift + _p_stretch){
+        if(_flags.time_benchmark){benchmark->startUpdateTimer();}
+        tau_length = stretchDiagramLength(tau_length);
+        if(_flags.time_benchmark){benchmark->stopUpdateTimer(7);}
+    }
+    return tau_length;
+};
+
+void GreenFuncNphBands::markovChainMC(){
+
+    // input variables
+    long double tau_length = diagramLengthUpdate(_tau_max/100);
+    double r = 0.5;
+    unsigned long long int i = 0;
+
+    unsigned long long int N_diags = getNdiags(); // number of diagrams to be generated
+    unsigned long long int N_relax = getRelaxSteps(); // number of thermalization steps
+
+    tau_length = configSimulation(tau_length); // print simulation parameters
+
+    double bin_width_inv = 1./_bin_width;
 
     std::cout << "Starting thermalization process" << std::endl;
     std::cout << std::endl;
@@ -2572,49 +2614,9 @@ void GreenFuncNphBands::markovChainMC(){
 
     ProgressBar bar(N_relax, 70);
     while(i < N_relax){
-
         r = drawUniformR();
-
-        if(r <= _p_length){
-            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
-            tau_length = diagramLengthUpdate(tau_length);
-            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(0);}
-        }
-        else if(r <= _p_length + _p_add_int){
-            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
-            addInternalPhononPropagator();
-            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(1);}
-        }
-        else if(r <= _p_length + _p_add_int + _p_rem_int){
-            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
-            removeInternalPhononPropagator();
-            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(2);}
-        }
-        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext){
-            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
-            addExternalPhononPropagator();
-            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(3);}
-        }
-        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext){
-            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
-            removeExternalPhononPropagator();
-            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(4);}
-        }
-        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap){
-            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
-            swapPhononPropagator();
-            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(5);}
-        }
-        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift){
-            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
-            shiftPhononPropagator();
-            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(6);}
-        }
-        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift + _p_stretch){
-            if(_flags.time_benchmark){_benchmark_th->startUpdateTimer();}
-            tau_length = stretchDiagramLength(tau_length);
-            if(_flags.time_benchmark){_benchmark_th->stopUpdateTimer(7);}
-        }
+        
+        tau_length = chooseUpdate(tau_length, r, _benchmark_th);
 
         if(static_cast<int>(i%100000) == 0){fixDoublePrecisionErrors(_current_order_int + 2*_current_ph_ext, 1e-9);}
 
@@ -2657,49 +2659,9 @@ void GreenFuncNphBands::markovChainMC(){
 
     while(i < N_diags){
         r = drawUniformR();
-        if(_flags.write_diagrams){
-            writeChosenUpdate("Updates.txt", i, r);
-        }
-        if(r <= _p_length){
-            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
-            tau_length = diagramLengthUpdate(tau_length);
-            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(0);}
-        }
-        else if(r <= _p_length + _p_add_int){
-            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
-            addInternalPhononPropagator();
-            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(1);}
-        }
-        else if(r <= _p_length + _p_add_int + _p_rem_int){
-            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
-            removeInternalPhononPropagator();
-            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(2);}
-        }
-        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext){
-            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
-            addExternalPhononPropagator();
-            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(3);}
-        }
-        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext){
-            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
-            removeExternalPhononPropagator();
-            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(4);}
-        }
-        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap){
-            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
-            swapPhononPropagator();
-            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(5);}
-        }
-        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift){
-            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
-            shiftPhononPropagator();
-            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(6);}
-        }
-        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift + _p_stretch){
-            if(_flags.time_benchmark){_benchmark_sim->startUpdateTimer();}
-            tau_length = stretchDiagramLength(tau_length);
-            if(_flags.time_benchmark){_benchmark_sim->stopUpdateTimer(7);}
-        }
+        if(_flags.write_diagrams){writeChosenUpdate("Updates.txt", i, r);}
+
+        tau_length = chooseUpdate(tau_length, r, _benchmark_sim);
 
         if(_flags.gf_exact && (_current_ph_ext == _selected_order || _selected_order < 0)){
             exactEstimatorGF(tau_length, _selected_order); // calculate Green function

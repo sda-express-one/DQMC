@@ -198,6 +198,9 @@ class GreenFuncNphBands : public Diagram {
     void shiftPhononPropagator();
     long double stretchDiagramLength(long double tau_init);
 
+    long double configSimulation(long double tau_length);
+    long double chooseUpdate(long double tau_length, double r, MC_Benchmarking * benchmark);
+
     // histogram methods
     double calcNormConst();
     void normalizeHistogram(double norm_const);
