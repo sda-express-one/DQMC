@@ -2426,6 +2426,7 @@ long double GreenFuncNphBands::configSimulation(long double tau_length = 1.0L){
     if(_flags.histo){
         std::cout << "Green Function will be computed using the histogram method" << std::endl;
         std::cout << "Number of bins: " << _N_bins << std::endl;
+        _bin_width_inv = 1./_bin_width;
         _histogram = new double[_N_bins];
         _bin_count = new unsigned long long int[_N_bins];
         _green_func = new double[_N_bins];
@@ -2589,6 +2590,53 @@ long double GreenFuncNphBands::chooseUpdate(long double tau_length, double r , M
     return tau_length;
 };
 
+void GreenFuncNphBands::computeQuantities(long double tau_length, double r, int i){
+    if(_flags.gf_exact && (_current_ph_ext == _selected_order || _selected_order < 0)){
+        exactEstimatorGF(tau_length, _selected_order); // calculate Green function
+        _gf_exact_count++; // count number of diagrams for normalization
+    }
+
+    if(_flags.histo){
+        // select correct bin for histogram
+        tau_length = (tau_length < 0.) ? 0. : (tau_length >= _tau_max) ? _tau_max - 1e-9 : tau_length;
+        int bin = (int)((tau_length - 0.) * _bin_width_inv);
+        _bin_count[bin]++;
+    }
+
+    if(_flags.gs_energy){
+        _gs_energy += groundStateEnergyExactEstimator(tau_length); // accumulate energy of diagrams
+    }
+
+    if(_flags.effective_mass){
+        _effective_mass += effectiveMassExactEstimator(tau_length); // accumulate effective mass of diagrams
+    }
+
+    // if(_flags.Z_factor){updateZFactor();} // accumulate Z factor data
+
+    if(_flags.write_diagrams){
+        writeDiagram("Diagrams.txt", i, r); // method to visualize diagram structure
+    }
+
+    if(_current_order_int == 0 && _current_ph_ext == 0){
+            _N0++;
+    }
+
+    if(_flags.mc_statistics && (tau_length >= _tau_cutoff_statistics)){
+        _mc_statistics.num_diagrams++; // accumulate number of diagrams
+        _mc_statistics.avg_tau += tau_length; // accumulate average length of diagrams
+        _mc_statistics.avg_tau_squared += tau_length*tau_length; // accumulate average squared length of diagrams
+        _mc_statistics.avg_order += _current_order_int + 2*_current_ph_ext; // accumulate average order of diagrams
+        _mc_statistics.avg_order_squared += (_current_order_int + 2*_current_ph_ext)*(_current_order_int + 2*_current_ph_ext); // accumulate average squared order of diagrams
+        _mc_statistics.avg_ph_ext += _current_ph_ext; // accumulate average number of external phonons
+        _mc_statistics.avg_ph_ext_squared += _current_ph_ext*_current_ph_ext; // accumulate average squared number of external phonons
+        _mc_statistics.avg_ph_int += _current_order_int/2; // accumulate average number of internal phonons
+        _mc_statistics.avg_ph_int_squared += (_current_order_int/2)*(_current_order_int/2); // accumulate average squared number of internal phonons
+        if(_current_order_int + 2*_current_ph_ext == 0){
+            _mc_statistics.zero_order_diagrams++; // accumulate number of zero order diagrams
+        }
+    }
+};
+
 void GreenFuncNphBands::markovChainMC(){
 
     // input variables
@@ -2601,7 +2649,10 @@ void GreenFuncNphBands::markovChainMC(){
 
     tau_length = configSimulation(tau_length); // print simulation parameters
 
-    double bin_width_inv = 1./_bin_width;
+    std::cout << _bin_width << std::endl;
+    std::cout << _bin_width_inv << std::endl;
+
+    //double bin_width_inv = 1./_bin_width;
 
     std::cout << "Starting thermalization process" << std::endl;
     std::cout << std::endl;
@@ -2615,7 +2666,7 @@ void GreenFuncNphBands::markovChainMC(){
     ProgressBar bar(N_relax, 70);
     while(i < N_relax){
         r = drawUniformR();
-        
+
         tau_length = chooseUpdate(tau_length, r, _benchmark_th);
 
         if(static_cast<int>(i%100000) == 0){fixDoublePrecisionErrors(_current_order_int + 2*_current_ph_ext, 1e-9);}
@@ -2663,50 +2714,8 @@ void GreenFuncNphBands::markovChainMC(){
 
         tau_length = chooseUpdate(tau_length, r, _benchmark_sim);
 
-        if(_flags.gf_exact && (_current_ph_ext == _selected_order || _selected_order < 0)){
-            exactEstimatorGF(tau_length, _selected_order); // calculate Green function
-            _gf_exact_count++; // count number of diagrams for normalization
-        }
+        computeQuantities(tau_length, r, i); // compute desired quantities from MC computation
 
-        if(_flags.histo){
-            // select correct bin for histogram
-            tau_length = (tau_length < 0.) ? 0. : (tau_length >= _tau_max) ? _tau_max - 1e-9 : tau_length;
-            int bin = (int)((tau_length - 0.) * bin_width_inv);
-            _bin_count[bin]++;
-        }
-
-        if(_flags.gs_energy){
-            _gs_energy += groundStateEnergyExactEstimator(tau_length); // accumulate energy of diagrams
-        }
-
-        if(_flags.effective_mass){
-            _effective_mass += effectiveMassExactEstimator(tau_length); // accumulate effective mass of diagrams
-        }
-
-        // if(_flags.Z_factor){updateZFactor();} // accumulate Z factor data
-
-        if(_flags.write_diagrams){
-            writeDiagram("Diagrams.txt", i, r); // method to visualize diagram structure
-        }
-
-        if(_current_order_int == 0 && _current_ph_ext == 0){
-                _N0++;
-        }
-
-        if(_flags.mc_statistics && (tau_length >= _tau_cutoff_statistics)){
-            _mc_statistics.num_diagrams++; // accumulate number of diagrams
-            _mc_statistics.avg_tau += tau_length; // accumulate average length of diagrams
-            _mc_statistics.avg_tau_squared += tau_length*tau_length; // accumulate average squared length of diagrams
-            _mc_statistics.avg_order += _current_order_int + 2*_current_ph_ext; // accumulate average order of diagrams
-            _mc_statistics.avg_order_squared += (_current_order_int + 2*_current_ph_ext)*(_current_order_int + 2*_current_ph_ext); // accumulate average squared order of diagrams
-            _mc_statistics.avg_ph_ext += _current_ph_ext; // accumulate average number of external phonons
-            _mc_statistics.avg_ph_ext_squared += _current_ph_ext*_current_ph_ext; // accumulate average squared number of external phonons
-            _mc_statistics.avg_ph_int += _current_order_int/2; // accumulate average number of internal phonons
-            _mc_statistics.avg_ph_int_squared += (_current_order_int/2)*(_current_order_int/2); // accumulate average squared number of internal phonons
-            if(_current_order_int + 2*_current_ph_ext == 0){
-                _mc_statistics.zero_order_diagrams++; // accumulate number of zero order diagrams
-            }
-        }
         if(static_cast<int>(i%100000) == 0){fixDoublePrecisionErrors(_current_order_int + 2*_current_ph_ext, 1e-9);}
 
         if(static_cast<int>(i%100000) == 0){checkTimeErrors(_current_order_int+2*_current_ph_ext);}

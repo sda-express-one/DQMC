@@ -139,6 +139,7 @@ class GreenFuncNphBands : public Diagram {
     int _N_bins = 100; // number of bins for histogram
     double _bin_width = _tau_max/_N_bins; // width of each bin
     double _bin_center = _bin_width/2; // center of each bin
+    double _bin_width_inv = 1./_bin_width;
     double* _histogram; // histogram time lengths
     unsigned long long int* _bin_count; // number of diagrams in each bin
     double* _green_func;
@@ -200,6 +201,7 @@ class GreenFuncNphBands : public Diagram {
 
     long double configSimulation(long double tau_length);
     long double chooseUpdate(long double tau_length, double r, MC_Benchmarking * benchmark);
+    void computeQuantities(long double tau_length, double r, int i);
 
     // histogram methods
     double calcNormConst();
