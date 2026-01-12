@@ -473,13 +473,13 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
                     if(i == index_one){
                         prefactor_fin = prefactor_fin*vertexOverlapTerm(bands_init[0], new_overlap);
                     }
-                    if (i == index_two){
-                        // prefactor_init = prefactor_init*vertexOverlapTerm(bands_init[index_two - index_one - 1], bands_init[index_two - index_one]);
-                        prefactor_fin = prefactor_fin*vertexOverlapTerm(bands_init[index_two - index_one], new_overlap);
-                    }
                     else{
                         prefactor_init = prefactor_init*vertexOverlapTerm(bands_init[j-1], bands_init[j]);
                         prefactor_fin = prefactor_fin*vertexOverlapTerm(bands_fin[j-1], bands_fin[j]);                        
+                    }
+                    if (i == index_two){
+                        // prefactor_init = prefactor_init*vertexOverlapTerm(bands_init[index_two - index_one - 1], bands_init[index_two - index_one]);
+                        prefactor_fin = prefactor_fin*vertexOverlapTerm(bands_init[index_two - index_one], new_overlap);
                     }
                 }
                 else if(_num_bands == 1){
