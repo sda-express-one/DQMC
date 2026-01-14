@@ -36,3 +36,6 @@ Eigen
 
 #ignore unrelated files
 matrix.cpp
+
+# ignore ipynb files
+*ipynb

@@ -202,7 +202,12 @@ class GreenFuncNphBands : public Diagram {
     long double configSimulation(long double tau_length);
     long double chooseUpdate(long double tau_length, double r, MC_Benchmarking * benchmark);
     void computeQuantities(long double tau_length, double r, int i);
-
+    void printGFExactEstimator();
+    void printhistogramEstimator();
+    void printGroundStateEnergyEstimator();
+    void printEffectiveMassEstimator();
+    void printMCStatistics();
+    
     // histogram methods
     double calcNormConst();
     void normalizeHistogram(double norm_const);

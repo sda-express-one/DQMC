@@ -2637,6 +2637,224 @@ void GreenFuncNphBands::computeQuantities(long double tau_length, double r, int 
     }
 };
 
+void GreenFuncNphBands::printGFExactEstimator(){
+    double norm_const = calcNormConst();
+    for(int i=0; i<_num_points; i++){
+        //_points_gf_exact[i] = _points_gf_exact[i]/((double)_gf_exact_count);
+        _points_gf_exact[i] = _points_gf_exact[i]*norm_const/_N0; // right normalization
+    }
+    std::string a = "GF_";
+    auto b = std::to_string(_selected_order);
+    if(_selected_order < 0){
+        b = "total";
+    }
+    std::cout << "Exact Green's function computed." << std::endl;
+    std::string c = "_exact.txt";
+    writeExactGF(a+b+c); // write Green function to file
+    std::cout << std::endl;
+};
+
+void GreenFuncNphBands::printhistogramEstimator(){
+    double norm_const = calcNormConst();
+    normalizeHistogram(norm_const);
+    std::cout << "Histogram computed." << std::endl;
+    writeHistogram("histo.txt");
+    std::cout << std::endl;
+};
+
+void GreenFuncNphBands::printGroundStateEnergyEstimator(){
+    _gs_energy = _gs_energy/static_cast<long double>(_gs_energy_count); // average energy of diagrams
+    std::cout << "Ground state energy of the system is: " << _gs_energy << ". Input parameters are: kx = " << _kx << 
+    ", ky = " << _ky << ", kz = " << _kz << std::endl;
+    std::cout << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+    std::cout << "minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
+    std::cout << "Number of diagrams used for ground state energy calculation: " << _gs_energy_count << std::endl;
+    if(_num_bands == 1){
+        std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
+            << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+        }
+    else if(_num_bands == 3){
+        std::cout << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
+            << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+    }
+    std::cout <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
+        << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+    for(int i=0; i<_num_phonon_modes; i++){
+        std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+        << _dielectric_responses[i] << std::endl;
+    }
+
+    std::string filename = "gs_energy.txt";
+    std::ofstream file(filename, std::ofstream::app);
+
+    if(!file.is_open()){
+        std::cerr << "Could not gs_energy.txt open file " << filename << std::endl;
+    }
+    else{
+        file << "Ground state energy of the system is: " << _gs_energy << " . Input parameters are: kx = " << _kx << 
+            ", ky = " << _ky << ", kz = " << _kz << std::endl;
+        file << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+        file << " minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
+        file << "Number of diagrams used for ground state energy calculation: " << _gs_energy_count << std::endl;
+
+        if(_num_bands == 1){
+            file << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
+                << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+        }
+        else if(_num_bands == 3){
+            file << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
+                << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+        }
+        file << "1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
+        << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
+        file << std::endl;
+
+        file << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+        for(int i=0; i<_num_phonon_modes; i++){
+            file << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+            << _dielectric_responses[i] << std::endl;
+        }
+        file << std::endl;
+        file.close();
+    }
+    std::cout << std::endl;
+};
+
+void GreenFuncNphBands::printEffectiveMassEstimator(){
+    long double effective_mass_inv = ((3.L/(static_cast<long double>(_m_x_el)+static_cast<long double>(_m_y_el))+static_cast<long double>(_m_z_el)) - _effective_mass/static_cast<long double>(_effective_mass_count)); // average effective mass of diagrams
+    _effective_mass = 1.L/effective_mass_inv; // effective mass is inverse of the value calculated
+    std::cout << "Input parameters are: chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+    std::cout << "Number of diagrams used for effective mass calculation: " << _effective_mass_count << std::endl;
+    if(_num_bands == 1){
+        long double effective_masses_inv[3] =  {0., 0., 0.};
+        effective_masses_inv[0] = _effective_masses[0]/static_cast<long double>(_effective_mass_count);
+        effective_masses_inv[1] = _effective_masses[1]/static_cast<long double>(_effective_mass_count);
+        effective_masses_inv[2] = _effective_masses[2]/static_cast<long double>(_effective_mass_count);
+        _effective_masses[0] = (1.L)/effective_masses_inv[0];
+        _effective_masses[1] = (1.L)/effective_masses_inv[1];
+        _effective_masses[2] = (1.L)/effective_masses_inv[2];
+        std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
+            << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+    }
+
+    else if(_num_bands == 3){
+        std::cout << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
+                << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+    }
+
+    std::cout <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
+        << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+    for(int i=0; i<_num_phonon_modes; i++){
+        std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+        << _dielectric_responses[i] << std::endl;
+    }
+    std::cout << std::endl;
+    if(_num_bands == 1){
+        std::cout << "Polaronic effective masses are: mx_pol = " << (_effective_masses[0]) << ", my_pol = " 
+            << _effective_masses[1] << ", mz_pol = " << _effective_masses[2] << std::endl; 
+    }
+    else if(_num_bands == 3){
+
+    }
+    std::cout << std::endl;
+    std::cout << "Average effective mass of diagrams is: " << /*static_cast<long double>(_m_x_el/3.+_m_y_el/3.+_m_z_el/3.)**/_effective_mass << "." << std::endl;
+    std::cout << "Average inverse effective mass of system is: " << effective_mass_inv << "." << std::endl;
+    std::cout << std::endl;
+
+    std::string filename = "effective_mass.txt";
+    std::ofstream file(filename, std::ofstream::app);
+
+    if(!file.is_open()){
+        std::cerr << "Could not effective_mass.txt open file " << filename << std::endl;
+    }
+    else{
+        file << "Effective mass of the system is: " << _effective_mass << "." << std::endl;
+        file << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+        file << "Number of diagrams used for effective mass calculation: " << _effective_mass_count << std::endl;
+        if(_num_bands == 1){
+            file << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
+                << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+        }
+        else if(_num_bands == 3){
+            file << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
+                    << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+        }
+        file <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
+        << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
+        file << std::endl;
+
+        file << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+        for(int i=0; i<_num_phonon_modes; i++){
+            file << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+                << _dielectric_responses[i] << std::endl;
+        }
+        file << std::endl;
+
+        if(_num_bands == 1){
+            file << "Polaronic effective masses are: mx_pol = " << _effective_masses[0] << ", my_pol = " 
+                << _effective_masses[1] << ", mz_pol = " << _effective_masses[2] << std::endl; 
+        }
+       else if(_num_bands == 3){
+
+        }
+        file << std::endl;
+        file << "Average effective mass of diagrams is: " << _effective_mass << "." << std::endl;
+        file << "Average inverse effective mass of the system is: " << effective_mass_inv << "." << std::endl;
+        file << std::endl;
+
+        file.close();
+    }
+};
+
+void GreenFuncNphBands::printMCStatistics(){
+    _mc_statistics.avg_tau /= static_cast<long double>(_mc_statistics.num_diagrams); // average length of diagrams
+    _mc_statistics.avg_tau_squared /= static_cast<long double>(_mc_statistics.num_diagrams); // average squared length of diagrams
+
+    std::cout << "Monte Carlo statistics:" << std::endl;
+       
+    std::cout << "chemical potential: " << _chem_potential << ", number of degenerate electronic bands: " << _num_bands << std::endl;
+    if(_num_bands == 1){
+        std::cout << "electronic effective masses: mx_el = " << _m_x_el << ", my_el = " << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+    }
+    else if(_num_bands == 3){
+        std::cout << "electronic Luttinger-Kohn parameters: A_LK_el = " << _A_LK_el << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+    }
+
+    std::cout << "total momentum: kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << std::endl;
+    std::cout << std::endl;
+    std::cout << "1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " << _dielectric_const << std::endl;
+    std::cout << std::endl;
+    std::cout << "number of phonon modes: " << _num_phonon_modes << std::endl;
+    for(int i=0; i<_num_phonon_modes; i++){
+        std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+        << _dielectric_responses[i] << std::endl;
+    }
+    std::cout << std::endl;
+
+    std::cout << "Cutoff for statistics: " << _tau_cutoff_statistics << std::endl;
+    std::cout << "Number of diagrams (taken into account): " << _mc_statistics.num_diagrams << std::endl;
+    std::cout << "Average length of diagrams: " << _mc_statistics.avg_tau << std::endl;
+    std::cout << "Std dev length of diagrams: " << std::sqrt(_mc_statistics.avg_tau_squared - _mc_statistics.avg_tau*_mc_statistics.avg_tau) << std::endl;
+    std::cout << "Average order of diagrams: " << static_cast<long double>(_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams) << std::endl;
+    std::cout << "Std dev order of diagrams: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_order_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
+        - static_cast<long double>(_mc_statistics.avg_order*_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << std::endl;
+    std::cout << "Average number of internal phonons: " << static_cast<long double>(_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams) << std::endl;
+    std::cout << "Std dev number of internal phonons: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_ph_int_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
+        - static_cast<long double>(_mc_statistics.avg_ph_int*_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << std::endl;
+    std::cout << "Average number of external phonons: " << static_cast<long double>(_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams) << std::endl;
+    std::cout << "Std dev number of external phonons: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_ph_ext_squared)/static_cast<long double>(_mc_statistics.num_diagrams) 
+        - static_cast<long double>(_mc_statistics.avg_ph_ext*_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << std::endl;
+    std::cout << "Number of zero order diagrams: " << _mc_statistics.zero_order_diagrams << std::endl;
+    std::cout << std::endl;
+    writeMCStatistics("MC_Statistics.txt");
+};
+
 void GreenFuncNphBands::markovChainMC(){
 
     // input variables
@@ -2736,178 +2954,19 @@ void GreenFuncNphBands::markovChainMC(){
     }
 
     if(_flags.gf_exact){
-        double norm_const = calcNormConst();
-        for(int i=0; i<_num_points; i++){
-            //_points_gf_exact[i] = _points_gf_exact[i]/((double)_gf_exact_count);
-            _points_gf_exact[i] = _points_gf_exact[i]*norm_const/_N0; // right normalization
-        }
-        std::string a = "GF_";
-        auto b = std::to_string(_selected_order);
-        if(_selected_order < 0){
-            b = "total";
-        }
-        std::cout << "Exact Green's function computed." << std::endl;
-        std::string c = "_exact.txt";
-        writeExactGF(a+b+c); // write Green function to file
-        std::cout << std::endl;
+        printGFExactEstimator();
     }
 
     if(_flags.histo){
-        std::cout << "Histogram computed." << std::endl;
-        double norm_const = calcNormConst();
-        normalizeHistogram(norm_const);
-        writeHistogram("histo.txt");
-        std::cout << std::endl;
+        printhistogramEstimator();
     }
 
     if(_flags.gs_energy){
-        _gs_energy = _gs_energy/static_cast<long double>(_gs_energy_count); // average energy of diagrams
-        std::cout << "Ground state energy of the system is: " << _gs_energy << ". Input parameters are: kx = " << _kx << 
-        ", ky = " << _ky << ", kz = " << _kz << std::endl;
-        std::cout << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
-        std::cout << "minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
-        std::cout << "Number of diagrams used for ground state energy calculation: " << _gs_energy_count << std::endl;
-        if(_num_bands == 1){
-            std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
-                    << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
-        }
-        else if(_num_bands == 3){
-            std::cout << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
-                    << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
-        }
-        std::cout <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
-        << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
-        std::cout << std::endl;
-
-        std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
-        for(int i=0; i<_num_phonon_modes; i++){
-            std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-            << _dielectric_responses[i] << std::endl;
-        }
-
-        std::string filename = "gs_energy.txt";
-        std::ofstream file(filename, std::ofstream::app);
-
-        if(!file.is_open()){
-            std::cerr << "Could not gs_energy.txt open file " << filename << std::endl;
-        }
-        else{
-            file << "Ground state energy of the system is: " << _gs_energy << " . Input parameters are: kx = " << _kx << 
-            ", ky = " << _ky << ", kz = " << _kz << std::endl;
-            file << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
-            file << " minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
-            file << "Number of diagrams used for ground state energy calculation: " << _gs_energy_count << std::endl;
-
-            if(_num_bands == 1){
-                file << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
-                    << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
-            }
-            else if(_num_bands == 3){
-                file << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
-                    << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
-            }
-            file << "1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
-            << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
-            file << std::endl;
-
-            file << "Number of phonon modes: " << _num_phonon_modes << std::endl;
-            for(int i=0; i<_num_phonon_modes; i++){
-                file << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-                << _dielectric_responses[i] << std::endl;
-            }
-            file << std::endl;
-            file.close();
-        }
-        std::cout << std::endl;
+        printGroundStateEnergyEstimator();
     }
 
     if(_flags.effective_mass){
-        long double effective_mass_inv = ((3.L/(static_cast<long double>(_m_x_el)+static_cast<long double>(_m_y_el))+static_cast<long double>(_m_z_el)) - _effective_mass/static_cast<long double>(_effective_mass_count)); // average effective mass of diagrams
-        _effective_mass = 1.L/effective_mass_inv; // effective mass is inverse of the value calculated
-        std::cout << "Input parameters are: chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
-        std::cout << "Number of diagrams used for effective mass calculation: " << _effective_mass_count << std::endl;
-        if(_num_bands == 1){
-            long double effective_masses_inv[3] =  {0., 0., 0.};
-            effective_masses_inv[0] = _effective_masses[0]/static_cast<long double>(_effective_mass_count);
-            effective_masses_inv[1] = _effective_masses[1]/static_cast<long double>(_effective_mass_count);
-            effective_masses_inv[2] = _effective_masses[2]/static_cast<long double>(_effective_mass_count);
-            _effective_masses[0] = (1.L)/effective_masses_inv[0];
-            _effective_masses[1] = (1.L)/effective_masses_inv[1];
-            _effective_masses[2] = (1.L)/effective_masses_inv[2];
-            std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
-                    << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
-        }
-
-        else if(_num_bands == 3){
-            std::cout << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
-                    << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
-        }
-
-        std::cout <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
-        << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
-        std::cout << std::endl;
-
-        std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
-        for(int i=0; i<_num_phonon_modes; i++){
-            std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-            << _dielectric_responses[i] << std::endl;
-        }
-        std::cout << std::endl;
-        if(_num_bands == 1){
-            std::cout << "Polaronic effective masses are: mx_pol = " << (_effective_masses[0]) << ", my_pol = " 
-                    << _effective_masses[1] << ", mz_pol = " << _effective_masses[2] << std::endl; 
-        }
-        else if(_num_bands == 3){
-
-        }
-        std::cout << std::endl;
-        std::cout << "Average effective mass of diagrams is: " << /*static_cast<long double>(_m_x_el/3.+_m_y_el/3.+_m_z_el/3.)**/_effective_mass << "." << std::endl;
-        std::cout << "Average inverse effective mass of system is: " << effective_mass_inv << "." << std::endl;
-
-        std::string filename = "effective_mass.txt";
-        std::ofstream file(filename, std::ofstream::app);
-
-        if(!file.is_open()){
-            std::cerr << "Could not effective_mass.txt open file " << filename << std::endl;
-        }
-        else{
-            file << "Effective mass of the system is: " << _effective_mass << "." << std::endl;
-            file << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
-            file << "Number of diagrams used for effective mass calculation: " << _effective_mass_count << std::endl;
-            if(_num_bands == 1){
-                file << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
-                    << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
-            }
-            else if(_num_bands == 3){
-                file << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
-                        << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
-            }
-            file <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
-            << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
-            file << std::endl;
-
-            file << "Number of phonon modes: " << _num_phonon_modes << std::endl;
-            for(int i=0; i<_num_phonon_modes; i++){
-                file << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-                << _dielectric_responses[i] << std::endl;
-            }
-            file << std::endl;
-
-            if(_num_bands == 1){
-                file << "Polaronic effective masses are: mx_pol = " << _effective_masses[0] << ", my_pol = " 
-                    << _effective_masses[1] << ", mz_pol = " << _effective_masses[2] << std::endl; 
-            }
-            else if(_num_bands == 3){
-
-            }
-            file << std::endl;
-            file << "Average effective mass of diagrams is: " << _effective_mass << "." << std::endl;
-            file << "Average inverse effective mass of the system is: " << effective_mass_inv << "." << std::endl;
-            file << std::endl;
-
-            file.close();
-        }
-        std::cout << std::endl;
+        printEffectiveMassEstimator();
     }
 
     /*if(_flags.Z_factor){
@@ -2921,46 +2980,7 @@ void GreenFuncNphBands::markovChainMC(){
     }*/
 
     if(_flags.mc_statistics){
-        _mc_statistics.avg_tau /= static_cast<long double>(_mc_statistics.num_diagrams); // average length of diagrams
-        _mc_statistics.avg_tau_squared /= static_cast<long double>(_mc_statistics.num_diagrams); // average squared length of diagrams
-
-        std::cout << "Monte Carlo statistics:" << std::endl;
-       
-        std::cout << "chemical potential: " << _chem_potential << ", number of degenerate electronic bands: " << _num_bands << std::endl;
-        if(_num_bands == 1){
-            std::cout << "electronic effective masses: mx_el = " << _m_x_el << ", my_el = " << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
-        }
-        else if(_num_bands == 3){
-            std::cout << "electronic Luttinger-Kohn parameters: A_LK_el = " << _A_LK_el << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
-        }
-
-        std::cout << "total momentum: kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << std::endl;
-        std::cout << std::endl;
-        std::cout << "1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " << _dielectric_const << std::endl;
-        std::cout << std::endl;
-        std::cout << "number of phonon modes: " << _num_phonon_modes << std::endl;
-        for(int i=0; i<_num_phonon_modes; i++){
-            std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-            << _dielectric_responses[i] << std::endl;
-        }
-        std::cout << std::endl;
-
-        std::cout << "Cutoff for statistics: " << _tau_cutoff_statistics << std::endl;
-        std::cout << "Number of diagrams (taken into account): " << _mc_statistics.num_diagrams << std::endl;
-        std::cout << "Average length of diagrams: " << _mc_statistics.avg_tau << std::endl;
-        std::cout << "Std dev length of diagrams: " << std::sqrt(_mc_statistics.avg_tau_squared - _mc_statistics.avg_tau*_mc_statistics.avg_tau) << std::endl;
-        std::cout << "Average order of diagrams: " << static_cast<long double>(_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams) << std::endl;
-        std::cout << "Std dev order of diagrams: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_order_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
-        - static_cast<long double>(_mc_statistics.avg_order*_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << std::endl;
-        std::cout << "Average number of internal phonons: " << static_cast<long double>(_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams) << std::endl;
-        std::cout << "Std dev number of internal phonons: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_ph_int_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
-        - static_cast<long double>(_mc_statistics.avg_ph_int*_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << std::endl;
-        std::cout << "Average number of external phonons: " << static_cast<long double>(_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams) << std::endl;
-        std::cout << "Std dev number of external phonons: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_ph_ext_squared)/static_cast<long double>(_mc_statistics.num_diagrams) 
-        - static_cast<long double>(_mc_statistics.avg_ph_ext*_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << std::endl;
-        std::cout << "Number of zero order diagrams: " << _mc_statistics.zero_order_diagrams << std::endl;
-        std::cout << std::endl;
-        writeMCStatistics("MC_Statistics.txt");
+        printMCStatistics();
     }
 };
 
