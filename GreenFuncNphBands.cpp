@@ -2188,9 +2188,9 @@ void GreenFuncNphBands::swapPhononPropagator(){
 };
 
 void GreenFuncNphBands::shiftPhononPropagator(){
-    if(_current_order_int + 2*_current_ph_ext <= 0){return;} // reject if no vertices are present
+    int total_order = _current_order_int + 2*_current_ph_ext;
+    if(total_order <= 0){return;} // reject if no vertices are present
     else{
-        int total_order = _current_order_int + 2*_current_ph_ext;
         std::uniform_int_distribution<int> distrib(1, total_order);
         int vertex_index = distrib(gen); // choose random vertex
 

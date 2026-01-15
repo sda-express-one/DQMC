@@ -187,7 +187,7 @@ class GreenFuncNphBands : public Diagram {
     void bandArrayRemoveRoom(int index_one, int index_two);
     void updateExternalPhononTypes(int index);
 
-    int choosePhonon();
+    //int choosePhonon();
 
     // MCMC updates
     long double diagramLengthUpdate(long double tau_init);
@@ -199,6 +199,7 @@ class GreenFuncNphBands : public Diagram {
     void shiftPhononPropagator();
     long double stretchDiagramLength(long double tau_init);
 
+    // main MC simulation methods
     long double configSimulation(long double tau_length);
     long double chooseUpdate(long double tau_length, double r, MC_Benchmarking * benchmark);
     void computeQuantities(long double tau_length, double r, int i);
