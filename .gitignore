@@ -20,6 +20,7 @@ Updates.hpp
 
 # ignore text files
 *.txt
+!CMakeLists.txt
 !simulation_parameters.txt
 !simulation_settings.txt
 !simulation_probabilities_MC.txt
@@ -30,6 +31,7 @@ Updates.hpp
 
 # ignore scripts
 *.sh
+!compile.sh
 
 # ignore folders
 Eigen
