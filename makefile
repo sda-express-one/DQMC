@@ -1,6 +1,6 @@
 CXX = g++
 CXXFLAGS = -Wall -Wextra -Werror -O3
-TARGET = build/main.o
+TARGET = build/DQMC.o
 SRC_DIR = src
 SOURCES = $(wildcard $(SRC_DIR)/*.cpp)
 SOURCES += $(wildcard $(SRC_DIR)/utils/*.cpp)
