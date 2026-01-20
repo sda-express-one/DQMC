@@ -32,6 +32,8 @@ Updates.hpp
 # ignore scripts
 *.sh
 !compile.sh
+*.bat
+!compile.bat
 
 # ignore folders
 Eigen

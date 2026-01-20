@@ -13,6 +13,10 @@ $(TARGET): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(TARGET) $(OBJECTS)
+	rm -f $(OBJECTS)
+
+cleanall:
+	rm -f $(OBJECTS) $(TARGET)
 
 .PHONY: clean
+.PHONY: cleanall
