@@ -14,7 +14,7 @@ cd src
 
 for %%f in (*.cpp) do (
     echo   Compiling %%f...
-    %COMPILER% %CFLAGS% "%%f" -o "obj\%%~nf.o"
+    %COMPILER% %CFLAGS% "%%f" -o "%%~nf.o"
     if !errorlevel! neq 0 (
         echo Failed to compile %%f
         pause
@@ -25,7 +25,7 @@ for %%f in (*.cpp) do (
 cd utils 
 for %%f in (*.cpp) do (
     echo   Compiling %%f...
-    %COMPILER% %CFLAGS% "%%f" -o "..\obj\utils\%%~nf.o"
+    %COMPILER% %CFLAGS% "%%f" -o "..\%%~nf.o"
     if !errorlevel! neq 0 (
         echo Failed to compile %%f
         pause
@@ -33,11 +33,11 @@ for %%f in (*.cpp) do (
     )
 )
 
-cd ../..
+cd ..
 
 echo.
 echo Step 2: Linking object files...
-%LINKER% obj\*.o %LFLAGS% -o %OUTPUT%
+%LINKER% *.o %LFLAGS% -o %OUTPUT%
 
 if %errorlevel% equ 0 (
     echo.
@@ -52,6 +52,8 @@ if %errorlevel% equ 0 (
     echo ============================
 )
 
-del -f "\obj\*.o"
+move %OUTPUT% ..\build\%OUTPUT%
+
+del -f "*.o"
 
 pause
