@@ -95,6 +95,11 @@ class GreenFuncNphBands : public Diagram {
     // diagram features
     Band * _bands;
 
+    // cpu features
+    int _num_procs = 1;
+    int _num_nodes = 1;
+    int _autocorr_steps = 0;
+
     // simulations features
     long long unsigned int _N0 = 0; // number of diagrams of order 0
     int _D = 3; // dimensions

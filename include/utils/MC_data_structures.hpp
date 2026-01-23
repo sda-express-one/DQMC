@@ -36,6 +36,13 @@ struct parameters{
     double V_BvK = 1;
 };
 
+// parameters to set in cpu_settings.txt
+struct cpu_info{
+    int num_procs = 1;
+    int num_nodes = 1;
+    int autocorr_steps = 0;
+};
+
 // parameters to set in simulation_settings.txt
 struct settings{
     bool gf_exact = false;

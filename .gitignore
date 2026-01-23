@@ -24,6 +24,7 @@ Updates.hpp
 !simulation_parameters.txt
 !simulation_settings.txt
 !simulation_probabilities_MC.txt
+!simulation_cpu_settings.txt
 
 # ignore image files
 *.png

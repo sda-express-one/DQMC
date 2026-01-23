@@ -7,6 +7,7 @@
 #include <chrono>
 #include <algorithm>
 #include <sstream>
+#include <omp.h>
 #include "../include/utils/MC_data_structures.hpp"
 #include "../include/GreenFuncNph.hpp"
 #include "../include/GreenFuncNphBands.hpp"
@@ -16,6 +17,7 @@ void readProbabilities(const std::string& filename, double * probs, int num_upda
 void readPhononModes(const std::string& filename, double * phonon_modes, double * dielectric_responses, int num_phonon_modes);
 parameters readSimParameterstxt(const std::string& filename);
 settings readSimSettingstxt(const std::string& filename);
+cpu_info readCPUSettingstxt(const std::string& filename);
 
 int main(){
     // read simulation parameters from file
@@ -23,6 +25,7 @@ int main(){
     readProbabilities("simulation_probabilities_MC.txt", probs, 8);
     parameters sim = readSimParameterstxt("simulation_parameters.txt");
     settings sets = readSimSettingstxt("simulation_settings.txt");
+    cpu_info cpu = readCPUSettingstxt("cpu_settings.txt");
 
     // initialize GreenFuncNph object
 
@@ -65,6 +68,7 @@ int main(){
         // main simulation
         diagram.markovChainMC();
     }
+    
     // type == bands anisotropic 1 band model or 3 band LK model
     else if(sim.type == "bands"){
         GreenFuncNphBands diagram(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max, 
@@ -462,22 +466,57 @@ settings readSimSettingstxt(const std::string& filename){
 
     if(sets.num_points_exact <= 0 && sets.gf_exact){
         sets.gf_exact = false;
-        std::cerr << "Warning: num points for exact GF is not set. GF will not be calculated." << std::endl;
+        std::cerr << "Warning: num points for exact GF is not correctly set. GF will not be calculated." << std::endl;
     }
     if(sets.num_bins <= 0 && sets.histo){
         sets.histo = false;
-        std::cerr << "Warning: num bins for histogram is not set. Histogram will not be calculated." << std::endl;
+        std::cerr << "Warning: num bins for histogram is not correctly set. Histogram will not be calculated." << std::endl;
     }
     if(sets.tau_cutoff_energy <= 0 && sets.gs_energy){
         sets.gs_energy = false;
-        std::cerr << "Warning: tau cutoff for gs energy is not set. gs energy will not be calculated." << std::endl;
+        std::cerr << "Warning: tau cutoff for gs energy is not correctly set. Ground state energy will not be calculated." << std::endl;
     }
     if(sets.tau_cutoff_mass <= 0 && sets.effective_mass){
         sets.effective_mass = false;
-        std::cerr << "Warning: tau cutoff for effective mass is not set. effective mass will not be calculated." << std::endl;
+        std::cerr << "Warning: tau cutoff for effective mass is not correctly set. Effective mass will not be calculated." << std::endl;
     }
     file.close();
     return sets;
+};
+
+cpu_info readCPUSettingstxt(const std::string& filename){
+    cpu_info cpu;
+    std::ifstream file(filename);
+    if(!file.is_open()){
+        std::cerr << "Error opening file: " << filename << std::endl;
+        std::cerr << "Using default CPU settings." << std::endl;
+        return cpu;
+    }
+    std::string line;
+    while(std::getline(file, line)){
+        if(line.empty() || line[0] == '#') continue; // Skip empty lines and comments
+        std::istringstream iss(line);
+        std::string key;
+        if(iss >> key){
+            if(key == "cpus" || "num_procs" || key == "number_of_processors"){
+                std::string value;
+                iss >> value;
+                cpu.num_procs = stringToInt(value);
+            } 
+            else if(key == "nodes" || "num_nodes" || key == "number_of_nodes"){
+                std::string value;
+                iss >> value;
+                cpu.num_nodes = stringToInt(value);
+            }
+            else if(key == "autocorr_steps" || key == "autocorrelation_steps"){
+                std::string value;
+                iss >> value;
+                cpu.autocorr_steps = stringToInt(value);
+            } 
+        }
+    }
+    file.close();
+    return cpu;
 };
 
 void readPhononModes(const std::string& filename, double * phonon_modes, double * dielectric_responses, int num_phonon_modes){
