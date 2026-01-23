@@ -4,7 +4,7 @@ setlocal enabledelayedexpansion
 set COMPILER=g++
 set LINKER=g++
 set output=DQMC.exe
-set CFLAGS=-c -Wall -Wextra -Werror -O3
+set CFLAGS=-c -fopenmp -Wall -Wextra -Werror -O3
 set LFLAGS=
 
 REM Create obj directory if it doesn't exist

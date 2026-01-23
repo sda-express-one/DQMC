@@ -1,11 +1,11 @@
 #!/bin/bash
 cd src
 for file in *.cpp; do
-    g++  -Wall -Wextra -Werror -O3 -c "$file" -o "../build/$(basename "${file%.cpp}.out")"
+    g++ -fopenmp  -Wall -Wextra -Werror -O3 -c "$file" -o "../build/$(basename "${file%.cpp}.out")"
 done
 cd utils
 for file in *.cpp; do
-    g++  -Wall -Wextra -Werror -O3 -c "$file" -o "../../build/$(basename "${file%.cpp}.out")"
+    g++ -fopenmp -Wall -Wextra -Werror -O3 -c "$file" -o "../../build/$(basename "${file%.cpp}.out")"
 done
 
 cd ../../build

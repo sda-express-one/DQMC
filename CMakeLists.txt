@@ -35,7 +35,7 @@ set(THIRDPARTY_DIR thirdparty)
 
 # COMPILER WARNINGS AND FLAGS
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    add_compile_options(-Wall -Wextra -Werror -O3)
+    add_compile_options(-fopenmp -Wall -Wextra -Werror -O3)
 endif()
 
 # SOURCE FILES

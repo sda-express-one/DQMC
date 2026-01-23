@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -Wall -Wextra -Werror -O3
+CXXFLAGS = -fopenmp -Wall -Wextra -Werror -O3
 TARGET = build/DQMC.o
 SRC_DIR = src
 SOURCES = $(wildcard $(SRC_DIR)/*.cpp)

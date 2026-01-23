@@ -8,6 +8,7 @@
 #include <random>
 #include <chrono>
 #include <algorithm>
+#include <omp.h>
 #include "utils/MC_data_structures.hpp"
 #include "utils/progressbar.hpp"
 #include "utils/MC_Benchmarking.hpp"
