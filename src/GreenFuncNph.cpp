@@ -1,11 +1,3 @@
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <cstdlib>
-#include <cmath>
-#include <random>
-#include <chrono>
-#include <algorithm>
 #include "../include/GreenFuncNph.hpp"
 
 GreenFuncNph::GreenFuncNph(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,

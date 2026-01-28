@@ -1,22 +1,22 @@
 # all simulation parameters are written here
 
 type bands
-thermalization_steps 500000000
-simulation_steps 500000000
-max_tau_value 20000
+thermalization_steps 100000000
+simulation_steps 100000000
+max_tau_value 200
 dimensions 3
 volume 1
 kx 0
 ky 0
 kz 0
 coupling_strength 0.276
-chemical_potential -3.15
+chemical_potential -0.50
 max_internal_order 5000
 max_num_ext_phonons 500
 # electron_effective_mass 0.089
 # optical_phonon_dispersion 0.0010767545955004151
 
-num_bands 3
+num_bands 1
 num_phonon_modes 1
 
 phonon_mode(0) 0.00173824189

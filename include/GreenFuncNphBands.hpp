@@ -13,6 +13,7 @@
 #include "utils/progressbar.hpp"
 #include "utils/MC_Benchmarking.hpp"
 #include "utils/computational_methods.hpp"
+#include <omp.h>
 #include "../thirdparty/Eigen/Core"        // built with Eigen 3.4.0, download it from https://gitlab.com/libeigen/eigen/-/releases
 #include "../thirdparty/Eigen/Eigenvalues" // add Eigen directory inside project directory to compile
 #include "Diagram.hpp"
@@ -23,7 +24,11 @@ class GreenFuncNphBands : public Diagram {
     // constructor
     GreenFuncNphBands() = default;
     GreenFuncNphBands(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
-    double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int phonon_modes);
+        double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int phonon_modes);
+    
+    GreenFuncNphBands(Propagator * propagators, Vertex * vertices, Band * bands,
+        unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
+        double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int phonon_modes);
 
     // destructor
     ~GreenFuncNphBands(){
@@ -44,44 +49,106 @@ class GreenFuncNphBands : public Diagram {
     };
 
     // getters
+    // diagram
+    Propagator getPropagator(int index) const {return _propagators[index];};
+    Vertex getVertex(int index) const {return _vertices[index];};
+    Band getBand(int index) const {return _bands[index];};
+    int getCurrentOrderInt() const {return _current_order_int;};
+    int getCurrentPhExt() const {return _current_ph_ext;};
+
+    // electronic bands
+    int getNumBands() const {return _num_bands;};
+    double get_m_x_el() const {return _m_x_el;};
+    double get_m_y_el() const {return _m_y_el;};
+    double get_m_z_el() const {return _m_z_el;};
+    double get_A_LK_el() const {return _A_LK_el;};
+    double get_B_LK_el() const {return _B_LK_el;};
+    double get_C_LK_el() const {return _C_LK_el;};
+
+    // phonon modes
+    int getNumPhononModes() const {return _num_phonon_modes;};
+    double getPhononMode(int index) const {return _phonon_modes[index];};
+    double getDielectricResponse(int index) const {return _dielectric_responses[index];};
+
+    // other input quantities
+    double get1BZVolume() const {return _V_BZ;};
+    double getBvKVolume() const {return _V_BvK;}
+    double getDielectricConst() const {return _dielectric_const;};
     
+    // GS energy
+    long double getGSEnergy() const {return _gs_energy;};
+    long double getTauCutoffEnergy() const {return _tau_cutoff_energy;};
+
+    // effective mass
+    long double getEffectiveMass() const {return _effective_mass;};
+    void getEffectiveMasses(long double * effective_masses) const;
+    long double getTauCutoffMass() const {return _tau_cutoff_mass;};
+
+    // exact GF
+    int getNumPoints() const {return _num_points;};
+    int getGFSelectedOrder() const {return _selected_order;};
+    void getGFExactPoints(long double * points, long double * gf_values) const;
+
+    // histogram GF
+    int getNumBins() const {return _N_bins;};
+    void getHistogram(long double * histogram, long double * green_func) const;
 
     // setters
     // electron bands
     void setEffectiveMasses(double m_x, double m_y, double m_z);
     void setLuttingerKohnParameters(double A_LK_el, double B_LK_el, double C_LK_el);
+
     // phonons modes
     void setPhononModes(double* phonon_modes);
     void setDielectricResponses(double* dielectric_responses);
+
     // other input quantities
     void set1BZVolume(double V_BZ);
     void setBvKVolume(double V_BvK);
     void setDielectricConstant(double dielectric_const);
+
+    // set diagram backbone quantities
+    void setCurrentOrderInt(int order_int);
+    void setCurrentPhExt(int ph_ext);
+
     // MC updates probability
     void setProbabilities(double * probs);
+
+    // parallelization settings
+    void setMaster(bool master_mode = false);
+
     // calculations performed
     void setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor, bool fix_tau_value);
+
     // exact estimator
     // histogram method
     void setN_bins(int N_bins);
+
     // exact GF estimator method
     void setNumPoints(int num_points);
     void setSelectedOrder(int selected_order);
+
     // Energy estimator
     void setTauCutoffEnergy(long double tau_cutoff_energy);
+
     // mass estimator
     void setTauCutoffMass(long double tau_cutoff_mass);
+
     // write to file
     // write diagrams
     inline void writeDiagrams(bool write_diagrams = false){_flags.write_diagrams = write_diagrams;};
+
     // time benchmarking
     inline void setBenchmarking(bool time_benchmark = false){_flags.time_benchmark = time_benchmark;};
+
     // MC statistics
     inline void setMCStatistics(bool mc_statistics = false){_flags.mc_statistics = mc_statistics;};
     void setTauCutoffStatistics(long double tau_cutoff_statistics);
 
     // main simulation method
     void markovChainMC();
+    void markovChainMCOnlyRelax(); // only relax the system to equilibrium
+    void markovChainMCOnlySample(); // only sample the system without relaxation
 
     // write to file
     void writeHistogram(const std::string& filename) const;
@@ -99,6 +166,7 @@ class GreenFuncNphBands : public Diagram {
     int _num_procs = 1;
     int _num_nodes = 1;
     int _autocorr_steps = 0;
+    bool _master = false;
 
     // simulations features
     long long unsigned int _N0 = 0; // number of diagrams of order 0
@@ -146,7 +214,7 @@ class GreenFuncNphBands : public Diagram {
     double _bin_width = _tau_max/_N_bins; // width of each bin
     double _bin_center = _bin_width/2; // center of each bin
     double _bin_width_inv = 1./_bin_width;
-    double* _histogram; // histogram time lengths
+    double* _histogram; // histogram time points
     unsigned long long int* _bin_count; // number of diagrams in each bin
     double* _green_func;
 
@@ -207,8 +275,10 @@ class GreenFuncNphBands : public Diagram {
 
     // main MC simulation methods
     long double configSimulation(long double tau_length);
+    void configSimulationSilent();
     long double chooseUpdate(long double tau_length, double r, MC_Benchmarking * benchmark);
     void computeQuantities(long double tau_length, double r, int i);
+    void computeFinalQuantities();
     void printGFExactEstimator();
     void printhistogramEstimator();
     void printGroundStateEnergyEstimator();

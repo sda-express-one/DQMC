@@ -227,4 +227,35 @@ inline double calcVertexSquareModulus(double strength, double overlap){
     return std::pow(strength*overlap,2);
 };
 
+inline long double computeMean(long double * data, int length){
+    long double sum = 0.0L;
+    for(int i=0; i<length; i++){
+        sum += data[i];
+    }
+    return sum/static_cast<long double>(length);
+}
+
+inline double computeMean(double * data, int length){
+    double sum = 0.0L;
+    for(int i=0; i<length; i++){
+        sum += data[i];
+    }
+    return sum/static_cast<double>(length);
+}
+
+inline long double computeStdDev(long double * data, long double mean, int length){
+    long double sum = 0.0L;
+    for(int i=0; i<length; i++){
+        sum += (data[i]-mean)*(data[i]-mean);
+    }
+    return std::sqrt(sum/(static_cast<long double>(length - 1)));
+}
+
+inline double computeStdDev(double * data, double mean, int length){
+    double sum = 0.0L;
+    for(int i=0; i<length; i++){
+        sum += (data[i]-mean)*(data[i]-mean);
+    }
+    return std::sqrt(sum/(static_cast<double>(length - 1)));
+}
 #endif

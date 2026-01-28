@@ -38,6 +38,7 @@ struct parameters{
 
 // parameters to set in cpu_settings.txt
 struct cpu_info{
+    bool parallel_mode = false;
     int num_procs = 1;
     int num_nodes = 1;
     int autocorr_steps = 0;

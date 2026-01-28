@@ -1,9 +1,11 @@
 # cpu settings for main simulation
+# if parallel_mode is off, code is sequential
 # choose number of nodes in which to run the simulation
 # choose number of cpus to use in each node, write MAX to use all available cpus
 # choose number of iterations to perform to avoid correlations between different cpus
 
+parallel_mode true
 nodes 1
-cpus 1
-autocorr_steps 0
+cpus 8
+autocorr_steps 10000
 

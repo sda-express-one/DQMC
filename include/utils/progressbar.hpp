@@ -14,6 +14,7 @@
 class ProgressBar{
     public:
 
+    ProgressBar() = default;
     ProgressBar(unsigned long long int total, int width = 50);
     ~ProgressBar() = default;
     void update(unsigned long long int current);

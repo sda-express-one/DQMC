@@ -37,7 +37,10 @@ Updates.hpp
 !compile.bat
 
 # ignore folders
+build
+thirdparty
 Eigen
+pcg-cpp-0.98
 
 #ignore unrelated files
 matrix.cpp

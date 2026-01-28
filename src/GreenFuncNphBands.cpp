@@ -48,6 +48,60 @@ double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int pho
     }
 };
 
+GreenFuncNphBands::GreenFuncNphBands(Propagator * propagators, Vertex * vertices, Band * bands,
+unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
+double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int phonon_modes) 
+: Diagram(propagators, vertices, N_diags, tau_max, kx, ky, kz, chem_potential, order_int_max, ph_ext_max) {
+     // initialize flags
+    _flags.gs_energy = false;
+    _flags.effective_mass = false;
+    _flags.write_diagrams = false;
+    _flags.time_benchmark = false;
+
+    // set number of bands and phonon modes
+    num_bands = num_bands > 0 ? num_bands : 1; // ensure at least one band
+    phonon_modes = phonon_modes > 0 ? phonon_modes : 1; // ensure at least one phonon mode
+    _num_bands = num_bands;
+    _num_phonon_modes = phonon_modes;
+
+    // initialize arrays
+    _phonon_modes = new double[_num_phonon_modes];
+    _ext_phonon_type_num = new int[_num_phonon_modes];
+    _dielectric_responses = new double[_num_phonon_modes];
+
+
+    for(int i=0; i < _num_phonon_modes; i++){
+        _ext_phonon_type_num[i] = 0;
+    }
+
+    // initialize bands
+    _bands = new Band[_order_int_max + 2*_ph_ext_max + 1];
+
+    for(int i = 0; i < _order_int_max + 2*_ph_ext_max + 1; i++){
+        _bands[i] = bands[i];
+    }
+};
+
+
+void GreenFuncNphBands::getEffectiveMasses(long double * effective_masses) const {
+    effective_masses[0] = _effective_masses[0];
+    effective_masses[1] = _effective_masses[1];
+    effective_masses[2] = _effective_masses[2];
+};
+
+void GreenFuncNphBands::getGFExactPoints(long double * points, long double * gf_values) const {
+    for(int i=0; i<_num_points; i++){
+        points[i] = _points[i];
+        gf_values[i] = _points_gf_exact[i];
+    }
+};
+
+void GreenFuncNphBands::getHistogram(long double * histogram, long double * green_func) const {
+    for(int i=0; i<_N_bins; i++){
+        histogram[i] = _histogram[i];
+        green_func[i] = _green_func[i];
+    }
+};
 
 // electron bands setters
 void GreenFuncNphBands::setEffectiveMasses(double m_x, double m_y, double m_z){
@@ -76,17 +130,15 @@ void GreenFuncNphBands::setDielectricResponses(double * dielectric_responses){
 }
 
 // other constant quantities setters
-void GreenFuncNphBands::set1BZVolume(double V_BZ){
-    _V_BZ = V_BZ;
-};
+void GreenFuncNphBands::set1BZVolume(double V_BZ){_V_BZ = V_BZ;};
 
-void GreenFuncNphBands::setBvKVolume(double V_BvK){
-    _V_BvK = V_BvK;
-};
+void GreenFuncNphBands::setBvKVolume(double V_BvK){_V_BvK = V_BvK;};
 
-void GreenFuncNphBands::setDielectricConstant(double dielectric_const){
-    _dielectric_const = dielectric_const;
-}
+void GreenFuncNphBands::setDielectricConstant(double dielectric_const){_dielectric_const = dielectric_const;};
+
+void GreenFuncNphBands::setCurrentOrderInt(int order_int){_current_order_int = (order_int >= 0 ? order_int : 0);};
+
+void GreenFuncNphBands::setCurrentPhExt(int ph_ext){_current_ph_ext = (ph_ext >= 0 ? ph_ext : 0);};
 
 // MC updates probability setter
 void GreenFuncNphBands::setProbabilities(double* probs){
@@ -109,6 +161,9 @@ void GreenFuncNphBands::setProbabilities(double* probs){
     _p_shift = probs[6];
     _p_stretch = probs[7];
 };
+
+// parallelization settings
+void GreenFuncNphBands::setMaster(bool master_mode){_master = master_mode;};
 
 // calculations setters
 void GreenFuncNphBands::setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor, bool fix_tau_value){
@@ -331,36 +386,6 @@ long double GreenFuncNphBands::diagramLengthUpdate(long double tau_init){
     }
     else{return tau_init;}
 };
-
-/*
-int GreenFuncNphBands::choosePhonon(){
-    double total_phonons=0;
-
-    for(int i = 0; i < _num_phonon_modes; i++){
-        total_phonons += 1./_phonon_modes[i];
-    }
-
-    double prob_phonon[_num_phonon_modes];
-    for(int i=0; i < _num_phonon_modes; i++){
-        prob_phonon[i] = (1./_phonon_modes[i])/(total_phonons);
-    }
-
-    // choose phonon index
-    //std::uniform_int_distribution<int> distrib_phon(0, _num_phonon_modes-1);
-    int phonon_index;
-    double r_phonon = drawUniformR();
-    double cumulative_prob = 0;
-
-    for(int i=0; i < _num_phonon_modes; i++){
-        cumulative_prob += (5.84/5.98);
-        if(r_phonon <= cumulative_prob){
-            phonon_index = i;
-            return phonon_index;
-        }
-    }
-    return 0; // should never reach this point
-};
-*/
 
 void GreenFuncNphBands::addInternalPhononPropagator(){
     if(_current_order_int+1 >= _order_int_max){return;} // reject if already at max order
@@ -2364,6 +2389,9 @@ long double GreenFuncNphBands::configSimulation(long double tau_length = 1.0L){
     std::cout << std::endl;
     std::cout << "Number of thermalization steps: " << getRelaxSteps() << std::endl;
     std::cout << "Number of diagrams to be generated: " << getNdiags() << std::endl;
+    if(_master){
+        std::cout <<  "Number of autocorrelation steps to be generated: " << getAutocorrSteps() << std::endl;
+    }
     std::cout << "Maximum length of diagram: " << _tau_max << std::endl;
     std::cout << "Maximum number of internal phonons: " << _order_int_max/2 << std::endl;
     std::cout << "Maximum number of external phonons: " << _ph_ext_max << std::endl;
@@ -2545,6 +2573,72 @@ long double GreenFuncNphBands::configSimulation(long double tau_length = 1.0L){
     return tau_length;
 };
 
+void GreenFuncNphBands::configSimulationSilent(){
+    if((!(isEqual(_kx,0)) || !(isEqual(_ky,0)) || !(isEqual(_kz,0))) && _flags.effective_mass){
+        _flags.effective_mass = false;
+    }
+
+    if(_flags.Z_factor && _ph_ext_max == 0){
+        _flags.Z_factor = false;
+    }
+
+    if(_flags.gf_exact){
+
+        _points = new long double[_num_points];
+        _points_gf_exact = new long double[_num_points];
+
+        // initialize GF
+        for(int i=0; i<_num_points; i++){
+            _points[i] = _points_center + i*_points_step;
+            _points_gf_exact[i] = 0;
+        }
+    }
+
+    if(_flags.histo){
+        _bin_width_inv = 1./_bin_width;
+        _histogram = new double[_N_bins];
+        _bin_count = new unsigned long long int[_N_bins];
+        _green_func = new double[_N_bins];
+        for(int i=0; i<_N_bins; i++){
+            _histogram[i] = _bin_center + i*_bin_width;
+            _bin_count[i] = 0;
+            _green_func[i] = 0;
+        }
+    }
+
+    if(_flags.effective_mass){
+        if(_num_bands == 3){
+            _effective_masses_bands << 0, 0, 0,
+                                       0, 0, 0,
+                                       0, 0, 0;
+        }
+    }
+
+    /*if(_flags.Z_factor){
+        initializeZFactorArray();
+    }*/
+
+    if(_flags.write_diagrams){
+        if(getNdiags() > 25000){
+            _flags.write_diagrams = false; // if too many diagrams are generated they are not printed to txt file
+        }
+    }
+
+    if(_flags.time_benchmark){
+        _benchmark_sim = new MC_Benchmarking(getNdiags(), 8);
+        _benchmark_th = new MC_Benchmarking(getAutocorrSteps(), 8);
+    }
+
+    if(_flags.fix_tau_value){
+        if(_p_length > 0 || _p_stretch > 0){
+
+            double probs[8] = {0., _p_add_int, _p_rem_int, _p_add_ext, _p_rem_ext, _p_swap, _p_shift, 0.};
+            setProbabilities(probs);
+            std::cout << std::endl;
+        }
+    }
+};
+
 long double GreenFuncNphBands::chooseUpdate(long double tau_length, double r , MC_Benchmarking * benchmark){
 
     if(r <= _p_length){
@@ -2634,6 +2728,58 @@ void GreenFuncNphBands::computeQuantities(long double tau_length, double r, int 
         if(_current_order_int + 2*_current_ph_ext == 0){
             _mc_statistics.zero_order_diagrams++; // accumulate number of zero order diagrams
         }
+    }
+};
+
+void GreenFuncNphBands::computeFinalQuantities(){
+    if(_flags.gf_exact){
+        double norm_const = calcNormConst();
+        for(int i=0; i<_num_points; i++){
+            _points_gf_exact[i] = _points_gf_exact[i]*norm_const/_N0; // right normalization
+        }
+    }
+
+    if(_flags.histo){
+        double norm_const = calcNormConst();
+        normalizeHistogram(norm_const);
+    }
+
+    if(_flags.gs_energy){
+        _gs_energy = _gs_energy/static_cast<long double>(_gs_energy_count); // average energy of diagrams
+    }
+
+    if(_flags.effective_mass){
+        long double effective_mass_inv = ((3.L/(static_cast<long double>(_m_x_el)+static_cast<long double>(_m_y_el))+static_cast<long double>(_m_z_el)) - _effective_mass/static_cast<long double>(_effective_mass_count)); // average effective mass of diagrams
+        _effective_mass = 1.L/effective_mass_inv; // effective mass is inverse of the value calculated
+
+        if(_num_bands == 1){
+            long double effective_masses_inv[3] =  {0., 0., 0.};
+            effective_masses_inv[0] = _effective_masses[0]/static_cast<long double>(_effective_mass_count);
+            effective_masses_inv[1] = _effective_masses[1]/static_cast<long double>(_effective_mass_count);
+            effective_masses_inv[2] = _effective_masses[2]/static_cast<long double>(_effective_mass_count);
+            _effective_masses[0] = (1.L)/effective_masses_inv[0];
+            _effective_masses[1] = (1.L)/effective_masses_inv[1];
+            _effective_masses[2] = (1.L)/effective_masses_inv[2];
+        }
+
+        else if (_num_bands == 3){
+            // stuff
+        }
+    }
+
+    /*if(_flags.Z_factor){
+        std::string a = "Z_factor_alpha";
+        auto b = std::to_string(_alpha);
+        std::string c = ".txt";
+        std::string filename = a + b + c;
+        writeZFactor(filename);
+        std::cout << "Z factor calculated." << std::endl;
+        std::cout << std::endl;
+    }*/
+
+    if(_flags.mc_statistics){
+        _mc_statistics.avg_tau /= static_cast<long double>(_mc_statistics.num_diagrams); // average length of diagrams
+        _mc_statistics.avg_tau_squared /= static_cast<long double>(_mc_statistics.num_diagrams); // average squared length of diagrams
     }
 };
 
@@ -2746,7 +2892,7 @@ void GreenFuncNphBands::printEffectiveMassEstimator(){
     }
 
     std::cout <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
-        << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
+        << _dielectric_const << ", tau cutoff: " << _tau_cutoff_mass << std::endl;
     std::cout << std::endl;
 
     std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
@@ -2760,7 +2906,7 @@ void GreenFuncNphBands::printEffectiveMassEstimator(){
             << _effective_masses[1] << ", mz_pol = " << _effective_masses[2] << std::endl; 
     }
     else if(_num_bands == 3){
-
+        // stuff
     }
     std::cout << std::endl;
     std::cout << "Average effective mass of diagrams is: " << /*static_cast<long double>(_m_x_el/3.+_m_y_el/3.+_m_z_el/3.)**/_effective_mass << "." << std::endl;
@@ -2786,7 +2932,7 @@ void GreenFuncNphBands::printEffectiveMassEstimator(){
                     << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
         }
         file <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
-        << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
+        << _dielectric_const << ", tau cutoff: " << _tau_cutoff_mass << std::endl;
         file << std::endl;
 
         file << "Number of phonon modes: " << _num_phonon_modes << std::endl;
@@ -2801,7 +2947,7 @@ void GreenFuncNphBands::printEffectiveMassEstimator(){
                 << _effective_masses[1] << ", mz_pol = " << _effective_masses[2] << std::endl; 
         }
        else if(_num_bands == 3){
-
+            // stuff
         }
         file << std::endl;
         file << "Average effective mass of diagrams is: " << _effective_mass << "." << std::endl;
@@ -2879,7 +3025,7 @@ void GreenFuncNphBands::markovChainMC(){
     }
 
     ProgressBar bar(N_relax, 70);
-    while(i < N_relax){
+    for(i = 0; i < N_relax; ++i){
         r = drawUniformR();
 
         tau_length = chooseUpdate(tau_length, r, _benchmark_th);
@@ -2893,8 +3039,6 @@ void GreenFuncNphBands::markovChainMC(){
         }
 
         if(static_cast<int>(i%(N_relax/100)) == 0){bar.update(i);}
-
-        ++i;
     }
     bar.finish();
 
@@ -2923,7 +3067,7 @@ void GreenFuncNphBands::markovChainMC(){
         _benchmark_sim->startTimer();
     }
 
-    while(i < N_diags){
+    for(i = 0; i < N_diags; ++i){
         r = drawUniformR();
         if(_flags.write_diagrams){writeChosenUpdate("Updates.txt", i, r);}
 
@@ -2936,8 +3080,6 @@ void GreenFuncNphBands::markovChainMC(){
         if(static_cast<int>(i%100000) == 0){checkTimeErrors(_current_order_int+2*_current_ph_ext);}
 
         if(static_cast<int>(i%(N_diags/100)) == 0){bar.update(i);}
-
-        ++i;
     }
 
     bar.finish();
@@ -2982,6 +3124,164 @@ void GreenFuncNphBands::markovChainMC(){
     if(_flags.mc_statistics){
         printMCStatistics();
     }
+};
+
+void GreenFuncNphBands::markovChainMCOnlyRelax(){
+    // input variables
+    long double tau_length = diagramLengthUpdate(_tau_max/100);
+    double r = 0.5;
+    unsigned long long int i = 0;
+
+    unsigned long long int N_relax = getRelaxSteps(); // number of thermalization steps
+
+    tau_length = configSimulation(tau_length); // print simulation parameters
+
+    std::cout << "Starting thermalization process" << std::endl;
+    std::cout << std::endl;
+
+    if(_flags.time_benchmark){
+        std::cout << "Benchmarking thermalization time..." << std::endl;
+        std::cout << std::endl;
+        _benchmark_th->startTimer();
+    }
+
+    ProgressBar bar(N_relax, 70);
+    for(i = 0; i < N_relax; ++i){
+        r = drawUniformR();
+
+        tau_length = chooseUpdate(tau_length, r, _benchmark_th);
+
+        if(static_cast<int>(i%100000) == 0){fixDoublePrecisionErrors(_current_order_int + 2*_current_ph_ext, 1e-9);}
+
+        if(static_cast<int>(i%100000) == 0){checkTimeErrors(_current_order_int+2*_current_ph_ext);}
+
+        if(static_cast<int>(i%100000) == 0 && _flags.write_diagrams){
+            writeDiagram("Diagrams.txt", i, r); // method to visualize diagram structure
+        }
+
+        if(static_cast<int>(i%(N_relax/100)) == 0){bar.update(i);}
+    }
+    bar.finish();
+
+    if(_flags.time_benchmark){_benchmark_th->stopTimer();}
+
+    std::cout << std::endl;
+    std::cout << "Thermalization process finished" << std::endl;
+    std::cout << std::endl;
+
+    if(_flags.time_benchmark){
+        _benchmark_th->printResults();
+        _benchmark_th->writeResultsToFile("thermalization_benchmark.txt");
+        delete _benchmark_th;
+        delete _benchmark_sim;
+        std::cout << std::endl;
+    }
+};
+
+void GreenFuncNphBands::markovChainMCOnlySample(){
+    long double tau_length = _vertices[_current_order_int + 2*_current_ph_ext + 1].tau; // get current length of diagram
+    double r = 0.5;
+    unsigned long long int i = 0;
+
+    configSimulationSilent();
+
+    unsigned long long int N_autocorr = getAutocorrSteps(); // number of autocorrelation steps
+    unsigned long long int N_diags = getNdiags(); // number of diagrams to be generated
+
+    ProgressBar bar(N_autocorr, 70);
+
+    if(_master){
+        std::cout << "Starting autocorrelation process (to obtain independent results)" << std::endl;
+        std::cout << std::endl;
+
+        bar.setTotal(N_autocorr);
+
+        if(_flags.time_benchmark){
+            std::cout << "Benchmarking autocorrelation process time..." << std::endl;
+            std::cout << std::endl;
+            _benchmark_th->startTimer();
+        }
+    }
+
+    for(i = 0; i < N_autocorr; ++i){
+        r = drawUniformR();
+
+        tau_length = chooseUpdate(tau_length, r, _benchmark_th);
+
+        if(static_cast<int>(i%100000) == 0){fixDoublePrecisionErrors(_current_order_int + 2*_current_ph_ext, 1e-9);}
+
+        if(static_cast<int>(i%100000) == 0){checkTimeErrors(_current_order_int+2*_current_ph_ext);}
+
+        if(static_cast<int>(i%(N_autocorr/100)) == 0 && _master){bar.update(i);}
+
+    }
+
+    if(_master){
+        bar.finish();
+        std::cout << std::endl;
+        std::cout << "Autocorrelation process finished." << std::endl;
+        std::cout << std::endl;
+        if(_flags.time_benchmark){
+            _benchmark_th->stopTimer();
+            _benchmark_th->printResults(); 
+            _benchmark_th->writeResultsToFile("autocorrelation_benchmark.txt");
+        }
+    }
+
+    if(_flags.time_benchmark){delete _benchmark_th;}
+    
+    _flags.write_diagrams = false; 
+
+    if(_master){
+        std::cout << "Starting simulation process" << std::endl;
+        std::cout << std::endl;
+
+        _flags.write_diagrams = true; // set true for master process
+
+        bar.setTotal(N_diags);
+        
+        if(_flags.time_benchmark){
+            std::cout << "Benchmarking simulation time..." << std::endl;
+            std::cout << std::endl;
+            _benchmark_sim->startTimer();
+        }
+    }
+
+    for(i = 0; i < N_diags; ++i){
+        r = drawUniformR();
+        if(_flags.write_diagrams){writeChosenUpdate("Updates.txt", i, r);}
+
+        tau_length = chooseUpdate(tau_length, r, _benchmark_sim);
+
+        computeQuantities(tau_length, r, i); // compute desired quantities from MC computation
+
+        if(static_cast<int>(i%100000) == 0){fixDoublePrecisionErrors(_current_order_int + 2*_current_ph_ext, 1e-9);}
+
+        if(static_cast<int>(i%100000) == 0){checkTimeErrors(_current_order_int+2*_current_ph_ext);}
+    
+        if(_flags.write_diagrams && _master){writeDiagram("Diagrams.txt", i, r);}
+        
+        if(static_cast<int>(i%(N_diags/100)) == 0 && _master){bar.update(i);}
+    }
+
+    if(_master){
+        bar.finish();
+
+        std::cout << std::endl;
+
+        if(_flags.time_benchmark){
+            _benchmark_sim->stopTimer();
+            std::cout << "Simulation time benchmark finished." << std::endl;
+            _benchmark_sim->printResults(); 
+            _benchmark_sim->writeResultsToFile("simulation_benchmark.txt");
+            std::cout << std::endl;
+        }
+    }
+
+    if(_flags.time_benchmark){delete _benchmark_sim;}
+
+    computeFinalQuantities(); // compute final quantities for all processes (no write to console or files)
+    
 };
 
 double GreenFuncNphBands::groundStateEnergyExactEstimator(long double tau_length){
@@ -3642,7 +3942,7 @@ void GreenFuncNphBands::normalizeHistogram(double norm_const){
         _green_func[i] = _bin_count[i]/(_N0*_bin_width);
         _green_func[i] = _green_func[i]*norm_const;
     }
-    std::cout << "Imaginary time Green's function computed (histogram method)." << std::endl;
+    //std::cout << "Imaginary time Green's function computed (histogram method)." << std::endl;
 };
 
 void GreenFuncNphBands::writeHistogram(const std::string& filename) const {
@@ -3796,3 +4096,34 @@ void GreenFuncNphBands::writeMCStatistics(std::string filename) const {
     file.close();
     std::cout << "Values' statistics written to file " << filename << "." << std::endl;
 };
+
+
+/*
+int GreenFuncNphBands::choosePhonon(){
+    double total_phonons=0;
+
+    for(int i = 0; i < _num_phonon_modes; i++){
+        total_phonons += 1./_phonon_modes[i];
+    }
+
+    double prob_phonon[_num_phonon_modes];
+    for(int i=0; i < _num_phonon_modes; i++){
+        prob_phonon[i] = (1./_phonon_modes[i])/(total_phonons);
+    }
+
+    // choose phonon index
+    //std::uniform_int_distribution<int> distrib_phon(0, _num_phonon_modes-1);
+    int phonon_index;
+    double r_phonon = drawUniformR();
+    double cumulative_prob = 0;
+
+    for(int i=0; i < _num_phonon_modes; i++){
+        cumulative_prob += (5.84/5.98);
+        if(r_phonon <= cumulative_prob){
+            phonon_index = i;
+            return phonon_index;
+        }
+    }
+    return 0; // should never reach this point
+};
+*/

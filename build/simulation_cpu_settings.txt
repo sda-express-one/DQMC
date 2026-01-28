@@ -1,9 +1,0 @@
-# cpu settings for main simulation
-# choose number of nodes in which to run the simulation
-# choose number of cpus to use in each node, write MAX to use all available cpus
-# choose number of iterations to perform to avoid correlations between different cpus
-
-nodes 1
-cpus 1
-autocorr_steps 0
-
