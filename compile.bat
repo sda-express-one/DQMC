@@ -5,7 +5,7 @@ set COMPILER=g++
 set LINKER=g++
 set output=DQMC.exe
 set CFLAGS=-c -fopenmp -Wall -Wextra -Werror -O3
-set LFLAGS=
+set LFLAGS= -fopenmp
 
 REM Create obj directory if it doesn't exist
 if not exist build mkdir build
