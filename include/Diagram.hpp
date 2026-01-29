@@ -7,7 +7,8 @@
 #include <random>
 #include <chrono>
 #include <omp.h>
-//#include "../thirdparty/pcg-cpp-0.98/include/pcg_random.hpp"
+#include "../thirdparty/pcg-cpp-0.98/include/pcg_random.hpp"
+#include "../thirdparty/pcg-cpp-0.98/include/pcg_extras.hpp"
 #include "utils/computational_methods.hpp"
 #include "utils/MC_data_structures.hpp"
 
@@ -43,8 +44,12 @@ class Diagram {
             std::mt19937::result_type seed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count() 
             ^ std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
             gen.seed(seed);
-            //retur seed;
         };
+
+        static inline void setSeed01(uint64_t seed=0x853c49e6748fea9bULL, uint64_t stream=0xda3e39cb94b95bdbULL){
+            //gen01(seed, stream);
+            gen01.seed(seed, stream);
+        }
 
         /*static inline void setSeed(unsigned long int num_thread = 0){
             uint64_t seed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count() ^
@@ -111,6 +116,7 @@ class Diagram {
         // random number generator
         static thread_local std::mt19937 gen; // Mersenne Twister Algorithm, 32-bit
         //static thread_local pcg32 gen;
+        static thread_local pcg32 gen01;
 
         // diagram backbone
         Vertex* _vertices;

@@ -2,7 +2,7 @@
 BUILD ?= release
 
 CXX = g++
-CXXFLAGS = -fopenmp -Wall -Wextra
+CXXFLAGS = -fopenmp -Wall -Wextra -Werror
 
 # target name and build directory
 PROGRAM_NAME = DQMC.o

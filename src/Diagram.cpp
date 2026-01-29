@@ -3,6 +3,8 @@
 //thread_local pcg32 gen;
 thread_local std::mt19937 Diagram::gen;
 
+thread_local pcg32 Diagram::gen01;
+
 // constructor definition
 Diagram::Diagram(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
     double chem_potential, int order_int_max, int ph_ext_max) : _N_diags(N_diags), _tau_max(tau_max),

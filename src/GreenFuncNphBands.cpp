@@ -3236,8 +3236,9 @@ void GreenFuncNphBands::markovChainMCOnlySample(){
         std::cout << "Starting simulation process" << std::endl;
         std::cout << std::endl;
 
-        _flags.write_diagrams = true; // set true for master process
-
+        if(N_diags <= 15000){
+            _flags.write_diagrams = true; // set true for master process
+        }
         bar.setTotal(N_diags);
         
         if(_flags.time_benchmark){

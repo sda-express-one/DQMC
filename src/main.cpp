@@ -244,6 +244,7 @@ int main(){
                     delete[] bands_thermalized;
                     delete[] vertices_thermalized;
                 }
+                //if(ID == 1){diagram_simulate.setMaster(true);}
                 #pragma omp barrier
 
                 if(sim.num_bands == 1){
