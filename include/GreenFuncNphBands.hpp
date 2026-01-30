@@ -116,6 +116,8 @@ class GreenFuncNphBands : public Diagram {
 
     // parallelization settings
     void setMaster(bool master_mode = false);
+    void setNumNodes(int num_nodes = 1);
+    void setNumProcs(int num_procs = 1);
 
     // calculations performed
     void setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor, bool fix_tau_value);

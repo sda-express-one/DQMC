@@ -165,6 +165,10 @@ void GreenFuncNphBands::setProbabilities(double* probs){
 // parallelization settings
 void GreenFuncNphBands::setMaster(bool master_mode){_master = master_mode;};
 
+void GreenFuncNphBands::setNumNodes(int num_nodes){_num_nodes = num_nodes;};
+
+void GreenFuncNphBands::setNumProcs(int num_procs){_num_procs = num_procs;};
+
 // calculations setters
 void GreenFuncNphBands::setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor, bool fix_tau_value){
     _flags.gf_exact = gf_exact;
@@ -2396,9 +2400,6 @@ long double GreenFuncNphBands::configSimulation(long double tau_length = 1.0L){
     std::cout << "Number of thermalization steps: " << getRelaxSteps() << std::endl;
     if(_master){std::cout << "Number of steps to perform to avoid correlations between different parallel processes: " << getAutocorrSteps() << std::endl;}
     std::cout << "Number of diagrams to be generated: " << getNdiags() << std::endl;
-    if(_master){
-        std::cout <<  "Number of autocorrelation steps to be generated: " << getAutocorrSteps() << std::endl;
-    }
     std::cout << "Maximum length of diagram: " << _tau_max << std::endl;
     std::cout << "Maximum number of internal phonons: " << _order_int_max/2 << std::endl;
     std::cout << "Maximum number of external phonons: " << _ph_ext_max << std::endl;

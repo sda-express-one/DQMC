@@ -50,10 +50,6 @@ class Diagram {
             gen.seed(seed);
         };*/
 
-        // setters
-        void setRelaxSteps(unsigned long long int relax_steps);
-        void setAutcorrSteps(unsigned long long int autocorr_steps);
-
         // getters
         inline long long unsigned int getNdiags() const {return _N_diags;};
         inline long long unsigned int getRelaxSteps() const {return _N_relax_steps;};
@@ -68,7 +64,10 @@ class Diagram {
         inline int getOrderMax() const {return _order_int_max + 2*_ph_ext_max;};
         //static inline std::mt19937 getSeed(){return gen;};
         static inline pcg32 getSeed(){return gen;};
-
+        
+        // setters
+        void setRelaxSteps(unsigned long long int relax_steps);
+        void setAutcorrSteps(unsigned long long int autocorr_steps);
 
         // fix double precision floating errors
         inline void fixDoublePrecisionErrors(int total_order, double error_threshold){

@@ -112,10 +112,13 @@ int main(){
             diagram.markovChainMC();
         }
         else{
-            GreenFuncNphBands diagram_relax(0, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max,
+            GreenFuncNphBands diagram_relax(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max,
                 sim.ph_ext_max, sim.num_bands, sim.num_phonon_modes);
             
             diagram_relax.setMaster(cpu.parallel_mode);
+            diagram_relax.setNumNodes(cpu.num_nodes);
+            diagram_relax.setNumProcs(cpu.num_procs);
+            
             diagram_relax.setPhononModes(phonon_modes);
             diagram_relax.setDielectricResponses(dielectric_responses);
             diagram_relax.set1BZVolume(sim.V_BZ);
@@ -131,6 +134,7 @@ int main(){
 
             // Markov chain settings
             diagram_relax.setRelaxSteps(sim.relax_steps);
+            diagram_relax.setAutcorrSteps(cpu.autocorr_steps);
             diagram_relax.setProbabilities(probs);
 
             //histogram settings

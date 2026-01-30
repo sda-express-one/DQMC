@@ -371,26 +371,22 @@ cpu_info readCPUSettingstxt(const std::string& filename){
         std::string key;
         if(iss >> key){
             if(key == "parallel_mode"){
-                std::cout << "aaaa\n";
                 std::string value;
                 iss >> value;
                 // enable openMP parallelization
                 cpu.parallel_mode = stringToBool(value);
             }
             if(key == "cpus" || key == "num_procs" || key == "number_of_processors"){
-                std::cout << "bbbb\n";
                 std::string value;
                 iss >> value;
                 cpu.num_procs = stringToInt(value);
             } 
             else if(key == "nodes" || key == "num_nodes" || key == "number_of_nodes"){
-                std::cout << "cccc\n";
                 std::string value;
                 iss >> value;
                 cpu.num_nodes = stringToInt(value);
             }
             else if(key == "autocorr_steps" || key == "autocorrelation_steps"){
-                std::cout << "dddd\n";
                 std::string value;
                 iss >> value;
                 cpu.autocorr_steps = stringToInt(value);
