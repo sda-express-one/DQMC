@@ -8,4 +8,3 @@ parallel_mode true
 nodes 1
 cpus 6
 autocorr_steps 10000000
-

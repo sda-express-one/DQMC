@@ -283,9 +283,6 @@ int main(){
 
                 // main simulation
                 diagram_simulate.markovChainMCOnlySample();
-                //std::cout << "arrivato! ID: " << ID << std::endl; 
-                Vertex vertex = diagram_simulate.getVertex(diagram_simulate.getCurrentOrderInt()+2*diagram_simulate.getCurrentPhExt()+1);
-                std::cout << vertex.tau << std::endl;
                 # pragma omp critical 
                 {   
                     if(sets.gs_energy){gs_energy[ID] = diagram_simulate.getGSEnergy();}
@@ -314,7 +311,7 @@ int main(){
                     for(int j=0; j < num_threads; j++){
                         effective_masses_values[j] = effective_masses[j][i];
                     }
-                    effective_masses_mean[i] = computeMean(effective_masses_values, i);
+                    effective_masses_mean[i] = computeMean(effective_masses_values, num_threads);
                 }
 
                 writeEffectiveMass("effective_mass.txt", &diagram_relax, num_threads, effective_mass_mean, effective_masses_mean, effective_masses);

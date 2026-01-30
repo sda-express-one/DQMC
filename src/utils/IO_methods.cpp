@@ -485,7 +485,7 @@ void writeGS_Energy(const std::string& filename, GreenFuncNphBands * diagram, in
         std::cerr << "Could not gs_energy.txt open file " << filename << std::endl;
     }
     else{
-        file << "# Ground state energy of the system is: " << diagram->getGSEnergy() << " . Input parameters are: kx = " << diagram->getkx() << 
+        file << "# Ground state energy of the system is: " << gs_energy_mean << " . Input parameters are: kx = " << diagram->getkx() << 
             ", ky = " << diagram->getky() << ", kz = " << diagram->getkz() << "." << std::endl;
         file << "# Chemical potential: " << diagram->getChemPotential() << ", number of degenerate electronic bands : " << diagram->getNumBands() << std::endl;
         file << "# minimum length of diagrams for which gs energy is computed = " << diagram->getTauCutoffEnergy() << "." << std::endl;
