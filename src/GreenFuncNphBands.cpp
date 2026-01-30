@@ -3103,6 +3103,10 @@ void GreenFuncNphBands::markovChainMC(){
         std::cout << std::endl;
     }
 
+    if(_flags.mc_statistics){
+        printMCStatistics();
+    }
+
     if(_flags.gf_exact){
         printGFExactEstimator();
     }
@@ -3128,10 +3132,6 @@ void GreenFuncNphBands::markovChainMC(){
         std::cout << "Z factor calculated." << std::endl;
         std::cout << std::endl;
     }*/
-
-    if(_flags.mc_statistics){
-        printMCStatistics();
-    }
 };
 
 void GreenFuncNphBands::markovChainMCOnlyRelax(){
@@ -3291,7 +3291,8 @@ void GreenFuncNphBands::markovChainMCOnlySample(){
     if(_flags.time_benchmark){delete _benchmark_sim;}
 
     computeFinalQuantities(); // compute final quantities for all processes (no write to console or files)
-    
+
+    if(_flags.mc_statistics){printMCStatistics();}
 };
 
 double GreenFuncNphBands::groundStateEnergyExactEstimator(long double tau_length){
