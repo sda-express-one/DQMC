@@ -1,9 +1,8 @@
 #include "../include/Diagram.hpp"
 
-//thread_local pcg32 gen;
-thread_local std::mt19937 Diagram::gen;
+//thread_local std::mt19937 Diagram::gen;
 
-thread_local pcg32 Diagram::gen01;
+thread_local pcg32 Diagram::gen;
 
 // constructor definition
 Diagram::Diagram(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,

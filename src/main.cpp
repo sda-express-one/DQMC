@@ -7,6 +7,8 @@
 #include "../include/GreenFuncNph.hpp"
 #include "../include/GreenFuncNphBands.hpp"
 
+uint64_t getClockTime();
+
 int main(){
     // read simulation parameters from file
     double probs[8];
@@ -14,15 +16,10 @@ int main(){
     parameters sim = readSimParameterstxt("simulation_parameters.txt");
     settings sets = readSimSettingstxt("simulation_settings.txt");
     cpu_info cpu = readCPUSettingstxt("simulation_cpu_settings.txt");
-    
-    std::cout << cpu.autocorr_steps << std::endl;
-    std::cout << cpu.num_nodes << std::endl;
-    std::cout << cpu.num_procs << std::endl;
-    std::cout << cpu.parallel_mode << std::endl;
 
     // initialize GreenFuncNph object
-
-    Diagram::setSeed();
+    uint64_t seed = getClockTime();
+    Diagram::setSeed(seed);
 
     // type == simple standard DMC computation
     if(sim.type == "simple"){
@@ -115,7 +112,6 @@ int main(){
             diagram.markovChainMC();
         }
         else{
-            std::cout << "parallel mode engaged" << std::endl;
             GreenFuncNphBands diagram_relax(0, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max,
                 sim.ph_ext_max, sim.num_bands, sim.num_phonon_modes);
             
@@ -216,6 +212,8 @@ int main(){
             int num_threads = 1;
             omp_set_num_threads(cpu.num_procs);
 
+            seed = getClockTime();
+
             #pragma omp parallel
             {
                 int ID = omp_get_thread_num();
@@ -225,7 +223,7 @@ int main(){
                     sim.ph_ext_max, sim.num_bands, sim.num_phonon_modes);
 
                 #pragma omp critical
-                Diagram::setSeed();
+                Diagram::setSeed(seed, ID*2654435761U);
 
                 diagram_simulate.setPhononModes(phonon_modes);
                 diagram_simulate.setDielectricResponses(dielectric_responses);
@@ -281,7 +279,7 @@ int main(){
 
                 // main simulation
                 diagram_simulate.markovChainMCOnlySample();
-                std::cout << "arrivato! ID: " << ID << std::endl; 
+                //std::cout << "arrivato! ID: " << ID << std::endl; 
                 Vertex vertex = diagram_simulate.getVertex(diagram_simulate.getCurrentOrderInt()+2*diagram_simulate.getCurrentPhExt()+1);
                 std::cout << vertex.tau << std::endl;
                 # pragma omp critical 
@@ -296,7 +294,7 @@ int main(){
                 }
             }
 
-            if(sets.gf_exact){
+            if(sets.gs_energy){
                 long double gs_energy_mean = computeMean(gs_energy, num_threads);
     
                 writeGS_Energy("gs_energy.txt", &diagram_relax, num_threads, gs_energy_mean, gs_energy);
@@ -381,4 +379,10 @@ int main(){
     std::cout << "Terminating the program." << std::endl;
     std::cout << std::endl;
     return 0;
+};
+
+uint64_t getClockTime(){
+    uint64_t seed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count() ^
+        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+    return seed;
 };

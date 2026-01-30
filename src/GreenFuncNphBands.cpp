@@ -2387,7 +2387,14 @@ long double GreenFuncNphBands::configSimulation(long double tau_length = 1.0L){
     // print simulation parameters
     std::cout <<"Starting simulation..." << std::endl;
     std::cout << std::endl;
+    if(_master){
+        std::cout << "Employing parallelized version of the program" << std::endl;
+        std::cout << "Number of nodes employed: " << _num_nodes << std::endl;
+        std::cout << "Number of parallelized processes (cpus) per node: " << _num_procs  << std::endl;
+        std::cout << std::endl;
+    }
     std::cout << "Number of thermalization steps: " << getRelaxSteps() << std::endl;
+    if(_master){std::cout << "Number of steps to perform to avoid correlations between different parallel processes: " << getAutocorrSteps() << std::endl;}
     std::cout << "Number of diagrams to be generated: " << getNdiags() << std::endl;
     if(_master){
         std::cout <<  "Number of autocorrelation steps to be generated: " << getAutocorrSteps() << std::endl;
@@ -3225,6 +3232,7 @@ void GreenFuncNphBands::markovChainMCOnlySample(){
             _benchmark_th->stopTimer();
             _benchmark_th->printResults(); 
             _benchmark_th->writeResultsToFile("autocorrelation_benchmark.txt");
+            std::cout << std::endl;
         }
     }
 

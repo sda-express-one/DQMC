@@ -1,9 +1,9 @@
 # all simulation parameters are written here
 
 type bands
-thermalization_steps 100000000
-simulation_steps 100000000
-max_tau_value 200
+thermalization_steps 1000000000
+simulation_steps 500000000
+max_tau_value 50000
 dimensions 3
 volume 1
 kx 0

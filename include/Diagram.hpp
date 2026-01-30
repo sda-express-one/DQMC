@@ -40,24 +40,15 @@ class Diagram {
         };
 
         // initialize seed for random number generator
-        static inline void setSeed(){
+        static inline void setSeed(uint64_t seed=0x853c49e6748fea9bULL, uint64_t stream=0xda3e39cb94b95bdbULL){
+            gen.seed(seed, stream);
+        }
+
+        /*static inline void setSeed(){
             std::mt19937::result_type seed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count() 
             ^ std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
             gen.seed(seed);
-        };
-
-        static inline void setSeed01(uint64_t seed=0x853c49e6748fea9bULL, uint64_t stream=0xda3e39cb94b95bdbULL){
-            //gen01(seed, stream);
-            gen01.seed(seed, stream);
-        }
-
-        /*static inline void setSeed(unsigned long int num_thread = 0){
-            uint64_t seed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count() ^
-            std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
-            gen = pcg32(seed, num_thread);        
         };*/
-
-        //pcg32(uint64_t seed = 0x853c49e6748fea9bULL, uint64_t stream = 0xda3e39cb94b95bdbULL){};
 
         // setters
         void setRelaxSteps(unsigned long long int relax_steps);
@@ -75,7 +66,8 @@ class Diagram {
         inline int getOrderIntMax() const {return _order_int_max;};
         inline int getPhExtMax() const {return _ph_ext_max;};
         inline int getOrderMax() const {return _order_int_max + 2*_ph_ext_max;};
-        static inline std::mt19937 getSeed(){return gen;};
+        //static inline std::mt19937 getSeed(){return gen;};
+        static inline pcg32 getSeed(){return gen;};
 
 
         // fix double precision floating errors
@@ -114,9 +106,8 @@ class Diagram {
 
     protected:
         // random number generator
-        static thread_local std::mt19937 gen; // Mersenne Twister Algorithm, 32-bit
-        //static thread_local pcg32 gen;
-        static thread_local pcg32 gen01;
+        //static thread_local std::mt19937 gen; // Mersenne Twister Algorithm, 32-bit
+        static thread_local pcg32 gen; // Permuted Congruential Generator, 32-bit
 
         // diagram backbone
         Vertex* _vertices;
