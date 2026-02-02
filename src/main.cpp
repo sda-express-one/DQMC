@@ -115,6 +115,13 @@ int main(){
             GreenFuncNphBands diagram_relax(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max,
                 sim.ph_ext_max, sim.num_bands, sim.num_phonon_modes);
             
+            if(omp_get_max_threads() < cpu.num_procs){
+                std::cerr << "Warning! Number of cpus per nodes set exceeds current architecture capabilities." << std::endl;
+                std::cerr << "Setting number of parallel processes per node to " << omp_get_max_threads() << "." << std::endl;
+                std::cerr << std::endl;
+                cpu.num_procs = omp_get_max_threads();
+            }
+            
             diagram_relax.setMaster(cpu.parallel_mode);
             diagram_relax.setNumNodes(cpu.num_nodes);
             diagram_relax.setNumProcs(cpu.num_procs);

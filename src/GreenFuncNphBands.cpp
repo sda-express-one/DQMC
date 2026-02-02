@@ -150,7 +150,7 @@ void GreenFuncNphBands::setProbabilities(double* probs){
             probs[i] = probs[i]*normalization;
         }
         std::cerr << "New probabilities are: " << probs[0] << " " << probs[1] << " " << probs[2] << " " 
-        << probs[3] << " " << probs[4] << " " << probs[5] << " " << probs[6] << " " << probs[7] << ".\n";
+        << probs[3] << " " << probs[4] << " " << probs[5] << " " << probs[6] << " " << probs[7] << ".\n\n";
     }
     _p_length = probs[0];
     _p_add_int = probs[1];
