@@ -3,7 +3,7 @@
 type bands
 thermalization_steps 100000000
 simulation_steps 100000000
-max_tau_value 50
+max_tau_value 50000
 dimensions 3
 volume 1
 kx 0

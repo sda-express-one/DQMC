@@ -20,4 +20,4 @@ write_diagrams false
 time_benchmark true
 stats true
 cutoff_tau_stats 0
-fix_tau_value false
+fix_tau_value true
