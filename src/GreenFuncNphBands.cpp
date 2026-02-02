@@ -3007,6 +3007,7 @@ void GreenFuncNphBands::printMCStatistics(){
     std::cout << "Number of zero order diagrams: " << _mc_statistics.zero_order_diagrams << std::endl;
     std::cout << std::endl;
     writeMCStatistics("MC_Statistics.txt");
+    std::cout << std::endl;
 };
 
 void GreenFuncNphBands::markovChainMC(){
@@ -3286,13 +3287,13 @@ void GreenFuncNphBands::markovChainMCOnlySample(){
             _benchmark_sim->writeResultsToFile("simulation_benchmark.txt");
             std::cout << std::endl;
         }
+
+         if(_flags.mc_statistics){printMCStatistics();}
     }
 
     if(_flags.time_benchmark){delete _benchmark_sim;}
 
-    computeFinalQuantities(); // compute final quantities for all processes (no write to console or files)
-
-    if(_flags.mc_statistics){printMCStatistics();}
+    computeFinalQuantities(); // compute final quantities for all processes (no write to console or files) 
 };
 
 double GreenFuncNphBands::groundStateEnergyExactEstimator(long double tau_length){

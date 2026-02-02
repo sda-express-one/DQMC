@@ -114,8 +114,6 @@ int main(){
         else{
             GreenFuncNphBands diagram_relax(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max,
                 sim.ph_ext_max, sim.num_bands, sim.num_phonon_modes);
-
-            std::cout << omp_get_num_procs() << std::endl;
             
             if(omp_get_max_threads() < cpu.num_procs){
                 std::cerr << "Warning! Number of cpus per nodes set exceeds current architecture capabilities." << std::endl;
@@ -258,7 +256,6 @@ int main(){
                     delete[] bands_thermalized;
                     delete[] vertices_thermalized;
                 }
-                //if(ID == 1){diagram_simulate.setMaster(true);}
                 #pragma omp barrier
 
                 if(sim.num_bands == 1){
@@ -295,6 +292,7 @@ int main(){
 
                 // main simulation
                 diagram_simulate.markovChainMCOnlySample();
+                std::cout << "Arrived! " << ID << std::endl;
                 # pragma omp critical 
                 {   
                     if(sets.gs_energy){gs_energy[ID] = diagram_simulate.getGSEnergy();}

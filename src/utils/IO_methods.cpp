@@ -477,7 +477,6 @@ void writeGS_Energy(const std::string& filename, GreenFuncNphBands * diagram, in
     std::cout << "Parallel process" << std::endl;
     std::cout << "Number of independent parallel processes: " << num_threads << std::endl;
     std::cout << "Final ground state energy computed as average of the independent parallel processes." << std::endl;
-    std::cout << std::endl;
 
     std::ofstream file(filename, std::ofstream::app);
 
@@ -518,6 +517,7 @@ void writeGS_Energy(const std::string& filename, GreenFuncNphBands * diagram, in
         }
         file << std::endl;
     }
+    std::cout << std::endl;
 };
 
 void writeEffectiveMass(const std::string filename, GreenFuncNphBands * diagram, int num_threads, 
@@ -561,7 +561,6 @@ void writeEffectiveMass(const std::string filename, GreenFuncNphBands * diagram,
     std::cout << "Parallel process" << std::endl;
     std::cout << "Number of independent parallel processes: " << num_threads << std::endl;
     std::cout << "Final polaronic effective masses computed as average of the independent parallel processes." << std::endl;
-    std::cout << std::endl;
 
     std::string new_filename = "effective_mass.txt";
     std::ofstream file(new_filename, std::ofstream::app);
@@ -616,6 +615,7 @@ void writeEffectiveMass(const std::string filename, GreenFuncNphBands * diagram,
         }
         file.close();
     }
+    std::cout << std::endl;
 };
 
 void writeGF_Histo(const std::string filename, GreenFuncNphBands * diagram, int num_threads, 
@@ -643,6 +643,7 @@ void writeGF_Histo(const std::string filename, GreenFuncNphBands * diagram, int 
     }
     file.close();
     std::cout << "Histogram written to file " << filename << "." << std::endl;
+    std::cout << std:: endl;
 };
 
 void writeGF_Exact(const std::string filename, GreenFuncNphBands * diagram, int num_threads, 
@@ -681,4 +682,5 @@ void writeGF_Exact(const std::string filename, GreenFuncNphBands * diagram, int 
     }
     file.close();
     std::cout << "Exact Green's function written to file " << filename << "." << std::endl;
+    std::cout << std::endl;
 };
