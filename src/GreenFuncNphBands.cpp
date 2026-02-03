@@ -3043,9 +3043,9 @@ void GreenFuncNphBands::markovChainMC(){
 
         if(static_cast<int>(i%100000) == 0){checkTimeErrors(_current_order_int+2*_current_ph_ext);}
 
-        if(static_cast<int>(i%100000) == 0 && _flags.write_diagrams){
+        /*if(static_cast<int>(i%100000) == 0 && _flags.write_diagrams){
             writeDiagram("Diagrams.txt", i, r); // method to visualize diagram structure
-        }
+        }*/
 
         if(static_cast<int>(i%(N_relax/100)) == 0){bar.update(i);}
     }
@@ -3164,9 +3164,9 @@ void GreenFuncNphBands::markovChainMCOnlyRelax(){
 
         if(static_cast<int>(i%100000) == 0){checkTimeErrors(_current_order_int+2*_current_ph_ext);}
 
-        if(static_cast<int>(i%100000) == 0 && _flags.write_diagrams){
+        /*if(static_cast<int>(i%100000) == 0 && _flags.write_diagrams){
             writeDiagram("Diagrams.txt", i, r); // method to visualize diagram structure
-        }
+        }*/
 
         if(static_cast<int>(i%(N_relax/100)) == 0){bar.update(i);}
     }

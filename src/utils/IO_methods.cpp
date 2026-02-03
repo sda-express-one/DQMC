@@ -391,6 +391,11 @@ cpu_info readCPUSettingstxt(const std::string& filename){
                 iss >> value;
                 cpu.autocorr_steps = stringToInt(value);
             } 
+            else if(key == "cpu_time"){
+                std::string value;
+                iss >> value;
+                cpu.cpu_time = stringToBool(value);
+            }
         }
     }
     file.close();

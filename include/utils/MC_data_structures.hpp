@@ -42,6 +42,7 @@ struct cpu_info{
     int num_procs = 1;
     int num_nodes = 1;
     int autocorr_steps = 0;
+    bool cpu_time = false;
 };
 
 // parameters to set in simulation_settings.txt

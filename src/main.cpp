@@ -291,8 +291,35 @@ int main(){
                 diagram_simulate.setTauCutoffStatistics(sets.tau_cutoff_statistics);
 
                 // main simulation
-                diagram_simulate.markovChainMCOnlySample();
-                std::cout << "Arrived! " << ID << std::endl;
+                if(cpu.cpu_time == true){
+
+                    std::string filename = "cpu_times.txt";
+                    std::ofstream file;
+
+                    #pragma omp master 
+                    {
+                    file.open(filename);
+                    file.close();
+                    }
+
+                    auto start = std::chrono::steady_clock::now();
+                    diagram_simulate.markovChainMCOnlySample();
+                    auto end = std::chrono::steady_clock::now();
+
+                    #pragma omp critical
+                    {
+                    file.open(filename, std::ofstream::app);
+                    if(!file.is_open()){std::cout << "Could not open file " << filename << std::endl;}
+                    auto duration_s = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+                    file << ID << " finished the computation." << std::endl;
+                    file << "Elapsed time: " << duration_s.count() << " seconds" << std::endl;
+                    file.close();
+                    }
+                }
+                else{
+                    diagram_simulate.markovChainMCOnlySample();
+                }
+
                 # pragma omp critical 
                 {   
                     if(sets.gs_energy){gs_energy[ID] = diagram_simulate.getGSEnergy();}
