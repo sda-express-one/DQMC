@@ -3,8 +3,8 @@
 prob_length 0.2
 prob_add_internal 0.15
 prob_remove_internal 0.15
-prob_add_external 0.1
-prob_remove_external 0.1
+prob_add_external 0.15
+prob_remove_external 0.15
 prob_swap 0.1
-prob_shift 0.1
-prob_stretch 0.05
+prob_shift 0.09
+prob_stretch 0.01

@@ -89,6 +89,12 @@ void GreenFuncNphBands::getEffectiveMasses(long double * effective_masses) const
     effective_masses[2] = _effective_masses[2];
 };
 
+void GreenFuncNphBands::getEffectiveMassesVar(long double * effective_masses_var) const {
+    effective_masses_var[0] = _effective_masses_var[0];
+    effective_masses_var[1] = _effective_masses_var[1];
+    effective_masses_var[2] = _effective_masses_var[2];
+};
+
 void GreenFuncNphBands::getGFExactPoints(long double * points, long double * gf_values) const {
     for(int i=0; i<_num_points; i++){
         points[i] = _points[i];
@@ -143,14 +149,14 @@ void GreenFuncNphBands::setCurrentPhExt(int ph_ext){_current_ph_ext = (ph_ext >=
 // MC updates probability setter
 void GreenFuncNphBands::setProbabilities(double* probs){
     if(!isEqual(probs[0] + probs[1] + probs[2] + probs[3] + probs[4] + probs[5] + probs[6] + probs[7], 1)){
-        std::cerr << "Invalid probabilities, total probability must add to 1.\n";
+        if(_master){std::cerr << "Invalid probabilities, total probability must add to 1.\n";}
         double normalization = 1/(probs[0] + probs[1] + probs[2] + probs[3] + probs[4] + probs[5] + probs[6] + probs[7]);
-        std::cerr << "Probabilities are being riscaled using the value " << normalization <<".\n";
+        if(_master){std::cerr << "Probabilities are being riscaled using the value " << normalization <<".\n";}
         for(int i = 0; i < 8; i++){
             probs[i] = probs[i]*normalization;
         }
-        std::cerr << "New probabilities are: " << probs[0] << " " << probs[1] << " " << probs[2] << " " 
-        << probs[3] << " " << probs[4] << " " << probs[5] << " " << probs[6] << " " << probs[7] << ".\n\n";
+        if(_master){std::cerr << "New probabilities are: " << probs[0] << " " << probs[1] << " " << probs[2] << " " 
+        << probs[3] << " " << probs[4] << " " << probs[5] << " " << probs[6] << " " << probs[7] << ".\n\n";}
     }
     _p_length = probs[0];
     _p_add_int = probs[1];
@@ -170,12 +176,13 @@ void GreenFuncNphBands::setNumNodes(int num_nodes){_num_nodes = num_nodes;};
 void GreenFuncNphBands::setNumProcs(int num_procs){_num_procs = num_procs;};
 
 // calculations setters
-void GreenFuncNphBands::setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor, bool fix_tau_value){
+void GreenFuncNphBands::setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor, bool blocking_analysis, bool fix_tau_value){
     _flags.gf_exact = gf_exact;
     _flags.histo = histo;
     _flags.gs_energy = gs_energy;
     _flags.effective_mass = effective_mass;
     _flags.Z_factor = Z_factor;
+    _flags.blocking_analysis = blocking_analysis;
     _flags.fix_tau_value = fix_tau_value;
 };
 
@@ -235,6 +242,10 @@ void GreenFuncNphBands::setTauCutoffMass(long double tau_cutoff_mass){
     }
     _tau_cutoff_mass = tau_cutoff_mass;
 }
+
+void GreenFuncNphBands::setNumBlocks(int N_blocks){
+    if(N_blocks > 0){_N_blocks = N_blocks;}
+};
 
 // MC statistics setter
 void GreenFuncNphBands::setTauCutoffStatistics(long double tau_cutoff_statistics){
@@ -2495,6 +2506,14 @@ long double GreenFuncNphBands::configSimulation(long double tau_length = 1.0L){
             << _dielectric_responses[i] << std::endl;
         }
         std::cout << std::endl;
+
+        if(_flags.blocking_analysis){
+            _gs_energy_block_array = new long double[_N_blocks];
+
+            for(int i=0; i<_N_blocks; ++i){
+                _gs_energy_block_array[i] = 0;
+            }
+        }
     }
 
     if(_flags.effective_mass){
@@ -2520,6 +2539,18 @@ long double GreenFuncNphBands::configSimulation(long double tau_length = 1.0L){
             << _dielectric_responses[i] << std::endl;
         }
         std::cout << std::endl;
+
+        if(_flags.blocking_analysis){
+            _effective_mass_block_array = new long double[_N_blocks];
+            _effective_masses_block_array = new long double[3*_N_blocks];
+
+            for(int i=0; i<_N_blocks; ++i){
+                _effective_mass_block_array[i] = 0;
+                _effective_masses_block_array[3*i] = 0;
+                _effective_masses_block_array[3*i+1] = 0;
+                _effective_masses_block_array[3*i+2] = 0;
+            }
+        }
     }
 
     /*if(_flags.Z_factor){
@@ -2529,6 +2560,18 @@ long double GreenFuncNphBands::configSimulation(long double tau_length = 1.0L){
         initializeZFactorArray();
         std::cout << std::endl;
     }*/
+
+    if(_flags.blocking_analysis){
+        std::cout << "Blocking analysis method will be employed to compute variance of quantities." << std::endl;
+        if(getNdiags() % _N_blocks != 0){
+            _N_blocks = _N_blocks - 1;
+            std::cerr << "Warning! Size of each block non compatible with the total number of computed diagrams." << std::endl;
+            std::cerr << "Blocking analysis will be performed only on the first " << _N_blocks << "blocks." << std::endl;
+        }
+        std::cout << "Number of blocks computed: " << _N_blocks << std::endl;
+        _block_size = static_cast<long long int>(getNdiags()/_N_blocks);
+        std::cout << "Size of each block is: " << _block_size << "." << std::endl;
+    }
 
     if(_flags.write_diagrams){
         if(getNdiags() > 25000){
@@ -2614,11 +2657,33 @@ void GreenFuncNphBands::configSimulationSilent(){
         }
     }
 
+    if(_flags.blocking_analysis){
+        _block_size = static_cast<long long int>(getNdiags()/_N_blocks);
+
+        if(_flags.gs_energy){
+            _gs_energy_block_array = new long double[_N_blocks];
+            for(int i=0; i<_N_blocks; ++i){
+                _gs_energy_block_array[i] = 0;
+            }
+        }
+    }
+
     if(_flags.effective_mass){
         if(_num_bands == 3){
             _effective_masses_bands << 0, 0, 0,
                                        0, 0, 0,
                                        0, 0, 0;
+        }
+        if(_flags.blocking_analysis){
+            _effective_mass_block_array = new long double[_N_blocks];
+            _effective_masses_block_array = new long double[3*_N_blocks];
+
+            for(int i=0; i<_N_blocks; ++i){
+                _effective_mass_block_array[i] = 0;
+                _effective_masses_block_array[3*i] = 0;
+                _effective_masses_block_array[3*i+1] = 0;
+                _effective_masses_block_array[3*i+2] = 0;
+            }
         }
     }
 
@@ -2642,7 +2707,7 @@ void GreenFuncNphBands::configSimulationSilent(){
 
             double probs[8] = {0., _p_add_int, _p_rem_int, _p_add_ext, _p_rem_ext, _p_swap, _p_shift, 0.};
             setProbabilities(probs);
-            std::cout << std::endl;
+            //std::cout << std::endl;
         }
     }
 };
@@ -2754,6 +2819,19 @@ void GreenFuncNphBands::computeFinalQuantities(){
 
     if(_flags.gs_energy){
         _gs_energy = _gs_energy/static_cast<long double>(_gs_energy_count); // average energy of diagrams
+        if(_flags.blocking_analysis){
+            long double squared_sum = 0;
+            int count = 0;
+
+            // compute variance using blocking analysis procedure
+            for(int i = 0; i < _N_blocks; ++i){
+                if(!isEqual(_gs_energy_block_array[i],0)){
+                    squared_sum += (_gs_energy_block_array[i]-_gs_energy)*(_gs_energy_block_array[i]-_gs_energy);
+                    ++count;
+                }
+            }
+            _gs_energy_var = static_cast<long double>(1.0)/(count*(count-1))*squared_sum;
+        }
     }
 
     if(_flags.effective_mass){
@@ -2772,6 +2850,36 @@ void GreenFuncNphBands::computeFinalQuantities(){
 
         else if (_num_bands == 3){
             // stuff
+        }
+
+        if(_flags.blocking_analysis){
+            long double squared_sum_avg = 0;
+            long double squared_sum_xP = 0;
+            long double squared_sum_yP = 0;
+            long double squared_sum_zP = 0;
+            int count = 0;
+
+            // compute variance using blocking analysis procedure
+            for(int i = 0; i < _N_blocks; ++i){
+                if(!isEqual(_gs_energy_block_array[i],0)){
+                    squared_sum_avg += (_effective_mass_block_array[i]-_effective_mass)*(_effective_mass_block_array[i]-_effective_mass);
+                    squared_sum_xP += (_effective_masses_block_array[3*i]-_effective_masses[0])*(_effective_masses_block_array[3*i]-_effective_masses[0]);
+                    squared_sum_yP += (_effective_masses_block_array[3*i+1]-_effective_masses[1])*(_effective_masses_block_array[3*i+1]-_effective_masses[1]);
+                    squared_sum_zP += (_effective_masses_block_array[3*i+2]-_effective_masses[2])*(_effective_masses_block_array[3*i+2]-_effective_masses[2]);
+                    ++count;
+                }
+            }
+            _effective_mass_var = static_cast<long double>(1.L)/(count*(count-1))*squared_sum_avg;
+            _effective_masses_var[0] = static_cast<long double>(1.L)/(count*(count-1))*squared_sum_xP;
+            _effective_masses_var[1] = static_cast<long double>(1.L)/(count*(count-1))*squared_sum_yP;
+            _effective_masses_var[2] = static_cast<long double>(1.L)/(count*(count-1))*squared_sum_zP;
+
+            // error propagation of inverse
+            /*_effective_mass_var = _effective_mass_var*std::pow(_effective_mass,4); //_effective_mass);
+            _effective_masses_var[0] = _effective_masses_var[0]*std::pow(_effective_masses[0],4); //std::abs(_effective_masses[0]*_effective_masses[0]);
+            _effective_masses_var[1] = _effective_masses_var[1]*std::pow(_effective_masses[1],4); //_effective_masses[1]);
+            _effective_masses_var[2] = _effective_masses_var[2]*std::pow(_effective_masses[2],4);//_effective_masses[2]);
+            */
         }
     }
 
@@ -2818,8 +2926,28 @@ void GreenFuncNphBands::printhistogramEstimator(){
 
 void GreenFuncNphBands::printGroundStateEnergyEstimator(){
     _gs_energy = _gs_energy/static_cast<long double>(_gs_energy_count); // average energy of diagrams
-    std::cout << "Ground state energy of the system is: " << _gs_energy << ". Input parameters are: kx = " << _kx << 
-    ", ky = " << _ky << ", kz = " << _kz << std::endl;
+
+    if(_flags.blocking_analysis){
+        long double squared_sum = 0;
+        int count = 0;
+
+        // compute variance using blocking analysis procedure
+        for(int i = 0; i < _N_blocks; ++i){
+            if(!isEqual(_gs_energy_block_array[i],0)){
+                squared_sum += (_gs_energy_block_array[i]-_gs_energy)*(_gs_energy_block_array[i]-_gs_energy);
+                ++count;
+            }
+        }
+        _gs_energy_var = static_cast<long double>(1.0)/(count*(count-1))*squared_sum;
+    }
+
+    std::cout << "Ground state energy of the system is: " << _gs_energy;
+    if(_flags.blocking_analysis){std::cout << " +\\- "  << _gs_energy_var;}
+    std::cout << "." << std::endl;
+
+    if(_flags.blocking_analysis){std::cout << "Number of blocks used for blocking analysis: " << _N_blocks << std::endl;}
+
+    std::cout << "Input parameters are: kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << std::endl;
     std::cout << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
     std::cout << "minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
     std::cout << "Number of diagrams used for ground state energy calculation: " << _gs_energy_count << std::endl;
@@ -2848,27 +2976,32 @@ void GreenFuncNphBands::printGroundStateEnergyEstimator(){
         std::cerr << "Could not gs_energy.txt open file " << filename << std::endl;
     }
     else{
-        file << "Ground state energy of the system is: " << _gs_energy << " . Input parameters are: kx = " << _kx << 
-            ", ky = " << _ky << ", kz = " << _kz << std::endl;
-        file << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
-        file << " minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
-        file << "Number of diagrams used for ground state energy calculation: " << _gs_energy_count << std::endl;
+        file << "# Ground state energy of the system is: " << _gs_energy;
+        if(_flags.blocking_analysis){file << " +\\- " << _gs_energy_var;}
+        file << "." << std::endl;
+
+        if(_flags.blocking_analysis){file << "# Number of blocks used for blocking analysis: " << _N_blocks << std::endl;}
+
+        file << "# Input parameters are: kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << std::endl;
+        file << "# Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+        file << "# Minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
+        file << "# Number of diagrams used for ground state energy calculation: " << _gs_energy_count << std::endl;
 
         if(_num_bands == 1){
-            file << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
+            file << "# Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
                 << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
         }
         else if(_num_bands == 3){
-            file << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
+            file << "# Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
                 << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
         }
-        file << "1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
+        file << "# 1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
         << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
         file << std::endl;
 
-        file << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+        file << "# Number of phonon modes: " << _num_phonon_modes << std::endl;
         for(int i=0; i<_num_phonon_modes; i++){
-            file << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+            file << "# phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
             << _dielectric_responses[i] << std::endl;
         }
         file << std::endl;
@@ -2880,6 +3013,8 @@ void GreenFuncNphBands::printGroundStateEnergyEstimator(){
 void GreenFuncNphBands::printEffectiveMassEstimator(){
     long double effective_mass_inv = ((3.L/(static_cast<long double>(_m_x_el)+static_cast<long double>(_m_y_el))+static_cast<long double>(_m_z_el)) - _effective_mass/static_cast<long double>(_effective_mass_count)); // average effective mass of diagrams
     _effective_mass = 1.L/effective_mass_inv; // effective mass is inverse of the value calculated
+
+    if(_flags.blocking_analysis){std::cout << "Number of blocks used for blocking analysis: " << _N_blocks << std::endl;}
     std::cout << "Input parameters are: chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
     std::cout << "Number of diagrams used for effective mass calculation: " << _effective_mass_count << std::endl;
     if(_num_bands == 1){
@@ -2892,6 +3027,50 @@ void GreenFuncNphBands::printEffectiveMassEstimator(){
         _effective_masses[2] = (1.L)/effective_masses_inv[2];
         std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
             << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+    }
+
+    if(_flags.blocking_analysis){
+        long double squared_sum_avg = 0;
+        long double squared_sum_xP = 0;
+
+        long double squared_sum_yP = 0;
+        long double squared_sum_zP = 0;
+        int count = 0;
+
+        // compute variance using blocking analysis procedure
+        for(int i = 0; i < _N_blocks; ++i){
+            if(!isEqual(_gs_energy_block_array[i],0)){
+                squared_sum_avg += (_effective_mass_block_array[i]-_effective_mass)*(_effective_mass_block_array[i]-_effective_mass);
+                squared_sum_xP += (_effective_masses_block_array[3*i]-_effective_masses[0])*(_effective_masses_block_array[3*i]-_effective_masses[0]);
+                squared_sum_yP += (_effective_masses_block_array[3*i+1]-_effective_masses[1])*(_effective_masses_block_array[3*i+1]-_effective_masses[1]);
+                squared_sum_zP += (_effective_masses_block_array[3*i+2]-_effective_masses[2])*(_effective_masses_block_array[3*i+2]-_effective_masses[2]);
+                ++count;
+            }
+        }
+
+        
+        _effective_mass_var = static_cast<long double>(1.0)/(count*(count-1))*squared_sum_avg;
+        _effective_masses_var[0] = static_cast<long double>(1.0)/(count*(count-1))*squared_sum_xP;
+        _effective_masses_var[1] = static_cast<long double>(1.0)/(count*(count-1))*squared_sum_yP;
+        _effective_masses_var[2] = static_cast<long double>(1.0)/(count*(count-1))*squared_sum_zP;
+
+        //std::cout << "##################################" << std::endl;
+        //std::cout << _effective_masses[0] << std::endl;
+        //std::cout << _effective_masses_var[0] << std::endl;
+
+
+        // error propagation of inverse 
+        /*
+        _effective_mass_var = std::sqrt(_effective_mass_var)*std::pow(_effective_mass,2); //_effective_mass);
+        _effective_masses_var[0] = std::sqrt(_effective_masses_var[0])*std::pow(_effective_masses[0],2); //std::abs(_effective_masses[0]*_effective_masses[0]);
+        _effective_masses_var[1] = std::sqrt(_effective_masses_var[1])*std::pow(_effective_masses[1],2); //_effective_masses[1]);
+        _effective_masses_var[2] = std::sqrt(_effective_masses_var[2])*std::pow(_effective_masses[2],2);//_effective_masses[2]);
+        
+        _effective_mass_var = _effective_mass*_effective_mass_var;
+        _effective_masses_var[0] = _effective_masses_var[0]*_effective_masses_var[0];
+        _effective_masses_var[1] = _effective_masses_var[1]*_effective_masses_var[1];
+        _effective_masses_var[2] = _effective_masses_var[2]*_effective_masses_var[2];
+        */
     }
 
     else if(_num_bands == 3){
@@ -2910,14 +3089,22 @@ void GreenFuncNphBands::printEffectiveMassEstimator(){
     }
     std::cout << std::endl;
     if(_num_bands == 1){
-        std::cout << "Polaronic effective masses are: mx_pol = " << (_effective_masses[0]) << ", my_pol = " 
-            << _effective_masses[1] << ", mz_pol = " << _effective_masses[2] << std::endl; 
+        std::cout << "Polaronic effective masses are: mx_pol = " << (_effective_masses[0]); 
+        if(_flags.blocking_analysis){std::cout << " +\\- " << std::sqrt(_effective_masses_var[0]);}
+        std::cout << ", my_pol = " << _effective_masses[1];
+        if(_flags.blocking_analysis){std::cout << " +\\- " << std::sqrt(_effective_masses_var[1]);}
+        std::cout << ", mz_pol = " << _effective_masses[2];
+        if(_flags.blocking_analysis){std::cout << " +\\- " << std::sqrt(_effective_masses_var[2]);}
+        std::cout << "." << std::endl; 
     }
     else if(_num_bands == 3){
         // stuff
     }
     std::cout << std::endl;
-    std::cout << "Average effective mass of diagrams is: " << /*static_cast<long double>(_m_x_el/3.+_m_y_el/3.+_m_z_el/3.)**/_effective_mass << "." << std::endl;
+    std::cout << "Average effective mass of diagrams is: " << _effective_mass;
+    if(_flags.blocking_analysis){std::cout << " +\\- " << _effective_mass_var;}
+    std::cout << "." << std::endl;
+    
     std::cout << "Average inverse effective mass of system is: " << effective_mass_inv << "." << std::endl;
     std::cout << std::endl;
 
@@ -2928,38 +3115,45 @@ void GreenFuncNphBands::printEffectiveMassEstimator(){
         std::cerr << "Could not effective_mass.txt open file " << filename << std::endl;
     }
     else{
-        file << "Effective mass of the system is: " << _effective_mass << "." << std::endl;
-        file << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
-        file << "Number of diagrams used for effective mass calculation: " << _effective_mass_count << std::endl;
+        file << "# Average effective mass of the system is: " << _effective_mass; 
+        if(_flags.blocking_analysis){file << " +\\- " << _effective_mass_var;}
+        file << "." << std::endl;
+
+        if(_flags.blocking_analysis){file << "# Number of blocks used for blocking analysis: " << _N_blocks << std::endl;}
+
+        file << "# Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+        file << "# Number of diagrams used for effective mass calculation: " << _effective_mass_count << std::endl;
         if(_num_bands == 1){
-            file << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
+            file << "# Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
                 << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
         }
         else if(_num_bands == 3){
-            file << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
+            file << "# Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
                     << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
         }
-        file <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
+        file <<"# 1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
         << _dielectric_const << ", tau cutoff: " << _tau_cutoff_mass << std::endl;
         file << std::endl;
 
-        file << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+        file << "# Number of phonon modes: " << _num_phonon_modes << std::endl;
         for(int i=0; i<_num_phonon_modes; i++){
-            file << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+            file << "# phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
                 << _dielectric_responses[i] << std::endl;
         }
         file << std::endl;
 
         if(_num_bands == 1){
-            file << "Polaronic effective masses are: mx_pol = " << _effective_masses[0] << ", my_pol = " 
-                << _effective_masses[1] << ", mz_pol = " << _effective_masses[2] << std::endl; 
+            file << "# Polaronic effective masses are: mx_pol = " << _effective_masses[0];
+            if(_flags.blocking_analysis){file << " +\\- " << _effective_masses_var[0];}
+            file << ", my_pol = " << _effective_masses[1];
+            if(_flags.blocking_analysis){file << " +\\- " << _effective_masses_var[1];}
+            file << ", mz_pol = " << _effective_masses[2];
+            if(_flags.blocking_analysis){file << " +\\- " << _effective_masses_var[2];}
+            file << "." << std::endl; 
         }
        else if(_num_bands == 3){
             // stuff
         }
-        file << std::endl;
-        file << "Average effective mass of diagrams is: " << _effective_mass << "." << std::endl;
-        file << "Average inverse effective mass of the system is: " << effective_mass_inv << "." << std::endl;
         file << std::endl;
 
         file.close();
@@ -3338,30 +3532,20 @@ double GreenFuncNphBands::groundStateEnergyExactEstimator(long double tau_length
             }
         }
 
-        /*while(i < current_order + 1 && !(int_flag && ext_flag)){
-            if(_vertices[i].type == +1){
-                index_two = _vertices[i].linked;
-                phonon_index = _vertices[i].index;
-                tau_one = _vertices[i].tau;  
-                tau_two = _vertices[index_two].tau;
-                phonon_action += phononEnergy(_phonon_modes, phonon_index)*(tau_two - tau_one);
-                int_count++;
-                if(int_count == _current_order_int/2){int_flag = true;}
-            }
-            else if(_vertices[i].type == -2){
-                index_two = _vertices[i].linked;
-                tau_one = _vertices[i].tau;  
-                tau_two = _vertices[index_two].tau;
-                phonon_action += phononEnergy(_phonon_modes, phonon_index)*(tau_length + tau_one - tau_two);
-                ext_count++;
-                if(ext_count == _current_ph_ext){ext_flag = true;}
-            }
-            i++;
-        }*/
-
         double diagram_energy = (electron_action + phonon_action - static_cast<double>(current_order))/tau_length; // energy of current diagram
+
+        if(_flags.blocking_analysis){groundStateEnergyBlockEstimator(diagram_energy);} // perform block analysis
         _gs_energy_count++; // update number of computed exact energy estimators
         return diagram_energy; // return energy of current diagram
+    }
+};
+
+void GreenFuncNphBands::groundStateEnergyBlockEstimator(long double gs_energy){
+    int block_number = static_cast<int>(_gs_energy_count/_block_size);
+    _gs_energy_block_array[block_number] += gs_energy;
+
+    if((_gs_energy_count+1)%_block_size == 0){
+        _gs_energy_block_array[block_number] = _gs_energy_block_array[block_number]/static_cast<long double>(_block_size);
     }
 };
 
@@ -3425,6 +3609,7 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
         double mass_average_inv_x = 0; double mass_average_inv_y = 0; double mass_average_inv_z = 0;
         double electron_average_kx = 0; double electron_average_ky = 0; double electron_average_kz = 0;
         double mx, my, mz;
+        double xP_inv = 1, yP_inv = 1, zP_inv = 1; 
 
         if(_num_bands == 1){
             for(int i=0; i< current_order+1; ++i){
@@ -3451,38 +3636,18 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
             electron_average_ky = (1./tau_length)*electron_average_ky*electron_average_ky;
             electron_average_kz = (1./tau_length)*electron_average_kz*electron_average_kz;
 
-            _effective_masses[0] += static_cast<long double>(mass_average_inv_x - electron_average_kx); // x component
-            _effective_masses[1] += static_cast<long double>(mass_average_inv_y - electron_average_ky); // y component
-            _effective_masses[2] += static_cast<long double>(mass_average_inv_z - electron_average_kz); // z component
+            xP_inv = static_cast<long double>(mass_average_inv_x - electron_average_kx); // x component
+            yP_inv = static_cast<long double>(mass_average_inv_y - electron_average_ky); // y component
+            zP_inv = static_cast<long double>(mass_average_inv_z - electron_average_kz); // z component
+
+            _effective_masses[0] += xP_inv; // x component
+            _effective_masses[1] += yP_inv; // y component
+            _effective_masses[2] += zP_inv; // z component
         }
         else if (_num_bands == 3){
 
         }
-
-        /*for(int i=0; i<current_order+1; ++i){
-            if(isEqual(_propagators[i].el_propagator_kx, 0) && isEqual(_propagators[i].el_propagator_ky, 0) && isEqual(_propagators[i].el_propagator_kz, 0)){
-                mx = _m_x_el; my = _m_y_el; mz = _m_z_el;
-            }
-            else{
-                mx = computeEffMassSingleBand(_propagators[i].el_propagator_kx, _propagators[i].el_propagator_ky, _propagators[i].el_propagator_kz, _m_x_el, _m_y_el, _m_z_el);
-                my = mx;
-                mz = mx;
-            }
-            electron_average_kx += ((_vertices[i+1].tau - _vertices[i].tau)/mx - std::pow(_propagators[i].el_propagator_kx,2)*std::pow(_vertices[i+1].tau - _vertices[i].tau,2)/(mx*mx));
-            electron_average_ky += ((_vertices[i+1].tau - _vertices[i].tau)/my - std::pow(_propagators[i].el_propagator_ky,2)*std::pow(_vertices[i+1].tau - _vertices[i].tau,2)/(my*my));
-            electron_average_kz += ((_vertices[i+1].tau - _vertices[i].tau)/mz- std::pow(_propagators[i].el_propagator_kz,2)*std::pow(_vertices[i+1].tau - _vertices[i].tau,2)/(mz*mz));
-        }
-
-        for(int i=0; i< current_order+1; ++i){
-            electron_average_kx += _propagators[i].el_propagator_kx*(_vertices[i+1].tau - _vertices[i].tau);
-            electron_average_ky += _propagators[i].el_propagator_ky*(_vertices[i+1].tau - _vertices[i].tau);
-            electron_average_kz += _propagators[i].el_propagator_kz*(_vertices[i+1].tau - _vertices[i].tau);
-        }
-
-        electron_average_kx = electron_average_kx/tau_length;  //static_cast<long double>(_m_x_el*_m_x_el);
-        electron_average_ky = electron_average_ky/tau_length;  //static_cast<long double>(_m_y_el*_m_y_el);
-        electron_average_kz = electron_average_kz/tau_length;  //static_cast<long double>(_m_z_el*_m_z_el);
-
+        /*
         if(_num_bands == 3){
             Eigen::RowVector3d unit;
             unit << 1, 1, 1;
@@ -3494,33 +3659,47 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
             _effective_masses_bands.row(2) += (unit - tau_length*(std::pow(electron_average_kx,2)+std::pow(electron_average_ky,2)+std::pow(electron_average_kz,2))
                             *diagonalizeLKHamiltonianEigenval(1,1,1,_A_LK_el,_B_LK_el,_C_LK_el)/(2.)); // (111) direction
         }
-        else if(_num_bands == 1){
-            _effective_masses[0] += ((1.L/static_cast<long double>(_m_x_el)) - (tau_length*electron_average_kx*electron_average_kx)/static_cast<long double>(_m_x_el*_m_x_el));
-            _effective_masses[1] += ((1.L/static_cast<long double>(_m_y_el)) - (tau_length*electron_average_ky*electron_average_ky)/static_cast<long double>(_m_y_el*_m_y_el));
-            _effective_masses[2] += ((1.L/static_cast<long double>(_m_z_el)) - (tau_length*electron_average_kz*electron_average_kz)/static_cast<long double>(_m_z_el*_m_z_el));
-            //_effective_masses[0] += 1.L/static_cast<long double>(_m_x_el) - electron_average_kx/tau_length; // x comp
-            //_effective_masses[1] += 1.L/static_cast<long double>(_m_y_el) - electron_average_ky/tau_length; // y comp
-            //_effective_masses[2] += 1.L/static_cast<long double>(_m_z_el) - electron_average_kz/tau_length; // z comp
-            //_effective_masses[0] += (1.L - tau_length*std::pow(electron_average_kx,2))/static_cast<long double>(_m_x_el); // x component
-            //_effective_masses[1] += (1.L - tau_length*std::pow(electron_average_ky,2))/static_cast<long double>(_m_y_el); // y component
-            //_effective_masses[2] += (1.L - tau_length*std::pow(electron_average_kz,2))/static_cast<long double>(_m_z_el); // z component
-        }
         
         */
-       
-        _effective_mass_count++;
-
-        // return inverse of effective mass, _D dimensionality of the system
+        // compute inverse of (average) effective mass, _D dimensionality of the system
+        double inv_mass_avg = (tau_length*(std::pow(electron_average_kx,2) + std::pow(electron_average_ky,2) + std::pow(electron_average_kz,2))/_D);
         //static_cast<long double>(_m_x_el/3.+_m_y_el/3.+_m_z_el/3.)
-        return (tau_length*(std::pow(electron_average_kx,2) + std::pow(electron_average_ky,2) + std::pow(electron_average_kz,2))/_D);
+
+        if(_flags.blocking_analysis){effectiveMassBlockEstimator(inv_mass_avg, xP_inv, yP_inv, zP_inv);}
+        _effective_mass_count++;
+        return inv_mass_avg;
         //return (1.L/(static_cast<long double>(_m_x_el/3.+_m_y_el/3.+_m_z_el/3.))-tau_length*(std::pow(electron_average_kx,2) + std::pow(electron_average_ky,2) + std::pow(electron_average_kz,2))/_D);
     }
 };
 
-void GreenFuncNphBands::calcGroundStateEnergy(std::string filename){
+void GreenFuncNphBands::effectiveMassBlockEstimator(long double avg, long double xP, long double yP, long double zP){
+    int block_number = static_cast<int>(_effective_mass_count/_block_size);
+
+    _effective_mass_block_array[block_number] += avg;
+    _effective_masses_block_array[3*block_number] += xP;
+    _effective_masses_block_array[3*block_number+1] += yP;
+    _effective_masses_block_array[3*block_number+2] += zP;
+            
+    if((_effective_mass_count+1)%_block_size == 0){
+        _effective_mass_block_array[block_number] = _effective_mass_block_array[block_number]/static_cast<long double>(_block_size);
+        _effective_masses_block_array[3*block_number] = _effective_masses_block_array[3*block_number]/static_cast<long double>(_block_size);
+        _effective_masses_block_array[3*block_number+1] = _effective_masses_block_array[3*block_number+1]/static_cast<long double>(_block_size);
+        _effective_masses_block_array[3*block_number+2] = _effective_masses_block_array[3*block_number+2]/static_cast<long double>(_block_size);
+
+        _effective_mass_block_array[block_number] = (1.L)/_effective_mass_block_array[block_number];
+        _effective_masses_block_array[3*block_number] = (1.L)/_effective_masses_block_array[3*block_number];
+        _effective_masses_block_array[3*block_number+1] = (1.L)/_effective_masses_block_array[3*block_number+1];
+        _effective_masses_block_array[3*block_number+2] = (1.L)/_effective_masses_block_array[3*block_number+2];
+    }
+};
+
+/*void GreenFuncNphBands::calcGroundStateEnergy(std::string filename){
     _gs_energy = _gs_energy/(double)_gs_energy_count; // average energy of diagrams
-    std::cout << "Ground state energy of the system is: " << _gs_energy << ". Input parameters are: kx = " << _kx << 
-    ", ky = " << _ky << ", kz = " << _kz << std::endl;
+    std::cout << "Ground state energy of the system is: " << _gs_energy;
+    if(_flags.blocking_analysis){std::cout << " +\\-" << _gs_energy_var;}
+    std::cout << "." << std::endl;
+    if(_flags.blocking_analysis){std::cout << "Number of blocks used for blocking analysis: " << _N_blocks << std::endl;}
+    std::cout << "Input parameters are: kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << std::endl;
     std::cout << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
 
     if(_num_bands == 1){
@@ -3549,31 +3728,35 @@ void GreenFuncNphBands::calcGroundStateEnergy(std::string filename){
         std::cerr << "Could not gs_energy.txt open file " << filename << std::endl;
     }
     else{
-        file << "Ground state energy of the system is: " << _gs_energy << " . Input parameters are: kx = " << _kx << 
+        file << "# Ground state energy of the system is: " << _gs_energy; 
+        if(_flags.blocking_analysis){file << " +\\- " << _gs_energy_var;}
+        file << "." << std::endl;
+        if(_flags.blocking_analysis){file << "# Number of blocks used for blocking analysis: " << _N_blocks << std::endl;}
+        file << "# Input parameters are: kx = " << _kx << 
         ", ky = " << _ky << ", kz = " << _kz << std::endl;
-        file << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+        file << "# Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
         if(_num_bands == 1){
-            file << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
+            file << "# Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
                 << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
         }
         else if(_num_bands == 3){
-            file << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
+            file << "# Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
                 << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
         }
-        file << "1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
+        file << "# 1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
             << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
-        file << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+        file << "# Number of phonon modes: " << _num_phonon_modes << std::endl;
 
         for(int i=0; i<_num_phonon_modes; i++){
-            file << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+            file << "# phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
             << _dielectric_responses[i] << std::endl;
         }
-        file << " minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
+        file << "# minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
         file << std::endl;
         file.close();
     }
     std::cout << std::endl;
-};
+};*/
 
 /*void GreenFuncNphBands::calcEffectiveMasses(std::string filename){
     long double effective_mass_inv = _effective_mass/(double)_effective_mass_count; // average effective mass of diagrams

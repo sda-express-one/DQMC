@@ -328,6 +328,16 @@ settings readSimSettingstxt(const std::string& filename){
                 iss >> value;
                 sets.tau_cutoff_statistics = stringToLongDouble(value);
             }
+            else if(key == "blocking_method" || key == "blocking"){
+                std::string value;
+                iss >> value;
+                sets.blocking_analysis = stringToBool(value);
+            }
+            else if(key == "N_blocks"){
+                std::string value;
+                iss >> value;
+                sets.N_blocks = stringToInt(value);
+            }
             else if(key == "fix_tau_value" || key == "fix_length"){
                 std::string value;
                 iss >> value;
@@ -449,13 +459,19 @@ void readPhononModes(const std::string& filename, double * phonon_modes, double 
     file.close();
 };
 
-void writeGS_Energy(const std::string& filename, GreenFuncNphBands * diagram, int num_threads, 
-    long double gs_energy_mean, long double * gs_energy_threads){
-    std::cout << "Ground state energy of the system is: " << gs_energy_mean << ". Input parameters are: kx = " << diagram->getkx() << 
-    ", ky = " << diagram->getky() << ", kz = " << diagram->getkz() << "." << std::endl;
+void writeGS_Energy(const std::string& filename, GreenFuncNphBands * diagram, int num_threads, bool blocking, 
+    long double gs_energy_mean, long double * gs_energy_threads,
+    long double gs_energy_mean_var, long double * gs_energy_var_threads){
+    std::cout << "Ground state energy of the system is: " << gs_energy_mean;
+    if(blocking){ std::cout << " +\\- " << std::sqrt(gs_energy_mean_var);}
+    std::cout << "." << std::endl;
 
-    std::cout << "Chemical potential: " << diagram->getChemPotential() << ", number of degenerate electronic bands : " << diagram->getNumBands() << std::endl;
-    std::cout << "minimum length of diagrams for which gs energy is computed = " << diagram->getTauCutoffEnergy() << "." << std::endl;
+    if(blocking){std::cout << "Number of blocks used for blocking method: " << diagram->getNumBlocks() << "." << std::endl;}
+
+    std::cout << "Input parameters are: kx = " << diagram->getkx() << ", ky = " << diagram->getky() << ", kz = " << diagram->getkz() << "." << std::endl;
+
+    std::cout << "Chemical potential: " << diagram->getChemPotential() << ", number of degenerate electronic bands: " << diagram->getNumBands() << "." << std::endl;
+    std::cout << "Minimum length of diagrams for which gs energy is computed: " << diagram->getTauCutoffEnergy() << "." << std::endl;
     //std::cout << "Number of diagrams used for ground state energy calculation: " << _gs_energy_count << std::endl;
 
     if(diagram->getNumBands() == 1){
@@ -489,8 +505,13 @@ void writeGS_Energy(const std::string& filename, GreenFuncNphBands * diagram, in
         std::cerr << "Could not gs_energy.txt open file " << filename << std::endl;
     }
     else{
-        file << "# Ground state energy of the system is: " << gs_energy_mean << " . Input parameters are: kx = " << diagram->getkx() << 
-            ", ky = " << diagram->getky() << ", kz = " << diagram->getkz() << "." << std::endl;
+        file << "# Ground state energy of the system is: " << gs_energy_mean;
+        if(blocking){file << " +\\- " << std::sqrt(gs_energy_mean_var);}
+        file << "." << std::endl;
+
+        if(blocking){file << "# Number of blocks used for blocking method: " << diagram->getNumBlocks() << "." << std::endl;}
+
+        file << "# Input parameters are: kx = " << diagram->getkx() << ", ky = " << diagram->getky() << ", kz = " << diagram->getkz() << "." << std::endl;
         file << "# Chemical potential: " << diagram->getChemPotential() << ", number of degenerate electronic bands : " << diagram->getNumBands() << std::endl;
         file << "# minimum length of diagrams for which gs energy is computed = " << diagram->getTauCutoffEnergy() << "." << std::endl;
         //file << "Number of diagrams used for ground state energy calculation: " << _gs_energy_count << std::endl;
@@ -517,17 +538,25 @@ void writeGS_Energy(const std::string& filename, GreenFuncNphBands * diagram, in
         file << "# Number of independent parallel processes: " << num_threads << std::endl;
         file << "# Final ground state energy computed as average of the independent parallel processes." << std::endl;
         file << "# Computed individual values are: " << std::endl;
+        file << "# mean     variance" << std::endl;
         for(int i = 0; i < num_threads; i++){
-            file << gs_energy_threads[i] << std::endl;
+            file << gs_energy_threads[i]; 
+            if(blocking){file << "  " << gs_energy_var_threads[i];}
+            file << std::endl;
         }
         file << std::endl;
     }
     std::cout << std::endl;
 };
 
-void writeEffectiveMass(const std::string filename, GreenFuncNphBands * diagram, int num_threads, 
-    long double effective_mass_avg_mean, long double * effective_mass_mean, long double ** effective_mass_threads){
-    std::cout << "Input parameters are: chemical potential: " << diagram->getChemPotential() << ", number of degenerate electronic bands : " << diagram->getNumBands() << std::endl;
+void writeEffectiveMass(const std::string filename, GreenFuncNphBands * diagram, int num_threads, bool blocking, 
+    long double effective_mass_avg_mean, long double effective_mass_avg_var, 
+    long double * effective_masses_mean, long double ** effective_masses_threads,
+    long double * effective_masses_mean_var, long double ** effective_masses_var_threads){
+
+    if(blocking){std::cout << "Number of blocks used for blocking method: " << diagram->getNumBlocks() << "." << std::endl;}
+
+    std::cout << "Input parameters are: chemical potential: " << diagram->getChemPotential() << ", number of degenerate electronic bands: " << diagram->getNumBands() << std::endl;
     //std::cout << "Number of diagrams used for effective mass calculation: " << _effective_mass_count << std::endl;
 
     if(diagram->getNumBands() == 1){
@@ -553,14 +582,23 @@ void writeEffectiveMass(const std::string filename, GreenFuncNphBands * diagram,
     std::cout << std::endl;
 
     if(diagram->getNumBands() == 1){
-        std::cout << "Polaronic effective masses are: mx_pol = " << effective_mass_mean[0] << ", my_pol = " 
-            << effective_mass_mean[1] << ", mz_pol = " << effective_mass_mean[2] << std::endl; 
+        std::cout << "Polaronic effective masses are: mx_pol = " << effective_masses_mean[0];
+        if(blocking){std::cout << " +\\- " << std::sqrt(effective_masses_mean_var[0]);}
+        std::cout << ", my_pol = " << effective_masses_mean[1];
+        if(blocking){std::cout << " +\\- " << std::sqrt(effective_masses_mean_var[1]);} 
+        std::cout << ", mz_pol = " << effective_masses_mean[2];
+        if(blocking){std::cout << " +\\- " << std::sqrt(effective_masses_mean_var[2]);}
+        std::cout << "." << std::endl;
     }
     else if(diagram->getNumBands() == 3){
         // stuff
     }
     std::cout << std::endl;
-    std::cout << "Average effective mass of diagrams is: " << effective_mass_avg_mean << "." << std::endl;
+
+    std::cout << "Average effective mass of diagrams is: " << effective_mass_avg_mean;
+    if(blocking){std::cout << " +\\- " << std::sqrt(effective_mass_avg_var);}
+    std::cout << "." << std::endl;
+
     std::cout << std::endl;
 
     std::cout << "Parallel process" << std::endl;
@@ -574,8 +612,13 @@ void writeEffectiveMass(const std::string filename, GreenFuncNphBands * diagram,
         std::cerr << "Could not effective_mass.txt open file " << filename << std::endl;
     }
     else{
-        file << "# Effective mass of the system is: " << effective_mass_avg_mean << "." << std::endl;
-        file << "# Chemical potential: " << diagram->getChemPotential() << ", number of degenerate electronic bands : " << diagram->getNumBands() << std::endl;
+        file << "# Effective mass of the system is: " << effective_mass_avg_mean;
+        if(blocking){file <<" +\\- " << effective_mass_avg_var;}
+        file << "." << std::endl;
+
+        if(blocking){file << "# Number of blocks used for blocking method: " << diagram->getNumBlocks() << "." << std::endl;}
+
+        file << "# Chemical potential: " << diagram->getChemPotential() << ", number of degenerate electronic bands: " << diagram->getNumBands() << std::endl;
         //file << "Number of diagrams used for effective mass calculation: " << _effective_mass_count << std::endl;
 
         if(diagram->getNumBands() == 1){
@@ -598,26 +641,37 @@ void writeEffectiveMass(const std::string filename, GreenFuncNphBands * diagram,
         file << std::endl;
 
         if(diagram->getNumBands() == 1){
-            file << "# Polaronic effective masses are: mx_pol = " << effective_mass_mean[0] << ", my_pol = " 
-                << effective_mass_mean[1] << ", mz_pol = " << effective_mass_mean[2] << std::endl; 
+            file << "# Polaronic effective masses are: mx_pol = " << effective_masses_mean[0];
+            if(blocking){file << " +\\- " << std::sqrt(effective_masses_mean_var[0]);}
+            file << ", my_pol = " << effective_masses_mean[1];
+            if(blocking){file << " +\\- " << std::sqrt(effective_masses_mean_var[1]);}
+            file << ", mz_pol = " << effective_masses_mean[2];
+            if(blocking){file << " +\\- " << std::sqrt(effective_masses_mean_var[2]);}
+            file << std::endl; 
         }
        else if(diagram->getNumBands() == 3){
             // stuff
         }
-        file << std::endl;
-        file << "# Average effective mass of diagrams is: " << effective_mass_avg_mean << "." << std::endl;
-        file << std::endl;
 
+        file << std::endl;
+        
         file << "# Parallel process" << std::endl;
         file << "# Number of independent parallel processes: " << num_threads << std::endl;
         file << "# Final polaronic effective masses computed as average of the independent parallel processes." << std::endl;
         
         file << std::endl;
         file << "# Computed individual values are: " << std::endl;
+        file << "mx     var(mx)     my      var(my)     mz      var(mz)" << std::endl;
         for(int i = 0; i < num_threads; i++){
-            file << effective_mass_threads[i][0] << " " << effective_mass_threads[i][1] << " " << effective_mass_threads[i][2]; 
+            file << effective_masses_threads[i][0] << " ";
+            if(blocking){file << effective_masses_var_threads[i][0] << " ";} 
+            file<< effective_masses_threads[i][1] << " ";
+            if(blocking){file << effective_masses_var_threads[i][1] << " ";}
+            file << effective_masses_threads[i][2];
+            if(blocking){file << " " << effective_masses_var_threads[i][2];} 
             file << std::endl;
         }
+        file << std::endl;
         file.close();
     }
     std::cout << std::endl;

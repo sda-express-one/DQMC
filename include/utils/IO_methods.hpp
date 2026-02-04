@@ -21,11 +21,14 @@ settings readSimSettingstxt(const std::string& filename);
 cpu_info readCPUSettingstxt(const std::string& filename);
 
 // write to .txt file (multithread process)
-void writeGS_Energy(const std::string& filename, GreenFuncNphBands * diagram, int num_threads, 
-    long double gs_energy_mean, long double * gs_energy_threads);
+void writeGS_Energy(const std::string& filename, GreenFuncNphBands * diagram, int num_threads, bool blocking,
+    long double gs_energy_mean, long double * gs_energy_threads,
+    long double gs_energy_mean_var, long double * gs_energy_var_threads);
 
-void writeEffectiveMass(const std::string filename, GreenFuncNphBands * diagram, int num_threads, 
-    long double effective_mass_avg_mean, long double * effective_mass_mean, long double ** effective_mass_threads);
+void writeEffectiveMass(const std::string filename, GreenFuncNphBands * diagram, int num_threads, bool blocking, 
+    long double effective_mass_avg_mean, long double effective_mass_avg_var,
+    long double * effective_masses_mean, long double ** effective_masses_threads,
+    long double * effective_masses_mean_var, long double ** effective_masses_var_threads);
 
 void writeGF_Histo(const std::string filename, GreenFuncNphBands * diagram, int num_threads,
     long double * histo_points, long double * histo_values);

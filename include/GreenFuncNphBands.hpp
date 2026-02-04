@@ -46,6 +46,15 @@ class GreenFuncNphBands : public Diagram {
             delete[] _points;
             delete[] _points_gf_exact;
         }
+        if(_flags.blocking_analysis){
+            if(_flags.gs_energy){
+                delete[] _gs_energy_block_array;
+            }
+            if(_flags.effective_mass){
+                delete[] _effective_mass_block_array;
+                delete[] _effective_masses_block_array;
+            }
+        }
     };
 
     // getters
@@ -77,11 +86,14 @@ class GreenFuncNphBands : public Diagram {
     
     // GS energy
     long double getGSEnergy() const {return _gs_energy;};
+    long double getGSEnergyVar() const {return _gs_energy_var;};
     long double getTauCutoffEnergy() const {return _tau_cutoff_energy;};
 
     // effective mass
     long double getEffectiveMass() const {return _effective_mass;};
+    long double getEffectiveMassVar() const {return _effective_mass_var;};
     void getEffectiveMasses(long double * effective_masses) const;
+    void getEffectiveMassesVar(long double * effective_masses_var) const;
     long double getTauCutoffMass() const {return _tau_cutoff_mass;};
 
     // exact GF
@@ -92,6 +104,9 @@ class GreenFuncNphBands : public Diagram {
     // histogram GF
     int getNumBins() const {return _N_bins;};
     void getHistogram(long double * histogram, long double * green_func) const;
+
+    // blocking method
+    int getNumBlocks() const {return _N_blocks;}
 
     // setters
     // electron bands
@@ -120,7 +135,7 @@ class GreenFuncNphBands : public Diagram {
     void setNumProcs(int num_procs = 1);
 
     // calculations performed
-    void setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor, bool fix_tau_value);
+    void setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor, bool blocking_analysis, bool fix_tau_value);
 
     // exact estimator
     // histogram method
@@ -135,6 +150,9 @@ class GreenFuncNphBands : public Diagram {
 
     // mass estimator
     void setTauCutoffMass(long double tau_cutoff_mass);
+
+    // blocking method
+    void setNumBlocks(int N_blocks);
 
     // write to file
     // write diagrams
@@ -211,6 +229,10 @@ class GreenFuncNphBands : public Diagram {
 
     Flags _flags; // flags for different calculations
 
+    // block analysis variables
+    int _N_blocks = 100;
+    unsigned long long int _block_size = 1000000;
+
     // histogram method
     int _N_bins = 100; // number of bins for histogram
     double _bin_width = _tau_max/_N_bins; // width of each bin
@@ -224,14 +246,20 @@ class GreenFuncNphBands : public Diagram {
     // renormalized gs energy
     long double _tau_cutoff_energy = _tau_max/10; // cutoff for energy estimator, if tau < tau_cutoff energy estimator is not calculated
     long double _gs_energy = 0.0; // ground state energy estimator of the system
+    long double * _gs_energy_block_array; // array of mean values of each block
+    long double _gs_energy_var = 0.0; // variance of ground state energy estimator (block method)
     unsigned long long int _gs_energy_count = 0; // number of times the ground state energy estimator is calculated
 
     // renormalized effective mass (polaron)
     long double _tau_cutoff_mass = _tau_max/10; // cutoff for effective mass estimator, if tau < tau_cutoff mass estimator is not calculated
     long double _effective_mass = 0; // isotropic or (1,1,1) direction
+    long double * _effective_mass_block_array; // array of mean values of each block
+    long double _effective_mass_var = 0.0; // variance of effective mass energy estimator
     long double _effective_masses[3] = {0, 0, 0}; // effective masses of polaron (in electron mass units, 1 band model)
-    unsigned long long int _effective_mass_count = 0; // number of times the effective mass estimator is calculated
+    long double * _effective_masses_block_array; // array of mean values of each block (mx, my and mz)
+    long double _effective_masses_var[3] = {0, 0, 0}; // variance of effective masses of polaron
     Eigen::Matrix3d _effective_masses_bands;
+    unsigned long long int _effective_mass_count = 0; // number of times the effective mass estimator is calculated
 
     // Green function exact estimator
     int _num_points = 100;
@@ -294,9 +322,11 @@ class GreenFuncNphBands : public Diagram {
     // exact estimator methods
     void exactEstimatorGF(long double tau_length, int ext_phonon_order);
     double groundStateEnergyExactEstimator(long double tau_length);
-    void calcGroundStateEnergy(std::string filename);
+    void groundStateEnergyBlockEstimator(long double gs_energy);
+    //void calcGroundStateEnergy(std::string filename);
     double effectiveMassExactEstimator(long double tau_length);
-    void calcEffectiveMasses(std::string filename);
+    void effectiveMassBlockEstimator(long double avg, long double xP, long double yP, long double zP);
+    //void calcEffectiveMasses(std::string filename);
 
     // debug methods
     void writeDiagram(std::string filename, int i, double r) const;

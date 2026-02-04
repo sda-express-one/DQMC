@@ -95,7 +95,7 @@ int main(){
             diagram.setSelectedOrder(sets.selected_order);
 
             // set calculations perfomed
-            diagram.setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor, sets.fix_tau_value);
+            diagram.setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor, sets.blocking_analysis, sets.fix_tau_value);
             // set benchmarking
             diagram.setBenchmarking(sets.time_benchmark);
             // set MC statistics
@@ -154,8 +154,11 @@ int main(){
             diagram_relax.setNumPoints(sets.num_points_exact);
             diagram_relax.setSelectedOrder(sets.selected_order);
 
+            // blocking method
+            diagram_relax.setNumBlocks(sets.N_blocks);
+
             // set calculations perfomed
-            diagram_relax.setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor, sets.fix_tau_value);
+            diagram_relax.setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor, sets.blocking_analysis, sets.fix_tau_value);
             // set benchmarking
             diagram_relax.setBenchmarking(sets.time_benchmark);
             // set MC statistics
@@ -172,15 +175,24 @@ int main(){
             diagram_relax.markovChainMCOnlyRelax();
 
             long double * gs_energy = nullptr;
-            if(sets.gs_energy){gs_energy = new long double[cpu.num_procs];}
+            long double * gs_energy_var = nullptr;
+            if(sets.gs_energy){
+                gs_energy = new long double[cpu.num_procs];
+                gs_energy_var = new long double[cpu.num_procs];
+            }
 
             long double * effective_mass = nullptr;
+            long double * effective_mass_var = nullptr;
             long double ** effective_masses = nullptr;
+            long double ** effective_masses_var = nullptr;
             if(sets.effective_mass){
                 effective_mass = new long double[cpu.num_procs];
+                effective_mass_var = new long double[cpu.num_procs];
                 effective_masses = new long double * [cpu.num_procs];
+                effective_masses_var = new long double * [cpu.num_procs];
                 for (int i = 0; i < cpu.num_procs; i++){
                     effective_masses[i] = new long double[3];
+                    effective_masses_var[i] = new long double[3];
                 }
             }
 
@@ -237,16 +249,10 @@ int main(){
                     sim.ph_ext_max, sim.num_bands, sim.num_phonon_modes);
 
                 #pragma omp critical
-                Diagram::setSeed(seed, ID*2654435761U);
+                {
+                    Diagram::setSeed(seed, ID*2654435761U);
+                }
 
-                diagram_simulate.setPhononModes(phonon_modes);
-                diagram_simulate.setDielectricResponses(dielectric_responses);
-                diagram_simulate.set1BZVolume(sim.V_BZ);
-                diagram_simulate.setBvKVolume(sim.V_BvK);
-                diagram_simulate.setDielectricConstant(sim.dielectric_const);
-                diagram_simulate.setCurrentOrderInt(current_order_int);
-                diagram_simulate.setCurrentPhExt(current_ph_ext);
-                
                 #pragma omp barrier
                 #pragma omp master
                 {
@@ -257,6 +263,14 @@ int main(){
                     delete[] vertices_thermalized;
                 }
                 #pragma omp barrier
+
+                diagram_simulate.setPhononModes(phonon_modes);
+                diagram_simulate.setDielectricResponses(dielectric_responses);
+                diagram_simulate.set1BZVolume(sim.V_BZ);
+                diagram_simulate.setBvKVolume(sim.V_BvK);
+                diagram_simulate.setDielectricConstant(sim.dielectric_const);
+                diagram_simulate.setCurrentOrderInt(current_order_int);
+                diagram_simulate.setCurrentPhExt(current_ph_ext);
 
                 if(sim.num_bands == 1){
                     diagram_simulate.setEffectiveMasses(sim.m_x, sim.m_y, sim.m_z);
@@ -276,8 +290,11 @@ int main(){
                 diagram_simulate.setNumPoints(sets.num_points_exact);
                 diagram_simulate.setSelectedOrder(sets.selected_order);
 
+                // blocking method
+                diagram_simulate.setNumBlocks(sets.N_blocks);
+
                 // set calculations perfomed
-                diagram_simulate.setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor, sets.fix_tau_value);
+                diagram_simulate.setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor, sets.blocking_analysis, sets.fix_tau_value);
                 // set benchmarking
                 diagram_simulate.setBenchmarking(sets.time_benchmark);
                 // set MC statistics
@@ -322,10 +339,15 @@ int main(){
 
                 # pragma omp critical 
                 {   
-                    if(sets.gs_energy){gs_energy[ID] = diagram_simulate.getGSEnergy();}
+                    if(sets.gs_energy){
+                        gs_energy[ID] = diagram_simulate.getGSEnergy();
+                        gs_energy_var[ID] = diagram_simulate.getGSEnergyVar();
+                    }
                     if(sets.effective_mass){
                         effective_mass[ID] = diagram_simulate.getEffectiveMass();
+                        effective_mass_var[ID] = diagram_simulate.getEffectiveMassVar();
                         diagram_simulate.getEffectiveMasses(effective_masses[ID]);
+                        diagram_simulate.getEffectiveMassesVar(effective_masses_var[ID]);
                     }
                     if(sets.histo){diagram_simulate.getHistogram(points_histogram[ID], gf_histo[ID]);}
                     if(sets.gf_exact){diagram_simulate.getGFExactPoints(points_gf_exact[ID], gf_values_exact[ID]);}
@@ -334,31 +356,50 @@ int main(){
 
             if(sets.gs_energy){
                 long double gs_energy_mean = computeMean(gs_energy, num_threads);
+                long double gs_energy_mean_var = computeMean(gs_energy_var, num_threads)*(num_threads)/(num_threads-1);
     
-                writeGS_Energy("gs_energy.txt", &diagram_relax, num_threads, gs_energy_mean, gs_energy);
+                writeGS_Energy("gs_energy.txt", &diagram_relax, num_threads, sets.blocking_analysis,
+                    gs_energy_mean, gs_energy,
+                    gs_energy_mean_var, gs_energy_var
+                );
                 
                 delete[] gs_energy;
+                delete[] gs_energy_var;
             }
 
             if(sets.effective_mass){
                 long double effective_mass_mean = computeMean(effective_mass, num_threads);
+                long double effective_mass_mean_var = computeMean(effective_mass_var, num_threads)*num_threads/(num_threads-1);
                 long double * effective_masses_values = new long double[num_threads];
+                long double * effective_masses_values_var = new long double[num_threads];
                 long double effective_masses_mean[3];
+                long double effective_masses_mean_var[3];
+
                 for(int i=0; i<3; i++){
                     for(int j=0; j < num_threads; j++){
                         effective_masses_values[j] = effective_masses[j][i];
+                        effective_masses_values_var[j] = effective_masses_var[j][i];
                     }
                     effective_masses_mean[i] = computeMean(effective_masses_values, num_threads);
+                    effective_masses_mean_var[i] = computeMean(effective_masses_values_var, num_threads)*num_threads/(num_threads-1);
                 }
 
-                writeEffectiveMass("effective_mass.txt", &diagram_relax, num_threads, effective_mass_mean, effective_masses_mean, effective_masses);
+                writeEffectiveMass("effective_mass.txt", &diagram_relax, num_threads, sets.blocking_analysis,
+                    effective_mass_mean, effective_mass_mean_var,
+                    effective_masses_mean, effective_masses,
+                    effective_masses_mean_var, effective_masses_var
+                );
 
                 delete[] effective_masses_values;
+                delete[] effective_masses_values_var;
                 delete[] effective_mass;
+                delete[] effective_mass_var;
                 for(int i=0; i < cpu.num_procs; i++){
                     delete[] effective_masses[i];
+                    delete[] effective_masses_var[i];
                 }
                 delete[] effective_masses;
+                delete[] effective_masses_var;
             }
 
             if(sets.histo){
@@ -413,7 +454,7 @@ int main(){
         }
     }
     
-    std::cout << std::endl;
+    //std::cout << std::endl;
     std::cout << "Terminating the program." << std::endl;
     std::cout << std::endl;
     return 0;
