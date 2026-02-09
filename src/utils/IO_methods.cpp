@@ -225,7 +225,7 @@ parameters readSimParameterstxt(const std::string& filename){
                 iss >> value;
                 params.V_BvK = stringToDouble(value);
             }
-            else if(key == "dielectric_constant" || key == "dielectric_const" || key == "diel_const"){
+            else if(key == "dielectric_constant" || key == "dielectric_const" || key == "diel_const" || key == "diel_infty"){
                 std::string value;
                 iss >> value;
                 params.dielectric_const = stringToDouble(value);
