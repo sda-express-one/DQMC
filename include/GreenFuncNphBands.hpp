@@ -36,6 +36,9 @@ class GreenFuncNphBands : public Diagram {
         delete[] _ext_phonon_type_num;
         delete[] _dielectric_responses;
         delete[] _bands;
+        delete[] _new_taus;
+        delete[] _bands_init;
+        delete[] _bands_fin;
 
         if(_flags.histo){
             delete[] _histogram;
@@ -175,7 +178,12 @@ class GreenFuncNphBands : public Diagram {
     void writeExactGF(const std::string& filename) const; // write GF with exact method in .txt file
     void writeMCStatistics(std::string filename) const;
 
-    // statistics method
+    protected:
+
+    // support arrays
+    long double * _new_taus;
+    Band * _bands_init;
+    Band * _bands_fin;
 
     private:
 
