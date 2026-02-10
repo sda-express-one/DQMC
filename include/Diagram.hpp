@@ -109,8 +109,8 @@ class Diagram {
         static thread_local pcg32 gen; // Permuted Congruential Generator, 32-bit
 
         // diagram backbone
-        Vertex* _vertices;
-        Propagator* _propagators;
+        Vertex* _vertices = nullptr;
+        Propagator* _propagators = nullptr;
 
         // simulation parameters
         long double _tau_max; // maximum value for imaginary time

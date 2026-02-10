@@ -221,7 +221,8 @@ int main(){
                 }
             }
 
-            Propagator * propagators_thermalized = new Propagator[sim.order_int_max + 2*sim.ph_ext_max + 1];
+            
+            /*Propagator * propagators_thermalized = new Propagator[sim.order_int_max + 2*sim.ph_ext_max + 1];
             Band * bands_thermalized = new Band[sim.order_int_max + 2*sim.ph_ext_max + 1];
             Vertex * vertices_thermalized = new Vertex[sim.order_int_max + 2*sim.ph_ext_max + 2];
 
@@ -230,7 +231,7 @@ int main(){
                 bands_thermalized[i] = diagram_relax.getBand(i);
                 vertices_thermalized[i] = diagram_relax.getVertex(i);
             }
-            vertices_thermalized[sim.order_int_max + 2*sim.ph_ext_max + 1] = diagram_relax.getVertex(sim.order_int_max + 2*sim.ph_ext_max + 1);
+            vertices_thermalized[sim.order_int_max + 2*sim.ph_ext_max + 1] = diagram_relax.getVertex(sim.order_int_max + 2*sim.ph_ext_max + 1);*/
 
             int current_order_int = diagram_relax.getCurrentOrderInt();
             int current_ph_ext = diagram_relax.getCurrentPhExt();
@@ -244,13 +245,35 @@ int main(){
             {
                 int ID = omp_get_thread_num();
 
+                Propagator * propagators_thermalized = nullptr;
+                Band * bands_thermalized = nullptr;
+                Vertex * vertices_thermalized = nullptr;
+
+                #pragma omp critical
+
+                {
+                    propagators_thermalized = new Propagator[sim.order_int_max + 2*sim.ph_ext_max + 1];
+                    bands_thermalized = new Band[sim.order_int_max + 2*sim.ph_ext_max + 1];
+                    vertices_thermalized = new Vertex[sim.order_int_max + 2*sim.ph_ext_max + 2];
+
+                    for(int i = 0; i < sim.order_int_max + 2*sim.ph_ext_max + 1; i++){
+                        propagators_thermalized[i] = diagram_relax.getPropagator(i);
+                        bands_thermalized[i] = diagram_relax.getBand(i);
+                        vertices_thermalized[i] = diagram_relax.getVertex(i);
+                    }
+
+                    
+                }
+
                 GreenFuncNphBands diagram_simulate(propagators_thermalized, vertices_thermalized, bands_thermalized,
                     sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max,
                     sim.ph_ext_max, sim.num_bands, sim.num_phonon_modes);
-
                 #pragma omp critical
                 {
                     Diagram::setSeed(seed, ID*2654435761U);
+                    delete[] propagators_thermalized;
+                    delete[] bands_thermalized;
+                    delete[] vertices_thermalized;
                 }
 
                 #pragma omp barrier
@@ -258,9 +281,10 @@ int main(){
                 {
                     diagram_simulate.setMaster(true);
                     num_threads = omp_get_num_threads();
-                    delete[] propagators_thermalized;
+                    /*delete[] propagators_thermalized;
                     delete[] bands_thermalized;
-                    delete[] vertices_thermalized;
+                    delete[] vertices_thermalized;*/
+                    
                 }
                 #pragma omp barrier
 
@@ -351,7 +375,12 @@ int main(){
                     }
                     if(sets.histo){diagram_simulate.getHistogram(points_histogram[ID], gf_histo[ID]);}
                     if(sets.gf_exact){diagram_simulate.getGFExactPoints(points_gf_exact[ID], gf_values_exact[ID]);}
+                    /*delete[] propagators_thermalized;
+                    delete[] bands_thermalized;
+                    delete[] vertices_thermalized;*/
                 }
+
+                
             }
 
             if(sets.gs_energy){

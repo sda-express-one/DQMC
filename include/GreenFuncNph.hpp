@@ -111,18 +111,18 @@ class GreenFuncNph : public Diagram {
     int _selected_order = 0;
     long double _points_step = _tau_max/_num_points;
     long double _points_center = _points_step/2;
-    long double* _points; // array of evaluated points
-    long double* _points_gf_exact; // gf values for evaluated points
+    long double* _points = nullptr; // array of evaluated points
+    long double* _points_gf_exact = nullptr; // gf values for evaluated points
     unsigned long long int _gf_exact_count = 0;
 
     // histogram method
     int _N_bins = 100; // number of bins for histogram
     double _bin_width = _tau_max/_N_bins; // width of each bin
     double _bin_center = _bin_width/2; // center of each bin
-    double* _histogram; // histogram time lengths
-    unsigned long long int* _bin_count; // number of diagrams in each bin
+    double* _histogram = nullptr; // histogram time lengths
+    unsigned long long int* _bin_count = nullptr; // number of diagrams in each bin
     double _norm_const = 1.0;
-    double* _green_func;
+    double* _green_func = nullptr;
 
     // direct estimator variables
     long double _tau_cutoff_energy = _tau_max/10; // cutoff for energy estimator, if tau < tau_cutoff energy estimator is not calculated
@@ -133,11 +133,11 @@ class GreenFuncNph : public Diagram {
     long double _effective_mass = 0; // effective mass of polaron (in electron mass units)
     unsigned long long int _effective_mass_count = 0; // number of times the effective mass estimator is calculated
 
-    unsigned long long int* _Z_factor; // Z factor of polaron (overlap between free electron state and polaron state)
+    unsigned long long int* _Z_factor = nullptr; // Z factor of polaron (overlap between free electron state and polaron state)
 
     // collect MC statistics
-    MC_Benchmarking * _benchmark_sim; // time benchmarking object
-    MC_Benchmarking * _benchmark_th; // time benchmarking object for thermalization
+    MC_Benchmarking * _benchmark_sim = nullptr; // time benchmarking object
+    MC_Benchmarking * _benchmark_th = nullptr; // time benchmarking object for thermalization
     MC_Statistics _mc_statistics; // statistics of the simulation
     long double _tau_cutoff_statistics = 0.; // cutoff for statistics, if tau < tau_cutoff statistics is not calculated
 

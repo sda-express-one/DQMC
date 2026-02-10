@@ -181,14 +181,14 @@ class GreenFuncNphBands : public Diagram {
     protected:
 
     // support arrays
-    long double * _new_taus;
-    Band * _bands_init;
-    Band * _bands_fin;
+    long double * _new_taus = nullptr;
+    Band * _bands_init = nullptr;
+    Band * _bands_fin = nullptr;
 
     private:
 
     // diagram features
-    Band * _bands;
+    Band * _bands = nullptr;
 
     // cpu features
     int _num_procs = 1;
@@ -246,25 +246,25 @@ class GreenFuncNphBands : public Diagram {
     double _bin_width = _tau_max/_N_bins; // width of each bin
     double _bin_center = _bin_width/2; // center of each bin
     double _bin_width_inv = 1./_bin_width;
-    double* _histogram; // histogram time points
-    unsigned long long int* _bin_count; // number of diagrams in each bin
-    double* _green_func;
+    double* _histogram = nullptr; // histogram time points
+    unsigned long long int* _bin_count = nullptr; // number of diagrams in each bin
+    double* _green_func = nullptr;
 
     // direct estimator variables
     // renormalized gs energy
     long double _tau_cutoff_energy = _tau_max/10; // cutoff for energy estimator, if tau < tau_cutoff energy estimator is not calculated
     long double _gs_energy = 0.0; // ground state energy estimator of the system
-    long double * _gs_energy_block_array; // array of mean values of each block
+    long double * _gs_energy_block_array = nullptr; // array of mean values of each block
     long double _gs_energy_var = 0.0; // variance of ground state energy estimator (block method)
     unsigned long long int _gs_energy_count = 0; // number of times the ground state energy estimator is calculated
 
     // renormalized effective mass (polaron)
     long double _tau_cutoff_mass = _tau_max/10; // cutoff for effective mass estimator, if tau < tau_cutoff mass estimator is not calculated
     long double _effective_mass = 0; // isotropic or (1,1,1) direction
-    long double * _effective_mass_block_array; // array of mean values of each block
+    long double * _effective_mass_block_array = nullptr; // array of mean values of each block
     long double _effective_mass_var = 0.0; // variance of effective mass energy estimator
     long double _effective_masses[3] = {0, 0, 0}; // effective masses of polaron (in electron mass units, 1 band model)
-    long double * _effective_masses_block_array; // array of mean values of each block (mx, my and mz)
+    long double * _effective_masses_block_array = nullptr; // array of mean values of each block (mx, my and mz)
     long double _effective_masses_var[3] = {0, 0, 0}; // variance of effective masses of polaron
     Eigen::Matrix3d _effective_masses_bands;
     unsigned long long int _effective_mass_count = 0; // number of times the effective mass estimator is calculated
@@ -274,13 +274,13 @@ class GreenFuncNphBands : public Diagram {
     int _selected_order = 0;
     long double _points_step = _tau_max/_num_points;
     long double _points_center = _points_step/2;
-    long double* _points; // array of evaluated points
-    long double* _points_gf_exact; // gf values for evaluated points
+    long double* _points = nullptr; // array of evaluated points
+    long double* _points_gf_exact = nullptr; // gf values for evaluated points
     unsigned long long int _gf_exact_count = 0;
 
     // collect MC statistics
-    MC_Benchmarking * _benchmark_sim; // time benchmarking object
-    MC_Benchmarking * _benchmark_th; // time benchmarking object for thermalization
+    MC_Benchmarking * _benchmark_sim = nullptr; // time benchmarking object
+    MC_Benchmarking * _benchmark_th = nullptr; // time benchmarking object for thermalization
     MC_Statistics _mc_statistics; // statistics of the simulation
     long double _tau_cutoff_statistics = 0.; // cutoff for statistics, if tau < tau_cutoff statistics is not calculated
 

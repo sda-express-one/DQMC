@@ -53,8 +53,8 @@ class MC_Benchmarking {
 
     // update time
     const int _num_updates = 0;
-    unsigned long long int* _updates_iterations;
-    long double* _updates_time; 
+    unsigned long long int* _updates_iterations = nullptr;
+    long double* _updates_time = nullptr; 
 };
 
 #endif 
