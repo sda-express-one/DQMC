@@ -435,7 +435,7 @@ void GreenFuncNphBands::propagatorArrayMakeRoom(int index_one, int index_two){
 };
 
 void GreenFuncNphBands::propagatorArrayRemoveRoom(int index_one, int index_two){
-    for(int i = index_one; i < _current_order_int + 2*_current_ph_ext; ++i){
+    for(int i = index_one; i < _current_order_int + 2*_current_ph_ext - 1; ++i){
         if(i < index_two - 2){_propagators[i] = _propagators[i+1];}
         else{_propagators[i] = _propagators[i+2];}
     }
@@ -449,7 +449,7 @@ void GreenFuncNphBands::bandArrayMakeRoom(int index_one, int index_two){
 };
 
 void GreenFuncNphBands::bandArrayRemoveRoom(int index_one, int index_two){
-    for(int i = index_one; i < _current_order_int + 2*_current_ph_ext; ++i){
+    for(int i = index_one; i < _current_order_int + 2*_current_ph_ext - 1; ++i){
         if(i < index_two - 2){_bands[i] = _bands[i+1];}
         else{_bands[i] = _bands[i+2];}
     }
