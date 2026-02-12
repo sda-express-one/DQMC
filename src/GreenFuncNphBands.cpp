@@ -517,16 +517,6 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
                     || isEqual(tau_two, _vertices[index_two+1].tau) || tau_two > _vertices[index_two+1].tau){return;}
             }
 
-            // create arrays of momentum values
-            /*
-            double* a_px_init = new double[index_two + 1 - index_one];
-            double* a_py_init = new double[index_two + 1 - index_one];
-            double* a_pz_init = new double[index_two + 1 - index_one];
-            double* a_px_fin = new double[index_two + 1 - index_one];
-            double* a_py_fin = new double[index_two + 1 - index_one];
-            double* a_pz_fin = new double[index_two + 1 - index_one];
-            */
-
             // momentum values
             double px_init = 0;
             double py_init = 0;
@@ -535,15 +525,6 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
             double py_fin = 0;
             double pz_fin = 0;
 
-            // create array of band values
-            //Band* bands_init = new Band[index_two + 1 - index_one];
-            //Band* bands_fin = new Band[index_two + 1 - index_one];
-
-            // create arrays of energy values
-            /*
-            double* a_energy_init = new double[index_two + 1 - index_one];
-            double* a_energy_fin = new double[index_two + 1 - index_one];
-            */
             // energy values
             double energy_init = 0;
             double energy_fin = 0;
@@ -554,9 +535,6 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
 
             // temporary variables for new proposed diagram
             int chosen_band = 0;
-            //double c1_new = 1;
-            //double c2_new = 0;
-            //double c3_new = 0;
             double eigenval = 1.0;
             Eigen::Matrix<double,4,3> new_values_matrix;
             Eigen::Vector3d new_overlap;
@@ -637,19 +615,6 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
                 }
             }
 
-            /*
-            delete[] px_init;
-            delete[] py_init;
-            delete[] pz_init;
-            delete[] px_fin;
-            delete[] py_fin;
-            delete[] pz_fin;
-
-            // delete array of energies
-            delete[] energy_init;
-            delete[] energy_fin;
-            */
-
             double mass_q = 1;
             if(_num_bands == 1){mass_q = computeEffMassSingleBand(w_x, w_y, w_z, _m_x_el, _m_y_el, _m_z_el);}
 
@@ -704,8 +669,6 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
                     _bands[i] = _bands_fin[i-(index_one+1)];
                 }
 
-                // delete[] bands_init; delete[] bands_fin;
-
                 _current_order_int += 2; // update current diagram internal order
                 findLastPhVertex();
             }
@@ -738,14 +701,6 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
         int phonon_index = _vertices[index_one].index;
 
         // create arrays of momentum values
-        /*
-        double* a_px_init = new double[index_two - index_one];
-        double* a_py_init = new double[index_two - index_one];
-        double* a_pz_init = new double[index_two - index_one];
-        double* a_px_fin = new double[index_two - index_one];
-        double* a_py_fin = new double[index_two - index_one];
-        double* a_pz_fin = new double[index_two - index_one];
-        */
 
         // momentum values
         double px_init = 0;
@@ -755,14 +710,6 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
         double py_fin = 0;
         double pz_fin = 0;
 
-        //Band* bands_init = new Band[index_two - index_one];
-        //Band* bands_fin = new Band[index_two - index_one];
-
-        // create arrays of energy values
-        /*
-        double* a_energy_init = new double[index_two - index_one];
-        double* a_energy_fin = new double[index_two - index_one];
-        */
 
         // energy values
         double energy_init = 0;
@@ -871,13 +818,6 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
             }
         }
 
-        /*
-        delete[] px_init; delete[] py_init; delete[] pz_init;
-        delete[] px_fin; delete[] py_fin; delete[] pz_fin;
-
-        delete[] energy_init; delete[] energy_fin;
-        */
-
         double mass_q = 1;
         if(_num_bands == 1){mass_q = computeEffMassSingleBand(w_x, w_y, w_z, _m_x_el, _m_y_el, _m_z_el);}
 
@@ -899,7 +839,7 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
 
         double R_rem = numerator/denominator;
 
-        if(!(Metropolis(R_rem))){/*delete[] bands_init; delete[] bands_fin*/; return;}
+        if(!(Metropolis(R_rem))){return;}
         else{
             for(int i=index_one; i<index_two; ++i){
                 _propagators[i].el_propagator_kx += w_x;
@@ -936,8 +876,6 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
                 _bands[total_order].c3 = (1./3);
             }
 
-            // delete[] bands_init; delete[] bands_fin;
-
             _current_order_int -= 2;
             findLastPhVertex();
         }
@@ -972,10 +910,6 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
         double w_z = distrib_norm(gen);
 
         if(tau_one <= tau_two){
-            //int * indexes = findVerticesPosition(tau_one, tau_two);
-            //int index_one = indexes[0];
-            //int index_two = indexes[1];
-            //delete[] indexes;
             int index_one = findVertexPosition(tau_one);
             int index_two = findVertexPosition(tau_two);
 
@@ -986,25 +920,6 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             if(tau_two < _vertices[index_two].tau || isEqual(tau_two, _vertices[index_two].tau) 
                 || isEqual(tau_two, _vertices[index_two+1].tau) || tau_two > _vertices[index_two+1].tau){return;} 
 
-            /*
-            double* px_one_init = new double[index_one + 1];
-            double* px_two_init = new double[total_order + 1 - index_two];
-            double* py_one_init = new double[index_one + 1];
-            double* py_two_init = new double[total_order + 1 - index_two];
-
-            double* pz_one_init = new double[index_one + 1];
-            double* pz_two_init = new double[total_order + 1 - index_two];
-
-            double* px_one_fin = new double[index_one + 1];
-            double* px_two_fin = new double[total_order + 1 - index_two];
-
-            double* py_one_fin = new double[index_one + 1];
-            double* py_two_fin = new double[total_order + 1 - index_two];
-
-            double* pz_one_fin = new double[index_one + 1];
-            double* pz_two_fin = new double[total_order + 1 - index_two];
-            */
-
             // momentum values
             double px_init = 0;
             double px_fin = 0;
@@ -1012,12 +927,6 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             double py_fin = 0;
             double pz_init = 0;
             double pz_fin = 0;
-
-            //Band* bands_one_init = new Band[index_one + 1];
-            //Band* bands_two_init = new Band[total_order + 1 - index_two];
-
-            //Band* bands_one_fin = new Band[index_one + 1];
-            //Band* bands_two_fin = new Band[total_order + 1 - index_two];
 
             // vertices weights of two diagrams
             double prefactor_fin = 1;
@@ -1032,14 +941,6 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             Eigen::Matrix<double,4,3> new_values_matrix;
             Eigen::Vector3d new_overlap;
             std::uniform_int_distribution<int> band_number(0, _num_bands-1);
-
-            // energy arrays
-            /*
-            double* energy_one_init = new double[index_one + 1];
-            double* energy_two_init = new double[total_order + 1 - index_two];
-            double* energy_one_fin = new double[index_one + 1];
-            double* energy_two_fin = new double[total_order + 1 - index_two];
-            */
 
             // energy values
             double energy_init = 0;
@@ -1188,24 +1089,6 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                     }
                 }
             }
-
-            //_bands_init[index_one + 1] = _bands[index_one];
-
-            // delete momentum arrays
-            /*
-            delete[] px_one_init; delete[] px_one_fin; 
-            delete[] py_one_init; delete[] py_one_fin; 
-            delete[] pz_one_init; delete[] pz_one_fin;
-            delete[] px_two_init; delete[] px_two_fin; 
-            delete[] py_two_init; delete[] py_two_fin; 
-            delete[] pz_two_init; delete[] pz_two_fin;
-
-            // delete array of energies
-            delete[] energy_one_init;
-            delete[] energy_one_fin;
-            delete[] energy_two_init;
-            delete[] energy_two_fin;
-            */
             
             double p_B = _p_rem_ext;
             double p_A = _p_add_ext*(_current_ph_ext+1);
@@ -1231,8 +1114,6 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             double R_add = numerator/denominator;
 
             if(!(Metropolis(R_add))){
-                //delete[] bands_one_init; delete[] bands_one_fin;
-                //delete[] bands_two_init; delete[] bands_two_fin;
                 return;
             }
             else{
@@ -1258,22 +1139,6 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 _vertices[index_two+2].wy = w_y;
                 _vertices[index_two+2].wz = w_z;
 
-                // update electron propagator energies
-                /*for(int i = 0; i < index_one + 1; ++i){
-                    _propagators[i].el_propagator_kx -= w_x;
-                    _propagators[i].el_propagator_ky -= w_y;
-                    _propagators[i].el_propagator_kz -= w_z;
-                    _bands[i] = _bands_fin[i];
-                }
-                for(int i = index_one+1; i < index_two + 2; i++){
-                    _bands[i] = _bands_fin[i];
-                }
-                for(int i = index_two+2; i < total_order + 3; ++i){
-                    _propagators[i].el_propagator_kx -= w_x;
-                    _propagators[i].el_propagator_ky -= w_y;
-                    _propagators[i].el_propagator_kz -= w_z;
-                    _bands[i] = _bands_fin[i];
-                }*/
 
                 for(int i=0; i < total_order + 3; ++i){
                     if(i < index_one + 1){
@@ -1292,10 +1157,6 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                         _bands[i] = _bands_fin[i];
                     }
                 }
-                //for(int i = 0; i < index)
-
-                //delete[] bands_one_init; delete[] bands_one_fin;
-                //delete[] bands_two_init; delete[] bands_two_fin;
 
                 _current_ph_ext += 1; // update current number of external phonons
                 _ext_phonon_type_num[phonon_index]++;
@@ -1304,11 +1165,6 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             }
         }
         else{
-            //int * indexes = findVerticesPosition(tau_two, tau_one);
-            //int index_one = indexes[0];
-            //int index_two = indexes[1];
-            //delete[] indexes;
-
             int index_one = findVertexPosition(tau_two);
             int index_two = findVertexPosition(tau_one);
 
@@ -1321,15 +1177,6 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
 
             int total_order = _current_order_int + 2*_current_ph_ext;
 
-            /*
-            double* px_init = new double[total_order+1];
-            double* py_init = new double[total_order+1];
-            double* pz_init = new double[total_order+1];
-            
-            double* px_fin = new double[total_order+3];
-            double* py_fin = new double[total_order+3];
-            double* pz_fin = new double[total_order+3];
-            */
             // momentum values
             double px_init = 0;
             double px_fin = 0;
@@ -1338,23 +1185,12 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             double pz_init = 0;
             double pz_fin = 0;
 
-            //Band* bands_init = new Band[total_order+1];
-            //Band* bands_fin = new Band[total_order+3];
-
             // temporary variables for new proposed diagram
             int chosen_band = 0;
-            //double c1_new = 1;
-            //double c2_new = 0;
-            //double c3_new = 0;
             double eigenval = 1.0;
             Eigen::Matrix<double,4,3> new_values_matrix;
             Eigen::Vector3d new_overlap;
             std::uniform_int_distribution<int> band_number(0, _num_bands-1);
-
-            /*
-            double* energy_init = new double[total_order+1];
-            double* energy_fin = new double[total_order+3];
-            */
 
             // energy values
             double energy_init = 0;
@@ -1500,14 +1336,6 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 }
             }
 
-            /*
-            delete[] px_init; delete[] py_init; delete[] pz_init;
-            
-            // delete array of energies
-            delete[] energy_init;
-            delete[] energy_fin;
-            */
-            
             double p_B = _p_rem_ext;
             double p_A = _p_add_ext*(_current_ph_ext+1);
 
@@ -1531,8 +1359,6 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             double R_add = numerator/denominator;
 
             if(!(Metropolis(R_add))){
-                //delete[] px_fin; delete[] py_fin; delete[] pz_fin; 
-                // delete[] bands_init; delete[] bands_fin;
                 return;
             }
             else{
@@ -1569,14 +1395,8 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                         _propagators[i].el_propagator_ky -= 2*w_y;
                         _propagators[i].el_propagator_kz -= 2*w_z;
                     }
-                    //_propagators[i].el_propagator_kx = px_fin[i];
-                    //_propagators[i].el_propagator_ky = py_fin[i];
-                    //_propagators[i].el_propagator_kz = pz_fin[i];
                     _bands[i] = _bands_fin[i];
                 }
-
-                //delete[] px_fin; delete[] py_fin; delete[] pz_fin;
-                //delete[] bands_init; delete[] bands_fin;
 
                 _current_ph_ext += 1; // update current number of external phonons
                 _ext_phonon_type_num[phonon_index]++;
@@ -1621,9 +1441,6 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
 
         // temporary variables for new proposed diagram
         int chosen_band = 0;
-        //double c1_new = 1;
-        //double c2_new = 0;
-        //double c3_new = 0;
         double eigenval = 1.0;
         Eigen::Matrix<double,4,3> new_values_matrix;
         Eigen::Vector3d new_overlap;
@@ -1631,25 +1448,6 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
         std::uniform_int_distribution<int> band_number(0, _num_bands-1);
 
         if(_vertices[index_one].type == -2){
-
-            // momentum arrays 
-            /*
-            double* px_one_init = new double[index_one + 1];
-            double* py_one_init = new double[index_one + 1];
-            double* pz_one_init = new double[index_one + 1];
-
-            double* px_one_fin = new double[index_one + 1];
-            double* py_one_fin = new double[index_one + 1];
-            double* pz_one_fin = new double[index_one + 1];
-
-            double* px_two_init = new double[total_order - index_two + 1];
-            double* py_two_init = new double[total_order - index_two + 1];
-            double* pz_two_init = new double[total_order - index_two + 1];
-
-            double* px_two_fin = new double[total_order - index_two + 1];
-            double* py_two_fin = new double[total_order - index_two + 1];
-            double* pz_two_fin = new double[total_order - index_two + 1];
-            */
 
             // momentum values
             double px_init = 0;
@@ -1659,20 +1457,6 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
             double pz_init = 0;
             double pz_fin = 0;
 
-            // band arrays
-            //Band* bands_one_init = new Band[index_one + 1];
-            //Band* bands_one_fin = new Band[index_one + 1];
-
-            //Band* bands_two_init = new Band[total_order - index_two + 1];
-            //Band* bands_two_fin = new Band[total_order - index_two + 1];
-
-            // energy arrays
-            /*
-            double* energy_one_init = new double[index_one + 1];
-            double* energy_one_fin = new double[index_one + 1];
-            double* energy_two_init = new double[total_order - index_two + 1];
-            double* energy_two_fin = new double[total_order - index_two + 1];
-            */
             // energy values
             double energy_init = 0;
             double energy_fin = 0;
@@ -1686,7 +1470,6 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
             int j;
 
             for(int i = 0; i < total_order + 1; ++i){
-                //for(int i = 0; i < index_one + 1; ++i){
                 if(i < index_one + 1){
                     px_init = _propagators[i].el_propagator_kx + w_x;
                     py_init = _propagators[i].el_propagator_ky + w_y;
@@ -1750,7 +1533,6 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                 }
 
                 
-                //for(int i = index_two; i < total_order + 1; ++i){
                 if(i > index_two){
                     j = i;
                     px_init = _propagators[i].el_propagator_kx + w_x;
@@ -1816,15 +1598,6 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                 }
             }
 
-            /*
-            delete[] px_one_init; delete[] py_one_init; delete[] pz_one_init;
-            delete[] px_one_fin; delete[] py_one_fin; delete[] pz_one_fin;
-            delete[] px_two_init; delete[] py_two_init; delete[] pz_two_init;
-            delete[] px_two_fin; delete[] py_two_fin; delete[] pz_two_fin;
-
-            delete[] energy_one_init; delete[] energy_one_fin;
-            delete[] energy_two_init; delete[] energy_two_fin;
-            */
 
             long double tau_current = _vertices[total_order+1].tau; // length of current diagram
 
@@ -1852,8 +1625,6 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
             double R_rem = numerator/denominator;
 
             if(!Metropolis(R_rem)){
-                //delete[] bands_one_init; delete[] bands_one_fin;
-                //delete[] bands_two_init; delete[] bands_two_fin;
                 return;
             }
             else{
@@ -1895,9 +1666,6 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                     _bands[total_order].c3 = (1./3);
                 }
 
-                // delete[] bands_one_init; delete[] bands_one_fin;
-                // delete[] bands_two_init; delete[] bands_two_fin;
-
                 _current_ph_ext -= 1; // update current number of external phonons
                 _ext_phonon_type_num[phonon_index]--;
                 findLastPhVertex();
@@ -1905,16 +1673,6 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
             }
         }
         else if(_vertices[index_one].type == +2){
-
-                /*
-                double* px_init = new double[total_order + 1];
-                double* py_init = new double[total_order + 1];
-                double* pz_init = new double[total_order + 1];
-    
-                double* px_fin = new double[total_order + 1];
-                double* py_fin = new double[total_order + 1];
-                double* pz_fin = new double[total_order + 1];
-                */
 
                 // momentum values
                 double px_init = 0;
@@ -1924,13 +1682,6 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                 double pz_init = 0;
                 double pz_fin = 0;
 
-                //Band* bands_init = new Band[total_order + 1];
-                //Band* bands_fin = new Band[total_order + 1];
-                
-                /*
-                double* energy_init = new double[total_order + 1];
-                double* energy_fin = new double[total_order + 1];
-                */
                 // energy values
                 double energy_init = 0;
                 double energy_fin = 0;
@@ -2048,15 +1799,6 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                     action_fin += energy_fin*(_vertices[i+1].tau - _vertices[i].tau);
                 }
 
-                /*
-                delete[] px_fin;
-                delete[] py_fin;
-                delete[] pz_fin;
-
-                delete[] energy_init;
-                delete[] energy_fin;
-                */
-
                 long double tau_current = _vertices[total_order+1].tau; // length of current diagram
 
                 double p_A = _p_add_ext*_current_ph_ext;
@@ -2081,8 +1823,6 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                 double R_rem = numerator/denominator;
 
                 if(!(Metropolis(R_rem))){
-                    // delete[] px_init; delete[] py_init; delete[] pz_init; 
-                    //delete[] bands_init; delete[] bands_fin;
                     return;
                 }
                 else{
@@ -2099,9 +1839,6 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                         }
                         _bands[i] = _bands_init[i];
                     }
-
-                    // delete[] px_init; delete[] py_init; delete[] pz_init;
-                    // delete[] bands_init; delete[] bands_fin;
 
                     phVertexRemoveRoom(index_one, index_two); // remove room in vertices array
                     propagatorArrayRemoveRoom(index_one, index_two); // remove room in electron propagators array
@@ -3211,6 +2948,12 @@ void GreenFuncNphBands::printEffectiveMassEstimator(){
 void GreenFuncNphBands::printMCStatistics(){
     _mc_statistics.avg_tau /= static_cast<long double>(_mc_statistics.num_diagrams); // average length of diagrams
     _mc_statistics.avg_tau_squared /= static_cast<long double>(_mc_statistics.num_diagrams); // average squared length of diagrams
+    long double avg_order = static_cast<long double>(_mc_statistics.avg_order) / static_cast<long double>(_mc_statistics.num_diagrams); // average order of diagrams
+    long double avg_order_sq = static_cast<long double>(_mc_statistics.avg_order_squared) / static_cast<long double>(_mc_statistics.num_diagrams); // average squared order of diagrams
+    long double avg_ph_ext = static_cast<long double>(_mc_statistics.avg_ph_ext) / static_cast<long double>(_mc_statistics.num_diagrams); // average number of external phonons
+    long double avg_ph_ext_sq = static_cast<long double>(_mc_statistics.avg_ph_ext_squared) / static_cast<long double>(_mc_statistics.num_diagrams); // average squared number of external phonons
+    long double avg_ph_int = static_cast<long double>(_mc_statistics.avg_ph_int) / static_cast<long double>(_mc_statistics.num_diagrams); // average number of internal phonons
+    long double avg_ph_int_sq = static_cast<long double>(_mc_statistics.avg_ph_int_squared)/static_cast<long double>(_mc_statistics.num_diagrams); // average squared number of internal phonons
 
     std::cout << "Monte Carlo statistics:" << std::endl;
        
@@ -3237,15 +2980,12 @@ void GreenFuncNphBands::printMCStatistics(){
     std::cout << "Number of diagrams (taken into account): " << _mc_statistics.num_diagrams << std::endl;
     std::cout << "Average length of diagrams: " << _mc_statistics.avg_tau << std::endl;
     std::cout << "Std dev length of diagrams: " << std::sqrt(_mc_statistics.avg_tau_squared - _mc_statistics.avg_tau*_mc_statistics.avg_tau) << std::endl;
-    std::cout << "Average order of diagrams: " << static_cast<long double>(_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams) << std::endl;
-    std::cout << "Std dev order of diagrams: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_order_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
-        - static_cast<long double>(_mc_statistics.avg_order*_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << std::endl;
-    std::cout << "Average number of internal phonons: " << static_cast<long double>(_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams) << std::endl;
-    std::cout << "Std dev number of internal phonons: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_ph_int_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
-        - static_cast<long double>(_mc_statistics.avg_ph_int*_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << std::endl;
-    std::cout << "Average number of external phonons: " << static_cast<long double>(_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams) << std::endl;
-    std::cout << "Std dev number of external phonons: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_ph_ext_squared)/static_cast<long double>(_mc_statistics.num_diagrams) 
-        - static_cast<long double>(_mc_statistics.avg_ph_ext*_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << std::endl;
+    std::cout << "Average order of diagrams: " << avg_order << std::endl;
+    std::cout << "Std dev order of diagrams: " << std::sqrt(avg_order_sq - avg_order*avg_order) << std::endl;
+    std::cout << "Average number of internal phonons: " << avg_ph_int << std::endl;
+    std::cout << "Std dev number of internal phonons: " << std::sqrt(avg_ph_int_sq - avg_ph_int*avg_ph_int) << std::endl;
+    std::cout << "Average number of external phonons: " << avg_ph_ext << std::endl;
+    std::cout << "Std dev number of external phonons: " << std::sqrt(avg_ph_ext_sq - avg_ph_ext*avg_ph_ext) << std::endl;
     std::cout << "Number of zero order diagrams: " << _mc_statistics.zero_order_diagrams << std::endl;
     std::cout << std::endl;
     writeMCStatistics("MC_Statistics.txt");
@@ -4293,6 +4033,14 @@ void GreenFuncNphBands::writeChosenUpdate(std::string filename, int i, double r)
 
 void GreenFuncNphBands::writeMCStatistics(std::string filename) const {
     std::ofstream file(filename, std::ofstream::app);
+    
+    long double avg_order = static_cast<long double>(_mc_statistics.avg_order) / static_cast<long double>(_mc_statistics.num_diagrams); // average order of diagrams
+    long double avg_order_sq = static_cast<long double>(_mc_statistics.avg_order_squared) / static_cast<long double>(_mc_statistics.num_diagrams); // average squared order of diagrams
+    long double avg_ph_ext = static_cast<long double>(_mc_statistics.avg_ph_ext) / static_cast<long double>(_mc_statistics.num_diagrams); // average number of external phonons
+    long double avg_ph_ext_sq = static_cast<long double>(_mc_statistics.avg_ph_ext_squared) / static_cast<long double>(_mc_statistics.num_diagrams); // average squared number of external phonons
+    long double avg_ph_int = static_cast<long double>(_mc_statistics.avg_ph_int) / static_cast<long double>(_mc_statistics.num_diagrams); // average number of internal phonons
+    long double avg_ph_int_sq = static_cast<long double>(_mc_statistics.avg_ph_int_squared)/static_cast<long double>(_mc_statistics.num_diagrams); // average squared number of internal phonons
+
     if (!file.is_open()) {
         std::cerr << "Error: Could not open file for writing.\n";
         return;
@@ -4321,17 +4069,14 @@ void GreenFuncNphBands::writeMCStatistics(std::string filename) const {
     file << "Average length of diagrams: " << _mc_statistics.avg_tau << "\n";
     file << "Std dev length of diagrams: " << std::sqrt(_mc_statistics.avg_tau_squared - _mc_statistics.avg_tau*_mc_statistics.avg_tau) << "\n";
     file << "\n";
-    file << "Average order of diagrams: " << static_cast<long double>(_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams) << "\n";
-    file << "Std dev order of diagrams: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_order_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
-    - static_cast<long double>(_mc_statistics.avg_order*_mc_statistics.avg_order)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << "\n";
+    file << "Average order of diagrams: " << avg_order << "\n";
+    file << "Std dev order of diagrams: " << std::sqrt(avg_order_sq - avg_order*avg_order) << "\n";
     file << "\n";
-    file << "Average number of internal phonons: " << static_cast<long double>(_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams) << "\n";
-    file << "Std dev number of internal phonons: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_ph_int_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
-    - static_cast<long double>(_mc_statistics.avg_ph_int*_mc_statistics.avg_ph_int)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << "\n";
+    file << "Average number of internal phonons: " << avg_ph_int << "\n";
+    file << "Std dev number of internal phonons: " << std::sqrt(avg_ph_int_sq - avg_ph_int*avg_ph_int) << "\n";
     file << "\n";
-    file << "Average number of external phonons: " << static_cast<long double>(_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams) << "\n";
-    file << "Std dev number of external phonons: " << std::sqrt(static_cast<long double>(_mc_statistics.avg_ph_ext_squared)/static_cast<long double>(_mc_statistics.num_diagrams)
-    - static_cast<long double>(_mc_statistics.avg_ph_ext*_mc_statistics.avg_ph_ext)/static_cast<long double>(_mc_statistics.num_diagrams*_mc_statistics.num_diagrams)) << "\n";
+    file << "Average number of external phonons: " << avg_ph_ext << "\n";
+    file << "Std dev number of external phonons: " << std::sqrt(avg_ph_ext_sq - avg_ph_ext*avg_ph_ext) << "\n";
     file << "\n";
     file << "Number of zero order diagrams: " << _mc_statistics.zero_order_diagrams << "\n";
     file << "\n";
