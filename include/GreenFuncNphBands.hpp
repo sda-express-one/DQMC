@@ -177,6 +177,7 @@ class GreenFuncNphBands : public Diagram {
     void writeHistogram(const std::string& filename) const;
     void writeExactGF(const std::string& filename) const; // write GF with exact method in .txt file
     void writeMCStatistics(std::string filename) const;
+    //void writeBoldStatistics(std::string filename, std::string type = "simulation") const;
 
     protected:
 
@@ -219,6 +220,12 @@ class GreenFuncNphBands : public Diagram {
     double* _phonon_modes; // assumption: constant phonon dispersion in momentum spaces
     int* _ext_phonon_type_num;
     double* _dielectric_responses; // Born effective charges for each phonon mode
+
+    // bold diagrammatic Monte Carlo
+    int _current_sign = 1; // current sign of the diagram (bold method)
+    long long int _num_negative_diagrams[8] = {0,0,0,0,0,0,0,0}; // number of updates that lead to negative diagram weight (bold method)
+    long double _ratio_negative_updates = 0.0L; // ratio of negative updates over total updates (bold method)
+    long double _average_sign = 1.0L; // average sign of the diagrams (bold method)
 
     // transition probabilities
     double _p_length = (1./8.);
@@ -301,6 +308,10 @@ class GreenFuncNphBands : public Diagram {
 
     //int choosePhonon();
 
+    // bold method
+    inline void updateSign(){_current_sign = _current_sign*-1;};
+    inline void updateNegativeDiagrams(int update_index){if(_current_sign == -1){_num_negative_diagrams[update_index]++;}};
+
     // MCMC updates
     long double diagramLengthUpdate(long double tau_init);
     void addInternalPhononPropagator();
@@ -322,6 +333,7 @@ class GreenFuncNphBands : public Diagram {
     void printGroundStateEnergyEstimator();
     void printEffectiveMassEstimator();
     void printMCStatistics();
+    void printBoldStatistics(std::string type = "simulation");
     
     // histogram methods
     double calcNormConst();

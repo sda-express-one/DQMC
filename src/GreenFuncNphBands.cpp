@@ -469,6 +469,9 @@ long double GreenFuncNphBands::diagramLengthUpdate(long double tau_init){
     // generate new time value for last vertex, reject if it goes out of bounds
     long double tau_fin = _last_vertex - std::log(1-drawUniformR())/(electronEnergy(kx,ky,kz,_bands[total_order].effective_mass)
         -_chem_potential + extPhononEnergy(_ext_phonon_type_num, _phonon_modes, _num_phonon_modes));
+    
+    if(_num_bands > 1){updateNegativeDiagrams(0);}
+
     if(tau_fin <= _tau_max){
         _vertices[_current_order_int + 2*_current_ph_ext + 1].tau = tau_fin;
         return tau_fin;
@@ -477,7 +480,10 @@ long double GreenFuncNphBands::diagramLengthUpdate(long double tau_init){
 };
 
 void GreenFuncNphBands::addInternalPhononPropagator(){
-    if(_current_order_int+1 >= _order_int_max){return;} // reject if already at max order
+    if(_current_order_int+1 >= _order_int_max){
+        if(_num_bands > 1){updateNegativeDiagrams(1);}
+        return; // reject if already at max order
+    } 
     else{
         // choose random electron propagator for new vertex
         std::uniform_int_distribution<int> distrib_prop(0, _current_order_int + 2*_current_ph_ext);
@@ -496,7 +502,10 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
         // choose time value of second vertex, different energy for different phonon modes
         long double tau_two = tau_one - std::log(1-drawUniformR())/phononEnergy(_phonon_modes, phonon_index); // may be on a different propagator
 
-        if(tau_two >= _vertices[_current_order_int + 2*_current_ph_ext + 1].tau){return;} // reject if phonon vertex goes out of bound
+        if(tau_two >= _vertices[_current_order_int + 2*_current_ph_ext + 1].tau){
+            if(_num_bands > 1){updateNegativeDiagrams(1);}
+            return; // reject if phonon vertex goes out of bound
+        }  
         else{
             // sampling momentum values for phonon propagators
             std::normal_distribution<double> distrib_norm(0, std::sqrt(1/(tau_two-tau_one))); // may need to specify phonon mode
@@ -509,12 +518,21 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
             int index_two = findVertexPosition(tau_two);
 
             // control statements to check for double precision point errors
-            if(index_one == -1 || index_two == -1){return;} // reject if tau values are not found in the vertices array
+            if(index_one == -1 || index_two == -1){
+                if(_num_bands > 1){updateNegativeDiagrams(1);}
+                return; // reject if tau values are not found in the vertices array
+            } 
             if(_current_ph_ext > 0){
                 if( tau_one < _vertices[index_one].tau || isEqual(tau_one, _vertices[index_one].tau) 
-                    || isEqual(tau_one, _vertices[index_one+1].tau) || tau_one > _vertices[index_one+1].tau){return;}
+                    || isEqual(tau_one, _vertices[index_one+1].tau) || tau_one > _vertices[index_one+1].tau){
+                    if(_num_bands > 1){updateNegativeDiagrams(1);}
+                    return;
+                }
                 if(tau_two < _vertices[index_two].tau || isEqual(tau_two, _vertices[index_two].tau) 
-                    || isEqual(tau_two, _vertices[index_two+1].tau) || tau_two > _vertices[index_two+1].tau){return;}
+                    || isEqual(tau_two, _vertices[index_two+1].tau) || tau_two > _vertices[index_two+1].tau){
+                    if(_num_bands > 1){updateNegativeDiagrams(1);}
+                    return;
+                }
             }
 
             // momentum values
@@ -636,8 +654,17 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
 
             double R_add = numerator/denominator;
             
-            if(!(Metropolis(R_add))){/*delete[] bands_init; delete[] bands_fin;*/ return;}
+            // check for sign problem
+            if(R_add < 0){
+                R_add = std::abs(R_add);
+            } 
+            
+            if(!(Metropolis(R_add))){
+                if(_num_bands > 1){updateNegativeDiagrams(1);}
+                return;
+            }
             else{
+                // update is accepted, build new diagram
                 phVertexMakeRoom(index_one, index_two); // make room in vertices array
                 propagatorArrayMakeRoom(index_one, index_two); // make room in electron propagators array
                 bandArrayMakeRoom(index_one, index_two); // make room in bands array
@@ -669,19 +696,36 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
                     _bands[i] = _bands_fin[i-(index_one+1)];
                 }
 
-                _current_order_int += 2; // update current diagram internal order
+                // update current order and find new last ph vertex
+                _current_order_int += 2;
                 findLastPhVertex();
+
+                // update sign and negative diagram count if necessary
+                if(_num_bands > 1){
+                    double ratio = numerator/denominator;
+                    if(ratio < 0 && !isEqual(ratio, 0)){
+                        updateSign();
+                    }
+                    updateNegativeDiagrams(1);
+                }
+                return;
             }
         } 
     }
 };
 
 void GreenFuncNphBands::removeInternalPhononPropagator(){
-    if(_current_order_int < 2){return;} // reject if already at order 0
+    if(_current_order_int < 2){
+        if(_num_bands > 1){updateNegativeDiagrams(2);}
+        return; // reject if already at order 0
+    }
     else{
         // indexes of initial and final vertices of a random internal phonon propagator
         int index_one = chooseInternalPhononPropagator();
-        if(index_one == 0){return;}
+        if(index_one == 0){
+            if(_num_bands > 1){updateNegativeDiagrams(2);}
+            return;
+        }
         int index_two = _vertices[index_one].linked;
 
         // vertices' time values
@@ -690,6 +734,7 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
 
         long double tau_init = _vertices[index_one-1].tau;
         long double tau_end = _tau_max;
+        
         if(index_two != index_one+1){tau_end = _vertices[index_one+1].tau;}
         else{tau_end = _vertices[index_one+2].tau;}
 
@@ -839,8 +884,17 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
 
         double R_rem = numerator/denominator;
 
-        if(!(Metropolis(R_rem))){return;}
+        // check for sign problem
+        if(R_rem < 0){
+            R_rem = std::abs(R_rem);
+        } 
+
+        if(!(Metropolis(R_rem))){
+            if(_num_bands > 1){updateNegativeDiagrams(2);}
+            return;
+        }
         else{
+            // update is accepted, build new diagram
             for(int i=index_one; i<index_two; ++i){
                 _propagators[i].el_propagator_kx += w_x;
                 _propagators[i].el_propagator_ky += w_y;
@@ -876,14 +930,28 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
                 _bands[total_order].c3 = (1./3);
             }
 
+            // update current order and find new last ph vertex
             _current_order_int -= 2;
             findLastPhVertex();
+
+            // update sign and negative diagram count if necessary
+            if(_num_bands > 1){
+                double ratio = numerator/denominator;
+                if(ratio < 0 && !isEqual(ratio, 0)){
+                    updateSign();
+                }
+                updateNegativeDiagrams(2);
+            }
+            return;
         }
     }
 };
 
 void GreenFuncNphBands::addExternalPhononPropagator(){
-    if(_current_ph_ext >= _ph_ext_max){return;} // return if already at max number of ext phonon propagators
+    if(_current_ph_ext >= _ph_ext_max){
+        if(_num_bands > 1){updateNegativeDiagrams(3);}
+        return; // return if already at max number of ext phonon propagators
+    } 
     else{
         int total_order = _current_order_int + 2*_current_ph_ext;
         long double tau_current = _vertices[total_order + 1].tau; // length of current diagram
@@ -895,13 +963,22 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
 
         // time of ingoing vertex of ext phonon propagator
         long double tau_one = 0 - std::log(1-drawUniformR())/phononEnergy(_phonon_modes, phonon_index); // time of ingoing vertex of ext phonon propagator
-        if(isEqual(tau_one, tau_current) || tau_one >= tau_current){return;} // reject if it goes out of bound
+        if(isEqual(tau_one, tau_current) || tau_one >= tau_current){
+            if(_num_bands > 1){updateNegativeDiagrams(3);}
+            return; // reject if it goes out of bound
+        }
 
         long double tau_two = tau_current + std::log(1-drawUniformR())/phononEnergy(_phonon_modes, phonon_index); // time of outgoing vertex
 
-        if(isEqual(tau_two,0) || tau_two <= 0){return;} // reject if it goes out of bound
+        if(isEqual(tau_two,0) || tau_two <= 0){
+            if(_num_bands > 1){updateNegativeDiagrams(3);}
+            return; // reject if it goes out of bound
+        } 
 
-        if(isEqual(tau_one, tau_two)){return;} // reject if both vertices are equal (should not happen)
+        if(isEqual(tau_one, tau_two)){
+            if(_num_bands > 1){updateNegativeDiagrams(3);}
+            return; // reject if both vertices are equal (should not happen)
+        } 
         
         // sampling momentum values for phonon propagators
         std::normal_distribution<double> distrib_norm(0, std::sqrt(1/(tau_current-tau_two+tau_one)));
@@ -914,11 +991,20 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             int index_two = findVertexPosition(tau_two);
 
             // control statements to check for floating point errors
-            if(index_one == -1 || index_two == -1){return;} // reject if tau values are not found in the vertices array
+            if(index_one == -1 || index_two == -1){
+                if(_num_bands > 1){updateNegativeDiagrams(3);}
+                return; // reject if tau values are not found in the vertices array
+            } 
             if(tau_one < _vertices[index_one].tau || isEqual(tau_one, _vertices[index_one].tau) 
-                || isEqual(tau_one, _vertices[index_one+1].tau) || tau_one > _vertices[index_one+1].tau){return;}
+                || isEqual(tau_one, _vertices[index_one+1].tau) || tau_one > _vertices[index_one+1].tau){
+                    if(_num_bands > 1){updateNegativeDiagrams(3);}
+                    return;
+                }
             if(tau_two < _vertices[index_two].tau || isEqual(tau_two, _vertices[index_two].tau) 
-                || isEqual(tau_two, _vertices[index_two+1].tau) || tau_two > _vertices[index_two+1].tau){return;} 
+                || isEqual(tau_two, _vertices[index_two+1].tau) || tau_two > _vertices[index_two+1].tau){
+                    if(_num_bands > 1){updateNegativeDiagrams(3);}
+                    return;
+                } 
 
             // momentum values
             double px_init = 0;
@@ -1113,7 +1199,12 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
 
             double R_add = numerator/denominator;
 
+            if(R_add < 0){
+                R_add = std::abs(R_add);
+            } 
+
             if(!(Metropolis(R_add))){
+                if(_num_bands > 1){updateNegativeDiagrams(3);}
                 return;
             }
             else{
@@ -1161,6 +1252,15 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 _current_ph_ext += 1; // update current number of external phonons
                 _ext_phonon_type_num[phonon_index]++;
                 findLastPhVertex();
+
+                // update sign and negative diagram count if necessary
+                if(_num_bands > 1){
+                    double ratio = numerator/denominator;
+                    if(ratio < 0 && !isEqual(ratio, 0)){
+                        updateSign();
+                    }
+                    updateNegativeDiagrams(3);
+                }
                 return;
             }
         }
@@ -1169,11 +1269,20 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             int index_two = findVertexPosition(tau_one);
 
             // control statements to check for floating point errors
-            if(index_one == -1 || index_two == -1){return;} // reject if tau values are not found in the vertices array
+            if(index_one == -1 || index_two == -1){
+                if(_num_bands > 1){updateNegativeDiagrams(3);}
+                return; // reject if tau values are not found in the vertices array
+            }
             if( tau_two < _vertices[index_one].tau || isEqual(tau_two, _vertices[index_one].tau) 
-                || isEqual(tau_two, _vertices[index_one+1].tau) || tau_two > _vertices[index_one+1].tau){return;}
+                || isEqual(tau_two, _vertices[index_one+1].tau) || tau_two > _vertices[index_one+1].tau){
+                    if(_num_bands > 1){updateNegativeDiagrams(3);}
+                    return;
+                }
             if(tau_one < _vertices[index_two].tau || isEqual(tau_one, _vertices[index_two].tau) 
-                || isEqual(tau_one, _vertices[index_two+1].tau) || tau_one > _vertices[index_two+1].tau){return;}
+                || isEqual(tau_one, _vertices[index_two+1].tau) || tau_one > _vertices[index_two+1].tau){
+                    if(_num_bands > 1){updateNegativeDiagrams(3);}
+                    return;
+                }
 
             int total_order = _current_order_int + 2*_current_ph_ext;
 
@@ -1358,7 +1467,12 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
 
             double R_add = numerator/denominator;
 
+            if(R_add < 0){
+                R_add = std::abs(R_add);
+            } 
+
             if(!(Metropolis(R_add))){
+                if(_num_bands > 1){updateNegativeDiagrams(3);}
                 return;
             }
             else{
@@ -1401,6 +1515,14 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 _current_ph_ext += 1; // update current number of external phonons
                 _ext_phonon_type_num[phonon_index]++;
                 findLastPhVertex();
+
+                if(_num_bands > 1){
+                    double ratio = numerator/denominator;
+                    if(ratio < 0 && !isEqual(ratio, 0)){
+                        updateSign();
+                    }
+                    updateNegativeDiagrams(3);
+                }
                 return;
             }
         }
@@ -1408,11 +1530,17 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
 };
 
 void GreenFuncNphBands::removeExternalPhononPropagator(){
-    if(_current_ph_ext <= 0){return;} // reject if already at order 0
+    if(_current_ph_ext <= 0){
+        if(_num_bands > 1){updateNegativeDiagrams(4);}
+        return; // reject if already at order 0
+    }
     else{
         // indexes of initial and final vertices of a random internal phonon propagator
         int index_one = chooseExternalPhononPropagator();
-        if(index_one == 0){return;}
+        if(index_one == 0){
+            if(_num_bands > 1){updateNegativeDiagrams(4);}
+            return;
+        }
         int index_two = _vertices[index_one].linked;
 
         if(index_one >= index_two){
@@ -1624,7 +1752,11 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
             
             double R_rem = numerator/denominator;
 
+            // check for sign problems
+            if(R_rem < 0){R_rem = std::abs(R_rem);} 
+
             if(!Metropolis(R_rem)){
+                if(_num_bands > 1){updateNegativeDiagrams(4);}
                 return;
             }
             else{
@@ -1669,6 +1801,15 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                 _current_ph_ext -= 1; // update current number of external phonons
                 _ext_phonon_type_num[phonon_index]--;
                 findLastPhVertex();
+
+                // update sign and negative diagram count if necessary
+                if(_num_bands > 1){
+                    double ratio = numerator/denominator;
+                    if(ratio < 0 && !isEqual(ratio, 0)){
+                        updateSign();
+                    }
+                    updateNegativeDiagrams(4);
+                }
                 return;
             }
         }
@@ -1821,8 +1962,12 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                                 *prefactor_fin*_V_BZ; // *_num_bands*_num_bands
 
                 double R_rem = numerator/denominator;
-
+                
+                // check for sign problems
+                if(R_rem < 0){R_rem = std::abs(R_rem);}   
+                    
                 if(!(Metropolis(R_rem))){
+                    if(_num_bands > 1){updateNegativeDiagrams(4);}
                     return;
                 }
                 else{
@@ -1869,15 +2014,30 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                     _current_ph_ext -= 1; // update current number of external phonons
                     _ext_phonon_type_num[phonon_index]--;
                     findLastPhVertex();
+
+                    // update sign and negative diagram count if necessary
+                    if(_num_bands > 1){
+                        double ratio = numerator/denominator;
+                        if(ratio < 0 && !isEqual(ratio, 0)){
+                            updateSign();
+                        }
+                        updateNegativeDiagrams(4);
+                    }
                     return;
                 }            
         }
-        else{return;}
+        else{
+            if(_num_bands > 1){updateNegativeDiagrams(4);}
+            return;
+        }
     }
 };
 
 void GreenFuncNphBands::swapPhononPropagator(){
-    if(_current_order_int < 4){return;} // swap not possible if internal order is less than 4
+    if(_current_order_int < 4){
+        if(_num_bands > 1){updateNegativeDiagrams(5);}
+        return;  // swap not possible if internal order is less than 4
+    }
     else{
         std::uniform_int_distribution<int> distrib(1, _current_order_int + 2*_current_ph_ext - 1);
         int index_one = distrib(gen); // choose random internal propagator
@@ -1962,9 +2122,17 @@ void GreenFuncNphBands::swapPhononPropagator(){
         // need to address negative values issue
         // compute transition probability
         double R_swap = (prefactor_fin/prefactor_init)*std::exp(-(energy_final_el-energy_initial_el-energy_phonons)*(tau2-tau1)); //*_num_bands // to be fixed
-        double acceptance_ratio = std::min(1.,R_swap);
 
-        if(drawUniformR() > acceptance_ratio){return;}
+        // check for sign problems
+        double ratio = R_swap;
+        if(R_swap < 0){
+            R_swap = std::abs(R_swap);
+        } 
+
+        if(!(Metropolis(R_swap))){
+            if(_num_bands > 1){updateNegativeDiagrams(5);}
+            return;
+        }
         else{
             // assign new momentum values to propagator
             _propagators[index_one].el_propagator_kx += v1*wx1-v2*wx2;
@@ -2002,13 +2170,23 @@ void GreenFuncNphBands::swapPhononPropagator(){
             _vertices[index_two].linked = linked1;
             _vertices[index_two].tau = tau2;
             _vertices[index_two].index = phonon_index1;
+
+            if(_num_bands > 1){
+                if(ratio < 0 && !isEqual(ratio, 0)){
+                    updateSign();
+                }
+                updateNegativeDiagrams(5);
+            }
         }
     }
 };
 
 void GreenFuncNphBands::shiftPhononPropagator(){
     int total_order = _current_order_int + 2*_current_ph_ext;
-    if(total_order <= 0){return;} // reject if no vertices are present
+    if(total_order <= 0){
+        if(_num_bands > 1){updateNegativeDiagrams(6);}
+        return; // reject if no vertices are present
+    }
     else{
         std::uniform_int_distribution<int> distrib(1, total_order);
         int vertex_index = distrib(gen); // choose random vertex
@@ -2044,6 +2222,9 @@ void GreenFuncNphBands::shiftPhononPropagator(){
         _vertices[vertex_index].tau = tau_new; // assign new time value to vertex
 
         findLastPhVertex();
+
+        if(_num_bands > 1){updateNegativeDiagrams(6);}
+
         return;
     }
 };
@@ -2083,23 +2264,26 @@ long double GreenFuncNphBands::stretchDiagramLength(long double tau_init){
         -_chem_potential + extPhononEnergy(_ext_phonon_type_num, _phonon_modes, _num_phonon_modes) + phonon_lines_energies);
 
         if(_new_taus[i] < _new_taus[j] || isEqual(_new_taus[i], _new_taus[j])){
-            //delete[] new_taus; 
+            //delete[] new_taus;
+            if(_num_bands > 1){updateNegativeDiagrams(7);}
             return tau_init;
         }
     }
 
     if(isEqual(_new_taus[total_order+1], _tau_max) || _new_taus[total_order+1] > _tau_max){
-        //delete[] new_taus; 
+        //delete[] new_taus;
+        if(_num_bands > 1){updateNegativeDiagrams(7);}
         return tau_init;
     }
 
     for(int i = 0; i < total_order+2; ++i){
         _vertices[i].tau = _new_taus[i];
     }
+
     findLastPhVertex();
-    //delete[] new_taus;
-    //tau_init =  _vertices[total_order+1].tau;
-    //return tau_init;
+
+    if(_num_bands > 1){updateNegativeDiagrams(7);}
+
     return _vertices[total_order+1].tau;
 
     // initialize momentum values for first electron propagator
@@ -2658,13 +2842,6 @@ void GreenFuncNphBands::computeFinalQuantities(){
             _effective_masses_var[0] = static_cast<long double>(1.L)/(count*(count-1))*squared_sum_xP;
             _effective_masses_var[1] = static_cast<long double>(1.L)/(count*(count-1))*squared_sum_yP;
             _effective_masses_var[2] = static_cast<long double>(1.L)/(count*(count-1))*squared_sum_zP;
-
-            // error propagation of inverse
-            /*_effective_mass_var = _effective_mass_var*std::pow(_effective_mass,4); //_effective_mass);
-            _effective_masses_var[0] = _effective_masses_var[0]*std::pow(_effective_masses[0],4); //std::abs(_effective_masses[0]*_effective_masses[0]);
-            _effective_masses_var[1] = _effective_masses_var[1]*std::pow(_effective_masses[1],4); //_effective_masses[1]);
-            _effective_masses_var[2] = _effective_masses_var[2]*std::pow(_effective_masses[2],4);//_effective_masses[2]);
-            */
         }
     }
 
@@ -2988,9 +3165,40 @@ void GreenFuncNphBands::printMCStatistics(){
     std::cout << "Std dev number of external phonons: " << std::sqrt(avg_ph_ext_sq - avg_ph_ext*avg_ph_ext) << std::endl;
     std::cout << "Number of zero order diagrams: " << _mc_statistics.zero_order_diagrams << std::endl;
     std::cout << std::endl;
+
+    if(_num_bands > 1){
+            printBoldStatistics("simulation");
+    }
+
     writeMCStatistics("MC_Statistics.txt");
+
     std::cout << std::endl;
 };
+
+void GreenFuncNphBands::printBoldStatistics(std::string type){
+    long long int negative_updates_total = 0;
+    long long int N = 1;
+    if(type == "thermalization"){
+        N = getRelaxSteps();
+    }
+    else if(type == "simulation"){
+        N = getNdiags();
+    }
+    else if(type == "autocorrelation"){
+        N = getAutocorrSteps();
+    }
+
+    std::cout << "Bold Diagrammatic Monte Carlo analysis" << std::endl;
+    for(int i = 0; i < 8; ++i){
+        std::cout << "Update " << i << ", negative diagram updates: " << _num_negative_diagrams[i] << std::endl;
+        negative_updates_total += _num_negative_diagrams[i];
+        if(type != "simulation"){_num_negative_diagrams[i] = 0;} // reset counter for simulation process
+    }
+    std::cout << std::endl;
+    _ratio_negative_updates = static_cast<long double>(negative_updates_total)/static_cast<long double>(N);
+    std::cout << "Total ratio (" << type << "): " << _ratio_negative_updates << "." << std::endl;
+    std::cout << std::endl;
+}
 
 void GreenFuncNphBands::markovChainMC(){
 
@@ -3046,6 +3254,10 @@ void GreenFuncNphBands::markovChainMC(){
         std::cout << std::endl;
     }
 
+    if(_num_bands > 1 && _flags.mc_statistics){
+        printBoldStatistics("thermalization");
+    }
+
     i = 0;
     std::cout << "Starting simulation process" << std::endl;
     std::cout << std::endl;
@@ -3075,10 +3287,15 @@ void GreenFuncNphBands::markovChainMC(){
 
     bar.finish();
 
+    if(_flags.time_benchmark){
+        _benchmark_sim->stopTimer();
+    }
+
+    std::cout << std::endl;
+    std::cout << "Simulation process finished" << std::endl;
     std::cout << std::endl;
 
     if(_flags.time_benchmark){
-        _benchmark_sim->stopTimer();
         std::cout << "Simulation time benchmark finished." << std::endl;
         _benchmark_sim->printResults(); 
         _benchmark_sim->writeResultsToFile("simulation_benchmark.txt");
@@ -3161,11 +3378,16 @@ void GreenFuncNphBands::markovChainMCOnlyRelax(){
     std::cout << std::endl;
 
     if(_flags.time_benchmark){
+        std::cout << "Thermalization time benchmark finished." << std::endl;
         _benchmark_th->printResults();
         _benchmark_th->writeResultsToFile("thermalization_benchmark.txt");
         delete _benchmark_th;
         delete _benchmark_sim;
         std::cout << std::endl;
+    }
+
+    if(_num_bands > 1 && _flags.mc_statistics){
+        printBoldStatistics("thermalization");
     }
 };
 
@@ -3209,14 +3431,24 @@ void GreenFuncNphBands::markovChainMCOnlySample(){
 
     if(_master){
         bar.finish();
+
+        if(_flags.time_benchmark){
+            _benchmark_th->stopTimer();
+        }
+
         std::cout << std::endl;
         std::cout << "Autocorrelation process finished." << std::endl;
         std::cout << std::endl;
+
         if(_flags.time_benchmark){
-            _benchmark_th->stopTimer();
+            std::cout << "Autocorrelation time benchmark finished." << std::endl;
             _benchmark_th->printResults(); 
             _benchmark_th->writeResultsToFile("autocorrelation_benchmark.txt");
             std::cout << std::endl;
+        }
+
+        if(_num_bands > 1 && _flags.mc_statistics){
+            printBoldStatistics("autocorrelation");
         }
     }
 
@@ -3259,18 +3491,22 @@ void GreenFuncNphBands::markovChainMCOnlySample(){
 
     if(_master){
         bar.finish();
+        if(_flags.time_benchmark){
+            _benchmark_sim->stopTimer();
+        }
 
+        std::cout << std::endl;
+        std::cout << "Simulation process finished." << std::endl;
         std::cout << std::endl;
 
         if(_flags.time_benchmark){
-            _benchmark_sim->stopTimer();
             std::cout << "Simulation time benchmark finished." << std::endl;
             _benchmark_sim->printResults(); 
             _benchmark_sim->writeResultsToFile("simulation_benchmark.txt");
             std::cout << std::endl;
         }
 
-         if(_flags.mc_statistics){printMCStatistics();}
+        if(_flags.mc_statistics){printMCStatistics();}
     }
 
     if(_flags.time_benchmark){delete _benchmark_sim;}
@@ -3481,437 +3717,6 @@ void GreenFuncNphBands::effectiveMassBlockEstimator(long double avg, long double
     }
 };
 
-/*void GreenFuncNphBands::calcGroundStateEnergy(std::string filename){
-    _gs_energy = _gs_energy/(double)_gs_energy_count; // average energy of diagrams
-    std::cout << "Ground state energy of the system is: " << _gs_energy;
-    if(_flags.blocking_analysis){std::cout << " +\\-" << _gs_energy_var;}
-    std::cout << "." << std::endl;
-    if(_flags.blocking_analysis){std::cout << "Number of blocks used for blocking analysis: " << _N_blocks << std::endl;}
-    std::cout << "Input parameters are: kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << std::endl;
-    std::cout << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
-
-    if(_num_bands == 1){
-        std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
-                << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
-    }
-    else if(_num_bands == 3){
-        std::cout << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
-                << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
-    }
-
-    std::cout <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
-    << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
-    std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
-
-    for(int i=0; i<_num_phonon_modes; i++){
-        std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-        << _dielectric_responses[i] << std::endl;
-    }
-
-    std::cout << " minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
-
-    std::ofstream file(filename, std::ofstream::app);
-
-    if(!file.is_open()){
-        std::cerr << "Could not gs_energy.txt open file " << filename << std::endl;
-    }
-    else{
-        file << "# Ground state energy of the system is: " << _gs_energy; 
-        if(_flags.blocking_analysis){file << " +\\- " << _gs_energy_var;}
-        file << "." << std::endl;
-        if(_flags.blocking_analysis){file << "# Number of blocks used for blocking analysis: " << _N_blocks << std::endl;}
-        file << "# Input parameters are: kx = " << _kx << 
-        ", ky = " << _ky << ", kz = " << _kz << std::endl;
-        file << "# Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
-        if(_num_bands == 1){
-            file << "# Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
-                << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
-        }
-        else if(_num_bands == 3){
-            file << "# Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
-                << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
-        }
-        file << "# 1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
-            << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
-        file << "# Number of phonon modes: " << _num_phonon_modes << std::endl;
-
-        for(int i=0; i<_num_phonon_modes; i++){
-            file << "# phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-            << _dielectric_responses[i] << std::endl;
-        }
-        file << "# minimum length of diagrams for which gs energy is computed = " << _tau_cutoff_energy << "." << std::endl;
-        file << std::endl;
-        file.close();
-    }
-    std::cout << std::endl;
-};*/
-
-/*void GreenFuncNphBands::calcEffectiveMasses(std::string filename){
-    long double effective_mass_inv = _effective_mass/(double)_effective_mass_count; // average effective mass of diagrams
-    _effective_mass = 1./effective_mass_inv; // effective mass is inverse of the value calculated
-    //std::cout << "Effective mass of system is: " << _effective_mass << "." << std::endl;
-    std::cout << "Input parameters are: chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
-
-    if(_num_bands == 1){
-        std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
-            << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
-    }
-    else if(_num_bands == 3){
-        std::cout << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
-            << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
-    }
-
-    std::cout <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
-    << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
-    std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
-
-    for(int i=0; i<_num_phonon_modes; i++){
-        std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-        << _born_effective_charges[i] << std::endl;
-    }
-
-    if(_num_bands == 1){
-        std::cout << "Polaronic effective masses are: mx_pol = " << (1./_effective_masses[0]) << " my_pol = " 
-            << (1./_effective_masses[1]) << "mz_pol = " << (1./_effective_masses[2]) << std::endl; 
-    }
-    else if(_num_bands == 3){
-        double A_LK_pol = 0;
-        double B_LK_pol = 0;
-        double C_LK_pol = 0;
-        std::cout << "Computed polaronic inverse masses for (100), (110) and (111) high symmetry directions." << std::endl;
-        std::cout << "(100)" << std::endl;
-
-        if(_A_LK_el >= _B_LK_el){
-            std::cout << "2A = " << _effective_masses_bands(0,0) << ", 2B = " << _effective_masses_bands(0,1) 
-                << ", 2B = " << _effective_masses_bands(0,2) << std::endl;
-            A_LK_pol = _effective_masses_bands(0,0)/2;
-            B_LK_pol = _effective_masses_bands(0,1)/2;
-
-            std::cout << "(110)" << std::endl;
-
-            if(_C_LK_el >= 0){
-                if(_A_LK_el - _C_LK_el >= _B_LK_el){
-                    std::cout << "A + B + C = " << _effective_masses_bands(1,0) << ", A + B - C = " << _effective_masses_bands(1,1) 
-                    << ", 2B = " << _effective_masses_bands(1,2) << std::endl;
-                    C_LK_pol = (_effective_masses_bands(1,0) - _effective_masses_bands(1,1))/2;
-                }
-                else{
-                    std::cout << "A + B + C = " << _effective_masses_bands(1,0) << ", 2B = " << _effective_masses_bands(1,1) 
-                    << ", A + B - C = " << _effective_masses_bands(1,2) << std::endl;
-                    C_LK_pol = (_effective_masses_bands(1,0) - _effective_masses_bands(1,2))/2;
-                }
-                std::cout << "(111)" << std::endl;
-                std::cout << "(2/3)(A + 2B + 2C) = " << _effective_masses_bands(2,0) << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,1)
-                << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,2) << std::endl;
-            }
-            else{
-                if(_A_LK_el + _C_LK_el > _B_LK_el){
-                    std::cout << "A + B - C = " << _effective_masses_bands(1,0) << ", A + B + C = " << _effective_masses_bands(1,1) 
-                    << ", 2B = " << _effective_masses_bands(1,2) << std::endl;
-                    C_LK_pol = (_effective_masses_bands(1,1) - _effective_masses_bands(1,0))/2;
-                }
-            else{
-                    std::cout << "A + B - C = " << _effective_masses_bands(1,0) << ", 2B = " << _effective_masses_bands(1,1) 
-                    << ", A + B + C = " << _effective_masses_bands(1,2) << std::endl;
-                    C_LK_pol = (_effective_masses_bands(1,2) - _effective_masses_bands(1,0))/2;
-                }
-                std::cout << "(111)" << std::endl;
-                std::cout << "(2/3)(A + 2B - C) = " << _effective_masses_bands(2,0) << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,1)
-                << ", (2/3)(A + 2B + 2C) = " << _effective_masses_bands(2,2) << std::endl;
-            }
-        }
-        else{
-            std::cout << "2B = " << _effective_masses_bands(0,0) << ", 2B = " << _effective_masses_bands(0,1) 
-            << ", 2A = " << _effective_masses_bands(0,2) << std::endl;
-            A_LK_pol = _effective_masses_bands(0,2)/2;
-            B_LK_pol = _effective_masses_bands(0,0)/2;
-
-            std::cout << "(110)" << std::endl;
-        
-            if(_C_LK_el >= 0){
-                if(_A_LK_el - _C_LK_el >= _B_LK_el){
-                    std::cout << "A + B + C = " << _effective_masses_bands(1,0) << ", A + B - C = " << _effective_masses_bands(1,1) 
-                    << ", 2B = " << _effective_masses_bands(1,2) << std::endl;
-                    C_LK_pol = (_effective_masses_bands(1,0) - _effective_masses_bands(1,1))/2;
-                }
-                else if(_A_LK_el + _C_LK_el >= _B_LK_el){
-                    std::cout << "A + B + C = " << _effective_masses_bands(1,0) << ", 2B = " << _effective_masses_bands(1,1) 
-                    << ", A + B - C = " << _effective_masses_bands(1,2) << std::endl;
-                    C_LK_pol = (_effective_masses_bands(1,0) - _effective_masses_bands(1,2))/2;
-                }
-                else{
-                    std::cout << "2B = " << _effective_masses_bands(1,0) << ", A + B + C = " << _effective_masses_bands(1,1) 
-                    << ", A + B - C = " << _effective_masses_bands(1,2) << std::endl;
-                    C_LK_pol = (_effective_masses_bands(1,1) - _effective_masses_bands(1,2))/2;
-                }
-
-                std::cout << "(111)" << std::endl;
-                std::cout << "(2/3)(A + 2B + 2C) = " << _effective_masses_bands(2,0) << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,1)
-                << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,2) << std::endl;
-            }
-            else{
-                if(_A_LK_el + _C_LK_el >= _B_LK_el){
-                    std::cout << "A + B - C = " << _effective_masses_bands(1,0) << ", A + B + C = " << _effective_masses_bands(1,1) 
-                    << ", 2B = " << _effective_masses_bands(1,2) << std::endl;
-                    C_LK_pol = (_effective_masses_bands(1,1) - _effective_masses_bands(1,0))/2;
-                }
-                else if(_A_LK_el - _C_LK_el >= _B_LK_el){
-                    std::cout << "A + B - C = " << _effective_masses_bands(1,0) << ", 2B = " << _effective_masses_bands(1,1) 
-                    << ", A + B + C = " << _effective_masses_bands(1,2) << std::endl;
-                    C_LK_pol = (_effective_masses_bands(1,2) - _effective_masses_bands(1,0))/2;
-                }
-                else{
-                    std::cout << "2B = " << _effective_masses_bands(1,0) << ", A + B - C = " << _effective_masses_bands(1,1) 
-                    << ", A + B + C = " << _effective_masses_bands(1,2) << std::endl;
-                    C_LK_pol = (_effective_masses_bands(1,2) - _effective_masses_bands(1,0))/2;
-                }
-
-                std::cout << "(111)" << std::endl;
-                std::cout << "(2/3)(A + 2B - C) = " << _effective_masses_bands(2,0) << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,1)
-                << ", (2/3)(A + 2B + 2C) = " << _effective_masses_bands(2,2) << std::endl;
-            }
-        }
-        std::cout << "Polaronic Luttinger-Kohn parameters are:" << std::endl;
-        std::cout << "A_LK_pol = " << A_LK_pol << ", B_LK_pol = " << B_LK_pol << ", C_LK_pol = " << C_LK_pol << std::endl;
-    }
-
-    std::cout << std::endl;
-    std::cout << "Inverse effective mass of system is: " << effective_mass_inv << "." << std::endl;
-
-    std::ofstream file(filename, std::ofstream::app);
-
-    if(!file.is_open()){
-        std::cerr << "Could not effective_mass.txt open file " << filename << std::endl;
-    }
-    else{
-        file << "Effective mass of the system is: " << _effective_mass << "." << std::endl;
-        file << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
-
-        if(_num_bands == 1){
-            file << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
-                << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
-        }
-        else if(_num_bands == 3){
-            file << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
-                << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
-        }
-
-        file <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
-            << _dielectric_const << ", tau cutoff: " << _tau_cutoff_energy << std::endl;
-        file << "Number of phonon modes: " << _num_phonon_modes << std::endl;
-
-        for(int i=0; i<_num_phonon_modes; i++){
-            file << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
-                << _born_effective_charges[i] << std::endl;
-        }
-
-        if(_num_bands == 1){
-            file << "Polaronic effective masses are: mx_pol = " << (1./_effective_masses[0]) << " my_pol = " 
-                << (1./_effective_masses[1]) << "mz_pol = " << (1./_effective_masses[2]) << std::endl; 
-        }
-        else if(_num_bands == 3){
-            double A_LK_pol = 0;
-            double B_LK_pol = 0;
-            double C_LK_pol = 0;
-            file << "Computed polaronic inverse masses for (100), (110) and (111) high symmetry directions." << std::endl;
-            file << "(100)" << std::endl;
-
-            if(_A_LK_el >= _B_LK_el){
-                file << "2A = " << _effective_masses_bands(0,0) << ", 2B = " << _effective_masses_bands(0,1) 
-                    << ", 2B = " << _effective_masses_bands(0,2) << std::endl;
-                A_LK_pol = _effective_masses_bands(0,0)/2;
-                B_LK_pol = _effective_masses_bands(0,1)/2;
-
-                file << "(110)" << std::endl;
-
-                if(_C_LK_el >= 0){
-                    if(_A_LK_el - _C_LK_el >= _B_LK_el){
-                        file << "A + B + C = " << _effective_masses_bands(1,0) << ", A + B - C = " << _effective_masses_bands(1,1) 
-                        << ", 2B = " << _effective_masses_bands(1,2) << std::endl;
-                        C_LK_pol = (_effective_masses_bands(1,0) - _effective_masses_bands(1,1))/2;
-                    }
-                    else{
-                        file << "A + B + C = " << _effective_masses_bands(1,0) << ", 2B = " << _effective_masses_bands(1,1) 
-                        << ", A + B - C = " << _effective_masses_bands(1,2) << std::endl;
-                        C_LK_pol = (_effective_masses_bands(1,0) - _effective_masses_bands(1,2))/2;
-                    }
-                file << "(111)" << std::endl;
-                file << "(2/3)(A + 2B + 2C) = " << _effective_masses_bands(2,0) << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,1)
-                << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,2) << std::endl;
-                }
-                else{
-                    if(_A_LK_el + _C_LK_el > _B_LK_el){
-                        file << "A + B - C = " << _effective_masses_bands(1,0) << ", A + B + C = " << _effective_masses_bands(1,1) 
-                        << ", 2B = " << _effective_masses_bands(1,2) << std::endl;
-                        C_LK_pol = (_effective_masses_bands(1,1) - _effective_masses_bands(1,0))/2;
-                    }
-                    else{
-                        file << "A + B - C = " << _effective_masses_bands(1,0) << ", 2B = " << _effective_masses_bands(1,1) 
-                        << ", A + B + C = " << _effective_masses_bands(1,2) << std::endl;
-                        C_LK_pol = (_effective_masses_bands(1,2) - _effective_masses_bands(1,0))/2;
-                    }
-                    file << "(111)" << std::endl;
-                    file << "(2/3)(A + 2B - C) = " << _effective_masses_bands(2,0) << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,1)
-                    << ", (2/3)(A + 2B + 2C) = " << _effective_masses_bands(2,2) << std::endl;
-                }
-            }
-            else{
-                file << "2B = " << _effective_masses_bands(0,0) << ", 2B = " << _effective_masses_bands(0,1) 
-                << ", 2A = " << _effective_masses_bands(0,2) << std::endl;
-                A_LK_pol = _effective_masses_bands(0,2)/2;
-                B_LK_pol = _effective_masses_bands(0,0)/2;
-
-                file << "(110)" << std::endl;
-        
-                if(_C_LK_el >= 0){
-                    if(_A_LK_el - _C_LK_el >= _B_LK_el){
-                        file << "A + B + C = " << _effective_masses_bands(1,0) << ", A + B - C = " << _effective_masses_bands(1,1) 
-                        << ", 2B = " << _effective_masses_bands(1,2) << std::endl;
-                        C_LK_pol = (_effective_masses_bands(1,0) - _effective_masses_bands(1,1))/2;
-                    }
-                    else if(_A_LK_el + _C_LK_el >= _B_LK_el){
-                        file << "A + B + C = " << _effective_masses_bands(1,0) << ", 2B = " << _effective_masses_bands(1,1) 
-                        << ", A + B - C = " << _effective_masses_bands(1,2) << std::endl;
-                        C_LK_pol = (_effective_masses_bands(1,0) - _effective_masses_bands(1,2))/2;
-                    }
-                    else{
-                        file << "2B = " << _effective_masses_bands(1,0) << ", A + B + C = " << _effective_masses_bands(1,1) 
-                        << ", A + B - C = " << _effective_masses_bands(1,2) << std::endl;
-                        C_LK_pol = (_effective_masses_bands(1,1) - _effective_masses_bands(1,2))/2;
-                    }
-
-                    file << "(111)" << std::endl;
-                    file << "(2/3)(A + 2B + 2C) = " << _effective_masses_bands(2,0) << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,1)
-                    << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,2) << std::endl;
-                }
-                else{
-                    if(_A_LK_el + _C_LK_el >= _B_LK_el){
-                        file << "A + B - C = " << _effective_masses_bands(1,0) << ", A + B + C = " << _effective_masses_bands(1,1) 
-                        << ", 2B = " << _effective_masses_bands(1,2) << std::endl;
-                        C_LK_pol = (_effective_masses_bands(1,1) - _effective_masses_bands(1,0))/2;
-                    }
-                    else if(_A_LK_el - _C_LK_el >= _B_LK_el){
-                        file << "A + B - C = " << _effective_masses_bands(1,0) << ", 2B = " << _effective_masses_bands(1,1) 
-                        << ", A + B + C = " << _effective_masses_bands(1,2) << std::endl;
-                        C_LK_pol = (_effective_masses_bands(1,2) - _effective_masses_bands(1,0))/2;
-                    }
-                    else{
-                        file << "2B = " << _effective_masses_bands(1,0) << ", A + B - C = " << _effective_masses_bands(1,1) 
-                        << ", A + B + C = " << _effective_masses_bands(1,2) << std::endl;
-                        C_LK_pol = (_effective_masses_bands(1,2) - _effective_masses_bands(1,0))/2;
-                    }
-
-                    file << "(111)" << std::endl;
-                    file << "(2/3)(A + 2B - C) = " << _effective_masses_bands(2,0) << ", (2/3)(A + 2B - C) = " << _effective_masses_bands(2,1)
-                    << ", (2/3)(A + 2B + 2C) = " << _effective_masses_bands(2,2) << std::endl;
-                }
-            }
-
-            file << "Polaronic Luttinger-Kohn parameters are:" << std::endl;
-            file << "A_LK_pol = " << A_LK_pol << ", B_LK_pol = " << B_LK_pol << ", C_LK_pol = " << C_LK_pol << std::endl;
-        }
-        
-
-        file << std::endl;
-
-        file << "Inverse effective mass of the system is: " << effective_mass_inv << "." << std::endl;
-        file << std::endl;
-
-        file.close();
-    }
-
-    std::cout << std::endl;
-};*/
-
-/*{
-    //int current_order = _current_order_int + 2*ext_phonon_order; // total order of diagrams (number of phonon vertices)
-    //double electron_action = 0, phonon_action = 0;
-*/
-    // compute electron bare propagators action
-    /*for(int i=0; i<current_order+1; i++){
-        double electron_energy = electronEnergy(_propagators[i].el_propagator_kx, _propagators[i].el_propagator_ky, 
-            _propagators[i].el_propagator_kz, _bands[i].effective_mass);
-        electron_action += electron_energy*(_vertices[i+1].tau - _vertices[i].tau);
-    }
-
-    // compute phonon bare propagators action
-    int i = 0;
-    int int_count = 0;
-    int ext_count = 0;
-    bool int_flag = false;
-    bool ext_flag = false;
-
-    while(i < current_order + 1 && !(int_flag && ext_flag)){
-        if(_vertices[i].type == +1){
-            int index_two = _vertices[i].linked;
-            long double tau_one = _vertices[i].tau;  
-            long double tau_two = _vertices[index_two].tau;
-            phonon_action += phononEnergy(_phonon_modes,_vertices[i].index)*(tau_two - tau_one);
-            int_count++;
-            if(int_count == _current_order_int/2){int_flag = true;}
-        }
-        else if(_vertices[i].type == -2){
-            int index_two = _vertices[i].linked;
-            long double tau_one = _vertices[i].tau;  
-            long double tau_two = _vertices[index_two].tau;
-            phonon_action += phononEnergy(_phonon_modes, _vertices[i].index)*(tau_length + tau_one - tau_two);
-            ext_count++;
-            if(ext_count == ext_phonon_order){ext_flag = true;}
-        }
-        i++;
-    }
-
-}
-}*/
-
-    /*int total_order = _current_order_int + 2*_current_ph_ext;
-    double kx = 0, ky = 0, kz = 0;
-
-    long double * new_taus = new long double[total_order+2];
-    new_taus[0] = 0.L; // first vertex time value is always 0
-
-    int c = 0;
-    int phonon_index = -1;
-    double phonon_lines_energies = 0;
-
-    for(int i=1; i < total_order+2; ++i){
-
-        kx = _propagators[i-1].el_propagator_kx;
-        ky = _propagators[i-1].el_propagator_ky;
-        kz = _propagators[i-1].el_propagator_kz;
-
-        c = _vertices[i-1].type;
-        phonon_index = _vertices[i-1].index;
-        
-        if(c == +1 || c == +2){
-            phonon_lines_energies += phononEnergy(_phonon_modes, phonon_index);
-        }
-        else if( c == -1 || c == -2){
-            phonon_lines_energies -= phononEnergy(_phonon_modes, phonon_index);
-        }
-
-        new_taus[i] = new_taus[i-1] - std::log(1-drawUniformR())/(electronEnergy(kx,ky,kz,_bands[i-1].effective_mass)
-        -_chem_potential + extPhononEnergy(_ext_phonon_type_num, _phonon_modes, _num_phonon_modes) + phonon_lines_energies);
-
-        if(new_taus[i] < new_taus[i-1] || isEqual(new_taus[i], new_taus[i-1])){
-            delete[] new_taus; 
-            return tau_init;
-        }
-    }
-
-    if(isEqual(new_taus[total_order+1], _tau_max) || new_taus[total_order+1] > _tau_max){
-        delete[] new_taus; 
-        return tau_init;
-    }
-
-    for(int i = 0; i < total_order+2; ++i){
-        _vertices[i].tau = new_taus[i];
-    }
-    
-
-    delete[] new_taus;
-    return _vertices[total_order+1].tau;*/
-
 double GreenFuncNphBands::calcNormConst(){
     double eff_mass_electron = computeEffMassSingleBand(_kx, _ky, _kz, _m_x_el, _m_y_el, _m_z_el);
     double numerator = 1 - std::exp(-(electronEnergy(_kx,_ky,_kz, eff_mass_electron)-_chem_potential)*_tau_max);
@@ -4081,12 +3886,44 @@ void GreenFuncNphBands::writeMCStatistics(std::string filename) const {
     file << "Number of zero order diagrams: " << _mc_statistics.zero_order_diagrams << "\n";
     file << "\n";
 
+    if(_num_bands > 1){
+            file << "Bold Diagrammatic Monte Carlo analysis" << "\n";
+            for(int i = 0; i < 8; ++i){
+                file << "Update " << i << ", negative diagram updates: " << _num_negative_diagrams[i] << "\n";            }
+            file << "\n";
+            file << "Total ratio (simulation): " << _ratio_negative_updates << "." << std::endl;
+            file << "\n";
+    }
+
     file.close();
     std::cout << "Values' statistics written to file " << filename << "." << std::endl;
 };
 
+/*void GreenFuncNphBands::writeBoldStatistics(std::string filename, std::string type) const{
+    long long int negative_updates_total = 0;
+    long long int N = 1;
+    if(type == "thermalization"){
+        N = getRelaxSteps();
+    }
+    else if(type == "simulation"){
+        N = getNdiags();
+    }
+    else if(type == "autocorrelation"){
+        N = getAutocorrSteps();
+    }
+    std::cout << "Bold Diagrammatic Monte Carlo analysis" << std::endl;
+    for(int i = 0; i < 8; ++i){
+        std::cout << "Update " << i << ", negative diagram updates: " << _num_negative_diagrams[i] << std::endl;
+        negative_updates_total += _num_negative_diagrams[i];
+    }
+    std::cout << std::endl;
+    std::cout << "Total ratio (" << type << "): " << _ratio_negative_updates << "." << std::endl;
+    std::cout << std::endl;
+}
 
-/*
+
+
+
 int GreenFuncNphBands::choosePhonon(){
     double total_phonons=0;
 

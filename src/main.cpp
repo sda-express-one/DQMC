@@ -304,6 +304,7 @@ int main(){
                 }
 
                 // Markov chain settings
+                diagram_simulate.setRelaxSteps(sim.relax_steps);
                 diagram_simulate.setAutcorrSteps(cpu.autocorr_steps);
                 diagram_simulate.setProbabilities(probs);
 
