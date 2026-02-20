@@ -308,9 +308,11 @@ class GreenFuncNphBands : public Diagram {
 
     //int choosePhonon();
 
-    // bold method
+    // bold methods
     inline void updateSign(){_current_sign = _current_sign*-1;};
     inline void updateNegativeDiagrams(int update_index){if(_current_sign == -1){_num_negative_diagrams[update_index]++;}};
+    inline void resetNegativeDiagrams(){for(int i = 0; i < 8; i++){_num_negative_diagrams[i] = 0;}};
+    inline void computeRatioNegativeUpdates(long long int num_updates);
 
     // MCMC updates
     long double diagramLengthUpdate(long double tau_init);

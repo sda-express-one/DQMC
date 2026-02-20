@@ -2716,6 +2716,10 @@ void GreenFuncNphBands::computeQuantities(long double tau_length, double r, int 
 };
 
 void GreenFuncNphBands::computeFinalQuantities(){
+    // method used to compute final quantities at the end of the simulation in the pararellized version of the program (no output to console)
+    
+    if(_num_bands > 1){computeRatioNegativeUpdates(getNdiags());} // compute ratio of negative updates to total updates for final normalization of quantities
+
     if(_flags.gf_exact){
         double norm_const = calcNormConst();
         for(int i=0; i<_num_points; i++){
@@ -2730,6 +2734,7 @@ void GreenFuncNphBands::computeFinalQuantities(){
 
     if(_flags.gs_energy){
         _gs_energy = _gs_energy/static_cast<long double>(_gs_energy_count); // average energy of diagrams
+        if(_num_bands > 1){_gs_energy = _gs_energy/((1-_ratio_negative_updates)-_ratio_negative_updates);}
         if(_flags.blocking_analysis){
             long double squared_sum = 0;
             int count = 0;
@@ -2795,12 +2800,12 @@ void GreenFuncNphBands::computeFinalQuantities(){
         writeZFactor(filename);
         std::cout << "Z factor calculated." << std::endl;
         std::cout << std::endl;
-    }*/
+    }
 
     if(_flags.mc_statistics){
         _mc_statistics.avg_tau /= static_cast<long double>(_mc_statistics.num_diagrams); // average length of diagrams
         _mc_statistics.avg_tau_squared /= static_cast<long double>(_mc_statistics.num_diagrams); // average squared length of diagrams
-    }
+    }*/
 };
 
 void GreenFuncNphBands::printGFExactEstimator(){
@@ -2830,6 +2835,7 @@ void GreenFuncNphBands::printhistogramEstimator(){
 
 void GreenFuncNphBands::printGroundStateEnergyEstimator(){
     _gs_energy = _gs_energy/static_cast<long double>(_gs_energy_count); // average energy of diagrams
+    if(_num_bands > 1){_gs_energy = _gs_energy/((1-_ratio_negative_updates)-_ratio_negative_updates);}
 
     if(_flags.blocking_analysis){
         long double squared_sum = 0;
@@ -3109,7 +3115,7 @@ void GreenFuncNphBands::printMCStatistics(){
     std::cout << std::endl;
 
     if(_num_bands > 1){
-            printBoldStatistics("simulation");
+        printBoldStatistics("simulation");
     }
 
     writeMCStatistics("MC_Statistics.txt");
@@ -3118,7 +3124,6 @@ void GreenFuncNphBands::printMCStatistics(){
 };
 
 void GreenFuncNphBands::printBoldStatistics(std::string type){
-    long long int negative_updates_total = 0;
     long long int N = 1;
     if(type == "thermalization"){
         N = getRelaxSteps();
@@ -3130,14 +3135,11 @@ void GreenFuncNphBands::printBoldStatistics(std::string type){
         N = getAutocorrSteps();
     }
 
+    if(type != "simulation"){computeRatioNegativeUpdates(N);}
+
     std::cout << "Bold Diagrammatic Monte Carlo analysis" << std::endl;
-    for(int i = 0; i < 8; ++i){
-        std::cout << "Update " << i << ", negative diagram updates: " << _num_negative_diagrams[i] << std::endl;
-        negative_updates_total += _num_negative_diagrams[i];
-        if(type != "simulation"){_num_negative_diagrams[i] = 0;} // reset counter for simulation process
-    }
+    for(int i = 0; i < 8; ++i){std::cout << "Update " << i << ", negative diagram updates: " << _num_negative_diagrams[i] << std::endl;}
     std::cout << std::endl;
-    _ratio_negative_updates = static_cast<long double>(negative_updates_total)/static_cast<long double>(N);
     std::cout << "Total ratio (" << type << "): " << _ratio_negative_updates << "." << std::endl;
     std::cout << std::endl;
 }
@@ -3196,8 +3198,9 @@ void GreenFuncNphBands::markovChainMC(){
         std::cout << std::endl;
     }
 
-    if(_num_bands > 1 && _flags.mc_statistics){
-        printBoldStatistics("thermalization");
+    if(_num_bands > 1){
+        if(_flags.mc_statistics){printBoldStatistics("thermalization");}
+        resetNegativeDiagrams(); // reset negative diagram count after thermalization
     }
 
     i = 0;
@@ -3244,6 +3247,8 @@ void GreenFuncNphBands::markovChainMC(){
         delete _benchmark_sim;
         std::cout << std::endl;
     }
+
+    if(_num_bands > 1){computeRatioNegativeUpdates(getNdiags());}
 
     if(_flags.mc_statistics){
         printMCStatistics();
@@ -3328,8 +3333,9 @@ void GreenFuncNphBands::markovChainMCOnlyRelax(){
         std::cout << std::endl;
     }
 
-    if(_num_bands > 1 && _flags.mc_statistics){
-        printBoldStatistics("thermalization");
+    if(_num_bands > 1){
+        if(_flags.mc_statistics){printBoldStatistics("thermalization");}
+        resetNegativeDiagrams(); // reset negative diagram count after thermalization
     }
 };
 
@@ -3394,6 +3400,8 @@ void GreenFuncNphBands::markovChainMCOnlySample(){
         }
     }
 
+    if(_num_bands > 1){resetNegativeDiagrams();} // compute ratio of negative updates to total updates for autocorrelation process
+
     if(_flags.time_benchmark){delete _benchmark_th;}
     
     _flags.write_diagrams = false; 
@@ -3447,13 +3455,13 @@ void GreenFuncNphBands::markovChainMCOnlySample(){
             _benchmark_sim->writeResultsToFile("simulation_benchmark.txt");
             std::cout << std::endl;
         }
-
-        if(_flags.mc_statistics){printMCStatistics();}
     }
 
     if(_flags.time_benchmark){delete _benchmark_sim;}
 
     computeFinalQuantities(); // compute final quantities for all processes (no write to console or files) 
+
+    if(_master && _flags.mc_statistics){printMCStatistics();}
 };
 
 double GreenFuncNphBands::groundStateEnergyExactEstimator(long double tau_length){
@@ -3502,7 +3510,7 @@ double GreenFuncNphBands::groundStateEnergyExactEstimator(long double tau_length
 
         if(_flags.blocking_analysis){groundStateEnergyBlockEstimator(diagram_energy);} // perform block analysis
         _gs_energy_count++; // update number of computed exact energy estimators
-        return diagram_energy; // return energy of current diagram
+        return _current_sign*diagram_energy; // return energy of current diagram
     }
 };
 
@@ -3658,6 +3666,14 @@ void GreenFuncNphBands::effectiveMassBlockEstimator(long double avg, long double
         _effective_masses_block_array[3*block_number+2] = (1.L)/_effective_masses_block_array[3*block_number+2];
     }
 };
+
+void GreenFuncNphBands::computeRatioNegativeUpdates(long long int num_updates){
+    long long int negative_updates_total = 0;
+    for(int i = 0; i < 8; ++i){
+        negative_updates_total += _num_negative_diagrams[i];
+    }
+    _ratio_negative_updates = static_cast<long double>(negative_updates_total)/static_cast<long double>(num_updates);
+}
 
 double GreenFuncNphBands::calcNormConst(){
     double eff_mass_electron = computeEffMassSingleBand(_kx, _ky, _kz, _m_x_el, _m_y_el, _m_z_el);
@@ -3829,12 +3845,13 @@ void GreenFuncNphBands::writeMCStatistics(std::string filename) const {
     file << "\n";
 
     if(_num_bands > 1){
-            file << "Bold Diagrammatic Monte Carlo analysis" << "\n";
-            for(int i = 0; i < 8; ++i){
-                file << "Update " << i << ", negative diagram updates: " << _num_negative_diagrams[i] << "\n";            }
-            file << "\n";
-            file << "Total ratio (simulation): " << _ratio_negative_updates << "." << std::endl;
-            file << "\n";
+        file << "Bold Diagrammatic Monte Carlo analysis" << "\n";
+        for(int i = 0; i < 8; ++i){
+            file << "Update " << i << ", negative diagram updates: " << _num_negative_diagrams[i] << "\n";
+        }
+        file << "\n";
+        file << "Total ratio (simulation): " << _ratio_negative_updates << "." << std::endl;
+        file << "\n";
     }
 
     file.close();
