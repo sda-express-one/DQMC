@@ -35,4 +35,7 @@ void writeGF_Histo(const std::string filename, GreenFuncNphBands * diagram, int 
 
 void writeGF_Exact(const std::string filename, GreenFuncNphBands * diagram, int num_threads, 
     long double * gf_points, long double * gf_values);
+
+void writeZFactor(const std::string filename, GreenFuncNphBands * diagram, int num_threads,
+    long double * Z_Factor_array, long double * Z_Factor_array_var);
 #endif

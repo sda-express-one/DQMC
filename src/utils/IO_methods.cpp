@@ -712,7 +712,7 @@ void writeGF_Exact(const std::string filename, GreenFuncNphBands * diagram, int 
         std::cout << "Exact Green's function calculated for all orders of external phonons." << std::endl;
     }
     else{
-        std::cout << "# Exact Green's function calculated for number of external phonons " << diagram->getGFSelectedOrder() << "." << std::endl;;
+        std::cout << "Exact Green's function calculated for number of external phonons " << diagram->getGFSelectedOrder() << "." << std::endl;;
     }
     
     std::ofstream file;
@@ -741,5 +741,51 @@ void writeGF_Exact(const std::string filename, GreenFuncNphBands * diagram, int 
     }
     file.close();
     std::cout << "Exact Green's function written to file " << filename << "." << std::endl;
+    std::cout << std::endl;
+};
+
+void writeZFactor(const std::string filename, GreenFuncNphBands * diagram, int num_threads,
+    long double * Z_Factor_array, long double * Z_Factor_array_var){
+    
+    std::cout << "Quasiparticle weights (Z factor) computed." << std::endl;
+
+    std::ofstream file;
+    file.open(filename, std::ofstream::app);
+
+    if(!file.is_open()){
+        std::cerr << "Could not open file " << filename << std::endl;
+        return;
+    }
+    file << "# Quasiparticle weight values (Z factor) for different number of external phonons:" << std::endl;
+    file << "# Number of independent parallel processes: " << num_threads << "." << std::endl;
+    file << "# Input parameters are: kx = " << diagram->getkx() << ", ky = " << diagram->getky() << ", kz = " << diagram->getkz() << ", chemical potential = " << diagram->getChemPotential() << std::endl;
+    file << "# chemical potential: " << diagram->getChemPotential() << ", number of degenerate electronic bands: " << diagram->getNumBands() << std::endl;
+    file << "# minimum length of diagrams for which Z factor is computed = " << diagram->getTauCutoffZ() << "." << std::endl;
+    if(diagram->getNumBands() == 1){
+        file << "# Electronic effective masses: mx_el = " << diagram->get_m_x_el() << ", my_el = " 
+            << diagram->get_m_y_el() << ", mz_el = " << diagram->get_m_z_el() << std::endl;
+    }
+    else if(diagram->getNumBands() == 3){
+        file << "# Electronic Luttinger-Kohn parameters: A_LK_el = "  << diagram->get_A_LK_el()
+                << ", B_LK_el = " << diagram->get_B_LK_el() << ", C_LK_el = " << diagram->get_C_LK_el() << std::endl;
+    }
+    file <<"# 1BZ volume: " << diagram->get1BZVolume() << " BvK volume: " << diagram->getBvKVolume() << " optical dielectric constant: " 
+        << diagram->getDielectricConst() << std::endl;
+
+    file << "# Number of phonon modes: " << diagram->getNumPhononModes() << std::endl;
+    for(int i=0; i<diagram->getNumPhononModes(); i++){
+        file << "# phonon mode (" << i << "): " << diagram->getPhononMode(i) << ", Born effective charge (" << i << "): " 
+        << diagram->getDielectricResponse(i) << std::endl;
+    }
+    file << std::endl;
+
+    file << "# number of external phonons     Z factor     variance(Z factor)" << std::endl;
+    for(int i=0; i<diagram->getPhExtMax(); i++){
+        file << i << "  " << Z_Factor_array[i] << " " << Z_Factor_array_var[i] << std::endl;
+    }
+    file << std::endl;
+    file.close();
+
+    std::cout << "Z factor values written to file " << filename << "." << std::endl;
     std::cout << std::endl;
 };

@@ -1,6 +1,8 @@
 #include <iostream>
 #include <string>
 #include <omp.h>
+#include <chrono>
+#include <thread>
 #include "../include/utils/IO_methods.hpp"
 #include "../include/utils/computational_methods.hpp"
 #include "../include/utils/MC_data_structures.hpp"
@@ -111,7 +113,7 @@ int main(){
             // main simulation
             diagram.markovChainMC();
         }
-        else{
+        else{           
             GreenFuncNphBands diagram_relax(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max,
                 sim.ph_ext_max, sim.num_bands, sim.num_phonon_modes);
             
@@ -221,17 +223,15 @@ int main(){
                 }
             }
 
-            
-            /*Propagator * propagators_thermalized = new Propagator[sim.order_int_max + 2*sim.ph_ext_max + 1];
-            Band * bands_thermalized = new Band[sim.order_int_max + 2*sim.ph_ext_max + 1];
-            Vertex * vertices_thermalized = new Vertex[sim.order_int_max + 2*sim.ph_ext_max + 2];
+            //long double * Z_Factor_array = nullptr;
+            //long double * Z_Factor_array_var = nullptr;
+            long double * Z_Factor_cpus_array = nullptr;
+            int is_Z_factor_array_initialized = 0;
 
-            for(int i = 0; i < sim.order_int_max + 2*sim.ph_ext_max + 1; i++){
-                propagators_thermalized[i] = diagram_relax.getPropagator(i);
-                bands_thermalized[i] = diagram_relax.getBand(i);
-                vertices_thermalized[i] = diagram_relax.getVertex(i);
-            }
-            vertices_thermalized[sim.order_int_max + 2*sim.ph_ext_max + 1] = diagram_relax.getVertex(sim.order_int_max + 2*sim.ph_ext_max + 1);*/
+            /*if(sets.Z_factor){
+                Z_Factor_array = new long double[sim.ph_ext_max + 1];
+                Z_Factor_array_var = new long double[sim.ph_ext_max + 1];
+            }*/
 
             int current_order_int = diagram_relax.getCurrentOrderInt();
             int current_ph_ext = diagram_relax.getCurrentPhExt();
@@ -362,6 +362,21 @@ int main(){
                     diagram_simulate.markovChainMCOnlySample();
                 }
 
+                # pragma omp single nowait
+                {
+                    Z_Factor_cpus_array = new long double[num_threads*(sim.ph_ext_max + 1)];
+                    is_Z_factor_array_initialized = 1;
+                    //std::cout << "Thread " << ID << " finished the simulation." << std::endl;
+                }
+
+                // check if Z_Factor_array is initialized before accessing it
+                while(!is_Z_factor_array_initialized){
+                    #pragma omp flush(is_Z_factor_array_initialized)
+                    if(is_Z_factor_array_initialized){break;}
+                    std::cout << "Thread " << ID << " is waiting for Z_Factor_array to be initialized." << std::endl;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                }
+
                 # pragma omp critical 
                 {   
                     if(sets.gs_energy){
@@ -376,9 +391,11 @@ int main(){
                     }
                     if(sets.histo){diagram_simulate.getHistogram(points_histogram[ID], gf_histo[ID]);}
                     if(sets.gf_exact){diagram_simulate.getGFExactPoints(points_gf_exact[ID], gf_values_exact[ID]);}
-                    /*delete[] propagators_thermalized;
-                    delete[] bands_thermalized;
-                    delete[] vertices_thermalized;*/
+                    if(sets.Z_factor){
+                        for(int i=0; i < sim.ph_ext_max + 1; i++){
+                            Z_Factor_cpus_array[ID*(sim.ph_ext_max + 1) + i] = diagram_simulate.getZFactorValue(i);
+                        }
+                    }
                 }
 
                 
@@ -480,6 +497,28 @@ int main(){
                 }
                 delete[] points_gf_exact;
                 delete[] gf_values_exact;
+            }
+
+            if(sets.Z_factor){
+                long double * Z_Factor_array = new long double[sim.ph_ext_max + 1];
+                long double * Z_Factor_array_var = new long double[sim.ph_ext_max + 1];
+                long double * Z_Factor_thread_array = new long double[num_threads];
+
+                // collect statistics for quasiparticle weight (Z factor) for each number of extenbr
+                for(int i=0; i < sim.ph_ext_max + 1; i++){
+                    for(int j=0; j < num_threads; j++){
+                        Z_Factor_thread_array[j] = Z_Factor_cpus_array[j*(sim.ph_ext_max + 1) + i];
+                    }
+                    Z_Factor_array[i] = computeMean(Z_Factor_thread_array, num_threads);
+                    Z_Factor_array_var[i] = computeStdDev(Z_Factor_thread_array, Z_Factor_array[i], num_threads);
+                }
+
+                writeZFactor("quasiparticle_weights.txt", &diagram_relax, num_threads, Z_Factor_array, Z_Factor_array_var);
+
+                delete[] Z_Factor_cpus_array;
+                delete[] Z_Factor_thread_array;
+                delete[] Z_Factor_array;
+                delete[] Z_Factor_array_var;
             }
         }
     }

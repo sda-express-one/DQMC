@@ -49,10 +49,9 @@ class GreenFuncNphBands : public Diagram {
             delete[] _points;
             delete[] _points_gf_exact;
         }
+        if(_flags.Z_factor){delete[] _Z_factor_array;}
         if(_flags.blocking_analysis){
-            if(_flags.gs_energy){
-                delete[] _gs_energy_block_array;
-            }
+            if(_flags.gs_energy){delete[] _gs_energy_block_array;}
             if(_flags.effective_mass){
                 delete[] _effective_mass_block_array;
                 delete[] _effective_masses_block_array;
@@ -98,6 +97,10 @@ class GreenFuncNphBands : public Diagram {
     void getEffectiveMasses(long double * effective_masses) const;
     void getEffectiveMassesVar(long double * effective_masses_var) const;
     long double getTauCutoffMass() const {return _tau_cutoff_mass;};
+
+    // Z factor (quasiparticle weight)
+    long double getTauCutoffZ() const {return _tau_cutoff_Z;};
+    long double getZFactorValue(int index) const {return computeZFactor(index);};
 
     // exact GF
     int getNumPoints() const {return _num_points;};
@@ -176,6 +179,7 @@ class GreenFuncNphBands : public Diagram {
     // write to file
     void writeHistogram(const std::string& filename) const;
     void writeExactGF(const std::string& filename) const; // write GF with exact method in .txt file
+    void writeZFactor(const std::string& filename) const; // write Z factor values in .txt file
     void writeMCStatistics(std::string filename) const;
     //void writeBoldStatistics(std::string filename, std::string type = "simulation") const;
 
@@ -221,7 +225,7 @@ class GreenFuncNphBands : public Diagram {
     int* _ext_phonon_type_num;
     double* _dielectric_responses; // Born effective charges for each phonon mode
 
-    // bold diagrammatic Monte Carlo
+    // negative sign diagrammatic Monte Carlo
     int _current_sign = 1; // current sign of the diagram (bold method)
     long long int _num_negative_diagrams[8] = {0,0,0,0,0,0,0,0}; // number of updates that lead to negative diagram weight (bold method)
     long double _ratio_negative_updates = 0.0L; // ratio of negative updates over total updates (bold method)
@@ -276,6 +280,11 @@ class GreenFuncNphBands : public Diagram {
     Eigen::Matrix3d _effective_masses_bands;
     unsigned long long int _effective_mass_count = 0; // number of times the effective mass estimator is calculated
 
+    // Z factor (quasiparticle weight)
+    long double _tau_cutoff_Z = _tau_max/10; // cutoff for Z factor estimator, if tau < tau_cutoff Z factor estimator is not calculated
+    int * _Z_factor_array = nullptr; // array of Z factor values for each number of external phonon lines
+    unsigned long long int _Z_factor_count = 0; // number of times the Z factor estimator is calculated
+
     // Green function exact estimator
     int _num_points = 100;
     int _selected_order = 0;
@@ -308,7 +317,7 @@ class GreenFuncNphBands : public Diagram {
 
     //int choosePhonon();
 
-    // bold methods
+    // negative sign methods
     inline void updateSign(){_current_sign = _current_sign*-1;};
     inline void updateNegativeDiagrams(int update_index){if(_current_sign == -1){_num_negative_diagrams[update_index]++;}};
     inline void resetNegativeDiagrams(){for(int i = 0; i < 8; i++){_num_negative_diagrams[i] = 0;}};
@@ -334,6 +343,7 @@ class GreenFuncNphBands : public Diagram {
     void printhistogramEstimator();
     void printGroundStateEnergyEstimator();
     void printEffectiveMassEstimator();
+    void printZFactor();
     void printMCStatistics();
     void printBoldStatistics(std::string type = "simulation");
     
@@ -342,13 +352,17 @@ class GreenFuncNphBands : public Diagram {
     void normalizeHistogram(double norm_const);
 
     // exact estimator methods
+    // GF exact estimator
     void exactEstimatorGF(long double tau_length, int ext_phonon_order);
+    // ground state energy estimator
     double groundStateEnergyExactEstimator(long double tau_length);
     void groundStateEnergyBlockEstimator(long double gs_energy);
-    //void calcGroundStateEnergy(std::string filename);
+    // effective mass estimator
     double effectiveMassExactEstimator(long double tau_length);
     void effectiveMassBlockEstimator(long double avg, long double xP, long double yP, long double zP);
-    //void calcEffectiveMasses(std::string filename);
+    // quasiparticle weight estimator
+    void ZFactorExactEstimator(long double tau_length);
+    inline long double computeZFactor(int i) const {return static_cast<long double>(_Z_factor_array[i])/static_cast<long double>(_Z_factor_count);};
 
     // debug methods
     void writeDiagram(std::string filename, int i, double r) const;

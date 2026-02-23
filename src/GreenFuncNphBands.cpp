@@ -2304,7 +2304,7 @@ long double GreenFuncNphBands::configSimulation(long double tau_length = 1.0L){
         _flags.effective_mass = false;
     }
 
-    if(_flags.Z_factor && _ph_ext_max == 0){
+    if(_flags.Z_factor && _ph_ext_max <= 0){
         std::cerr << "Warning: number of maximum external phonon must be greater than 0 to calculate Z factor." << std::endl;
         std::cerr << "Z factor calculation is not possible." << std::endl;
         _flags.Z_factor = false;
@@ -2464,13 +2464,33 @@ long double GreenFuncNphBands::configSimulation(long double tau_length = 1.0L){
         }
     }
 
-    /*if(_flags.Z_factor){
+    if(_flags.Z_factor){
         std::cout << "Z factor will be calculated using the exact estimator" << std::endl;
-        std::cout << "Coupling strength: " << _alpha << ", chemical potential: " << _chem_potential << ", max number of phonons: " << 
-        _ph_ext_max << std::endl;
-        initializeZFactorArray();
+        std::cout << "Free electron momentum: kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << std::endl;
+        std::cout << "Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+        if(_num_bands == 1){
+            std::cout << "Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
+                    << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+        }
+        else if(_num_bands == 3){
+            std::cout << "Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
+                    << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+            _effective_masses_bands << 0, 0, 0,
+                                       0, 0, 0,
+                                       0, 0, 0;
+        }
+        std::cout <<"1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
+        << _dielectric_const << ", tau cutoff: " << _tau_cutoff_Z << std::endl;
+        std::cout << "Number of phonon modes: " << _num_phonon_modes << std::endl;
+
+        for(int i=0; i<_num_phonon_modes; i++){
+            std::cout << "phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+            << _dielectric_responses[i] << std::endl;
+        }
         std::cout << std::endl;
-    }*/
+        _Z_factor_array = new int[_ph_ext_max+1];
+        for(int i=0; i<_ph_ext_max+1; i++){_Z_factor_array[i] = 0;}
+    }
 
     if(_flags.blocking_analysis){
         std::cout << "Blocking analysis method will be employed to compute variance of quantities." << std::endl;
@@ -2598,9 +2618,10 @@ void GreenFuncNphBands::configSimulationSilent(){
         }
     }
 
-    /*if(_flags.Z_factor){
-        initializeZFactorArray();
-    }*/
+    if(_flags.Z_factor){
+        _Z_factor_array = new int[_ph_ext_max+1];
+        for(int i=0; i<_ph_ext_max+1; i++){_Z_factor_array[i] = 0;}
+    }
 
     if(_flags.write_diagrams){
         if(getNdiags() > 25000){
@@ -2625,45 +2646,73 @@ void GreenFuncNphBands::configSimulationSilent(){
 
 long double GreenFuncNphBands::chooseUpdate(long double tau_length, double r , MC_Benchmarking * benchmark){
 
-    if(r <= _p_length){
-        if(_flags.time_benchmark){benchmark->startUpdateTimer();}
-        tau_length = diagramLengthUpdate(tau_length);
-        if(_flags.time_benchmark){benchmark->stopUpdateTimer(0);}
-    }
-    else if(r <= _p_length + _p_add_int){
-        if(_flags.time_benchmark){benchmark->startUpdateTimer();}
-        addInternalPhononPropagator();
-        if(_flags.time_benchmark){benchmark->stopUpdateTimer(1);}
-    }
-    else if(r <= _p_length + _p_add_int + _p_rem_int){
-        if(_flags.time_benchmark){benchmark->startUpdateTimer();}
+    if(_flags.time_benchmark){
+        if(r <= _p_length){
+            benchmark->startUpdateTimer();
+            tau_length = diagramLengthUpdate(tau_length);
+            benchmark->stopUpdateTimer(0);
+        }
+        else if(r <= _p_length + _p_add_int){
+            benchmark->startUpdateTimer();
+            addInternalPhononPropagator();
+            benchmark->stopUpdateTimer(1);
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int){
+            benchmark->startUpdateTimer();
             removeInternalPhononPropagator();
-        if(_flags.time_benchmark){benchmark->stopUpdateTimer(2);}
+            benchmark->stopUpdateTimer(2);
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext){
+            benchmark->startUpdateTimer();
+            addExternalPhononPropagator();
+            benchmark->stopUpdateTimer(3);
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext){
+            benchmark->startUpdateTimer();
+            removeExternalPhononPropagator();
+            benchmark->stopUpdateTimer(4);
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap){
+            benchmark->startUpdateTimer();
+            swapPhononPropagator();
+            benchmark->stopUpdateTimer(5);
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift){
+            benchmark->startUpdateTimer();
+            shiftPhononPropagator();
+            benchmark->stopUpdateTimer(6);
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift + _p_stretch){
+            benchmark->startUpdateTimer();
+            tau_length = stretchDiagramLength(tau_length);
+            benchmark->stopUpdateTimer(7);
+        }
     }
-    else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext){
-        if(_flags.time_benchmark){benchmark->startUpdateTimer();}
-        addExternalPhononPropagator();
-        if(_flags.time_benchmark){benchmark->stopUpdateTimer(3);}
-    }
-    else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext){
-        if(_flags.time_benchmark){benchmark->startUpdateTimer();}
-        removeExternalPhononPropagator();
-        if(_flags.time_benchmark){benchmark->stopUpdateTimer(4);}
-    }
-    else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap){
-        if(_flags.time_benchmark){benchmark->startUpdateTimer();}
-        swapPhononPropagator();
-        if(_flags.time_benchmark){benchmark->stopUpdateTimer(5);}
-    }
-    else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift){
-        if(_flags.time_benchmark){benchmark->startUpdateTimer();}
-        shiftPhononPropagator();
-        if(_flags.time_benchmark){benchmark->stopUpdateTimer(6);}
-    }
-    else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift + _p_stretch){
-        if(_flags.time_benchmark){benchmark->startUpdateTimer();}
-        tau_length = stretchDiagramLength(tau_length);
-        if(_flags.time_benchmark){benchmark->stopUpdateTimer(7);}
+    else{
+        if(r <= _p_length){
+            tau_length = diagramLengthUpdate(tau_length);
+        }
+        else if(r <= _p_length + _p_add_int){
+            addInternalPhononPropagator();
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int){
+            removeInternalPhononPropagator();
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext){
+            addExternalPhononPropagator();
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext){
+            removeExternalPhononPropagator();
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap){
+            swapPhononPropagator();
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift){
+            shiftPhononPropagator();
+        }
+        else if(r <= _p_length + _p_add_int + _p_rem_int + _p_add_ext + _p_rem_ext + _p_swap + _p_shift + _p_stretch){
+            tau_length = stretchDiagramLength(tau_length);
+        }
     }
     return tau_length;
 };
@@ -2681,23 +2730,15 @@ void GreenFuncNphBands::computeQuantities(long double tau_length, double r, int 
         _bin_count[bin]++;
     }
 
-    if(_flags.gs_energy){
-        _gs_energy += groundStateEnergyExactEstimator(tau_length); // accumulate energy of diagrams
-    }
+    if(_flags.gs_energy){_gs_energy += groundStateEnergyExactEstimator(tau_length); } // accumulate energy of diagrams
 
-    if(_flags.effective_mass){
-        _effective_mass += effectiveMassExactEstimator(tau_length); // accumulate effective mass of diagrams
-    }
+    if(_flags.effective_mass){_effective_mass += effectiveMassExactEstimator(tau_length);} // accumulate effective mass of diagrams
 
-    // if(_flags.Z_factor){updateZFactor();} // accumulate Z factor data
+    if(_flags.Z_factor){ZFactorExactEstimator(tau_length);} // accumulate Z factor data
 
-    if(_flags.write_diagrams){
-        writeDiagram("Diagrams.txt", i, r); // method to visualize diagram structure
-    }
+    if(_flags.write_diagrams){writeDiagram("Diagrams.txt", i, r);} // method to visualize diagram structure
 
-    if(_current_order_int == 0 && _current_ph_ext == 0){
-            _N0++;
-    }
+    if(_current_order_int == 0 && _current_ph_ext == 0){_N0++;} // count number of order 0 diagrams for normalization
 
     if(_flags.mc_statistics && (tau_length >= _tau_cutoff_statistics)){
         _mc_statistics.num_diagrams++; // accumulate number of diagrams
@@ -2717,7 +2758,7 @@ void GreenFuncNphBands::computeQuantities(long double tau_length, double r, int 
 
 void GreenFuncNphBands::computeFinalQuantities(){
     // method used to compute final quantities at the end of the simulation in the pararellized version of the program (no output to console)
-    
+
     if(_num_bands > 1){computeRatioNegativeUpdates(getNdiags());} // compute ratio of negative updates to total updates for final normalization of quantities
 
     if(_flags.gf_exact){
@@ -2793,13 +2834,11 @@ void GreenFuncNphBands::computeFinalQuantities(){
     }
 
     /*if(_flags.Z_factor){
-        std::string a = "Z_factor_alpha";
-        auto b = std::to_string(_alpha);
-        std::string c = ".txt";
-        std::string filename = a + b + c;
+        //std::string a = "Z_factor_alpha";
+        //auto b = std::to_string(_alpha);
+        //std::string c = ".txt";
+        std::string filename = "quasiparticle_weights.txt";
         writeZFactor(filename);
-        std::cout << "Z factor calculated." << std::endl;
-        std::cout << std::endl;
     }
 
     if(_flags.mc_statistics){
@@ -3070,6 +3109,14 @@ void GreenFuncNphBands::printEffectiveMassEstimator(){
     }
 };
 
+void GreenFuncNphBands::printZFactor(){
+    std::cout << "Z factor calculated." << std::endl;
+    std::string filename = "quasiparticle_weights.txt";
+    writeZFactor(filename);
+    std::cout << "Z factor written to file " << filename << "." << std::endl;
+    std::cout << std::endl;
+};
+
 void GreenFuncNphBands::printMCStatistics(){
     _mc_statistics.avg_tau /= static_cast<long double>(_mc_statistics.num_diagrams); // average length of diagrams
     _mc_statistics.avg_tau_squared /= static_cast<long double>(_mc_statistics.num_diagrams); // average squared length of diagrams
@@ -3270,15 +3317,9 @@ void GreenFuncNphBands::markovChainMC(){
         printEffectiveMassEstimator();
     }
 
-    /*if(_flags.Z_factor){
-        std::string a = "Z_factor_alpha";
-        auto b = std::to_string(_alpha);
-        std::string c = ".txt";
-        std::string filename = a + b + c;
-        writeZFactor(filename);
-        std::cout << "Z factor calculated." << std::endl;
-        std::cout << std::endl;
-    }*/
+    if(_flags.Z_factor){
+        printZFactor();
+    }
 };
 
 void GreenFuncNphBands::markovChainMCOnlyRelax(){
@@ -3464,6 +3505,59 @@ void GreenFuncNphBands::markovChainMCOnlySample(){
     if(_master && _flags.mc_statistics){printMCStatistics();}
 };
 
+void GreenFuncNphBands::exactEstimatorGF(long double tau_length, int ext_phonon_order){
+
+    if(ext_phonon_order < 0){ext_phonon_order = _current_ph_ext;}
+
+    // compute electron bare propagators action
+    int current_order = _current_order_int + 2*_current_ph_ext; // total order of diagrams (number of phonon vertices)
+    double electron_energy = 0;
+    double electron_action = 0., phonon_action = 0.;
+
+    // phonon bare propagators action
+    //int i = 0;
+    int index_two = 0;
+    int phonon_index = -1;
+    long double tau_one = 0;
+    long double tau_two = 0;
+    // int int_count = 0;
+    // int ext_count = 0;  
+    // bool int_flag = false;
+    // bool ext_flag = false;
+
+    // main loop
+    for(int i=0; i<current_order+1; ++i){
+        electron_energy = electronEnergy(_propagators[i].el_propagator_kx, _propagators[i].el_propagator_ky, 
+            _propagators[i].el_propagator_kz, _bands[i].effective_mass);
+        electron_action += electron_energy*(_vertices[i+1].tau - _vertices[i].tau);
+
+        if(_vertices[i].type == +1){
+            index_two = _vertices[i].linked;
+            phonon_index = _vertices[i].index;
+            tau_one = _vertices[i].tau;  
+            tau_two = _vertices[index_two].tau;
+            phonon_action += phononEnergy(_phonon_modes, phonon_index)*(tau_two - tau_one);
+        }
+        else if(_vertices[i].type == -2){
+            index_two = _vertices[i].linked;
+            phonon_index = _vertices[i].index;
+            tau_one = _vertices[i].tau;  
+            tau_two = _vertices[index_two].tau;
+            phonon_action += phononEnergy(_phonon_modes, phonon_index)*(tau_length + tau_one - tau_two);
+        }
+    }
+
+    // compute Green function with exact estimator
+    tau_length = (tau_length < 1e-9) ? 1e-9 : (tau_length >= _tau_max) ? _tau_max - 1e-9 : tau_length;
+    int bin = static_cast<int>((tau_length - 0.) * 1./_points_step);
+
+    long double prefactor = std::pow(1 + (_points[bin] - tau_length)/tau_length, current_order);
+    long double exponential = std::exp(-((_points[bin] - tau_length)/tau_length)*(electron_action + phonon_action));
+    long double diagrams_ratio = prefactor*exponential;
+
+    _points_gf_exact[bin] += diagrams_ratio/(_points_step); // accumulate Green function value
+};
+
 double GreenFuncNphBands::groundStateEnergyExactEstimator(long double tau_length){
     if(tau_length <= _tau_cutoff_energy){return 0;} // reject if below cutoff
     else{
@@ -3523,7 +3617,7 @@ void GreenFuncNphBands::groundStateEnergyBlockEstimator(long double gs_energy){
     }
 };
 
-void GreenFuncNphBands::exactEstimatorGF(long double tau_length, int ext_phonon_order){
+/*void GreenFuncNphBands::exactEstimatorGF(long double tau_length, int ext_phonon_order){
 
     if(ext_phonon_order < 0){ext_phonon_order = _current_ph_ext;}
 
@@ -3574,7 +3668,7 @@ void GreenFuncNphBands::exactEstimatorGF(long double tau_length, int ext_phonon_
     long double diagrams_ratio = prefactor*exponential;
 
     _points_gf_exact[bin] += diagrams_ratio/(_points_step); // accumulate Green function value
-};
+};*/
 
 double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
     if(tau_length <= _tau_cutoff_mass){return 0;}
@@ -3664,6 +3758,15 @@ void GreenFuncNphBands::effectiveMassBlockEstimator(long double avg, long double
         _effective_masses_block_array[3*block_number] = (1.L)/_effective_masses_block_array[3*block_number];
         _effective_masses_block_array[3*block_number+1] = (1.L)/_effective_masses_block_array[3*block_number+1];
         _effective_masses_block_array[3*block_number+2] = (1.L)/_effective_masses_block_array[3*block_number+2];
+    }
+};
+
+void GreenFuncNphBands::ZFactorExactEstimator(long double tau_length){
+    if(tau_length <= _tau_cutoff_Z){return;}
+    else{
+        _Z_factor_array[_current_ph_ext]++;
+        _Z_factor_count++;
+        return;
     }
 };
 
@@ -3791,6 +3894,48 @@ void GreenFuncNphBands::writeChosenUpdate(std::string filename, int i, double r)
     file << "Iteration: " << i << " chosen update: " << r << "\n";
     file << "\n";
 
+    file.close();
+};
+
+void GreenFuncNphBands::writeZFactor(const std::string& filename) const {
+    std::ofstream file;
+
+    file.open(filename, std::ofstream::app);
+
+    if(!file.is_open()){
+        std::cout << "Could not open file " << filename << std::endl;
+        return;
+    }
+    file << "# Quasiparticle weight values (Z factor) for different number of external phonons:" << std::endl;
+    file << "# Input parameters are: kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << std::endl;
+    file << "# Chemical potential: " << _chem_potential << ", number of degenerate electronic bands : " << _num_bands << std::endl;
+    file << "# Minimum length of diagrams for which Z factor is computed = " << _tau_cutoff_Z << "." << std::endl;
+    file << "# Number of diagrams used for Z factor calculation: " << _Z_factor_count << std::endl;
+
+    if(_num_bands == 1){
+        file << "# Electronic effective masses: mx_el = " << _m_x_el << ", my_el = " 
+            << _m_y_el << ", mz_el = " << _m_z_el << std::endl;
+    }
+    else if(_num_bands == 3){
+        file << "# Electronic Luttinger-Kohn parameters: A_LK_el = "  << _A_LK_el 
+            << ", B_LK_el = " << _B_LK_el << ", C_LK_el = " << _C_LK_el << std::endl;
+    }
+    file << "# 1BZ volume: " << _V_BZ << " BvK volume: " << _V_BvK << " dielectric constant: " 
+    << _dielectric_const << std::endl;
+        file << std::endl;
+
+    file << "# Number of phonon modes: " << _num_phonon_modes << std::endl;
+    for(int i=0; i<_num_phonon_modes; i++){
+        file << "# phonon mode (" << i << "): " << _phonon_modes[i] << ", Born effective charge (" << i << "): " 
+        << _dielectric_responses[i] << std::endl;
+    }
+    file << std::endl;
+    
+    file << "# num external phonons    quasiparticle weight" << std::endl;
+    for(int i=0; i<_ph_ext_max+1; i++){
+        file << i << "    " << computeZFactor(i) <<std::endl;
+    }
+    file << std::endl;
     file.close();
 };
 
