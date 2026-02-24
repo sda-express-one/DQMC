@@ -178,16 +178,16 @@ int main(){
 
             long double * gs_energy = nullptr;
             long double * gs_energy_var = nullptr;
-            if(sets.gs_energy){
+            /*if(sets.gs_energy){
                 gs_energy = new long double[cpu.num_procs];
                 gs_energy_var = new long double[cpu.num_procs];
-            }
+            }*/
 
             long double * effective_mass = nullptr;
             long double * effective_mass_var = nullptr;
             long double ** effective_masses = nullptr;
             long double ** effective_masses_var = nullptr;
-            if(sets.effective_mass){
+            /*if(sets.effective_mass){
                 effective_mass = new long double[cpu.num_procs];
                 effective_mass_var = new long double[cpu.num_procs];
                 effective_masses = new long double * [cpu.num_procs];
@@ -196,37 +196,36 @@ int main(){
                     effective_masses[i] = new long double[3];
                     effective_masses_var[i] = new long double[3];
                 }
-            }
+            }*/
 
             long double ** points_histogram = nullptr;
             long double ** gf_histo = nullptr;
             int num_bins_histo = diagram_relax.getNumBins();
             int num_points_exact_gf = diagram_relax.getNumPoints();
 
-            if(sets.histo){
+            /*if(sets.histo){
                 points_histogram = new long double * [cpu.num_procs];
                 gf_histo = new long double * [cpu.num_procs];
                 for(int i = 0; i < cpu.num_procs; i++){    
                     points_histogram[i] = new long double[num_bins_histo];
                     gf_histo[i] = new long double[num_bins_histo];
                 }
-            }
+            }*/
 
             long double ** points_gf_exact = nullptr;
             long double ** gf_values_exact = nullptr;
-            if(sets.gf_exact){
+            /*if(sets.gf_exact){
                 points_gf_exact = new long double * [cpu.num_procs];
                 gf_values_exact = new long double * [cpu.num_procs];
                 for(int i = 0; i < cpu.num_procs; i++){
                     points_gf_exact[i] = new long double[num_points_exact_gf];
                     gf_values_exact[i] = new long double[num_points_exact_gf];
                 }
-            }
+            }*/
 
-            //long double * Z_Factor_array = nullptr;
-            //long double * Z_Factor_array_var = nullptr;
             long double * Z_Factor_cpus_array = nullptr;
-            int is_Z_factor_array_initialized = 0;
+
+            int is_initialized = 0;
 
             /*if(sets.Z_factor){
                 Z_Factor_array = new long double[sim.ph_ext_max + 1];
@@ -241,20 +240,21 @@ int main(){
 
             seed = getClockTime();
 
+            Propagator * propagators_thermalized = nullptr;
+            Band * bands_thermalized = nullptr;
+            Vertex * vertices_thermalized = nullptr;
+
+            propagators_thermalized = new Propagator[sim.order_int_max + 2*sim.ph_ext_max + 1];
+            bands_thermalized = new Band[sim.order_int_max + 2*sim.ph_ext_max + 1];
+            vertices_thermalized = new Vertex[sim.order_int_max + 2*sim.ph_ext_max + 2];
+
             #pragma omp parallel
             {
                 int ID = omp_get_thread_num();
 
-                Propagator * propagators_thermalized = nullptr;
-                Band * bands_thermalized = nullptr;
-                Vertex * vertices_thermalized = nullptr;
-
                 #pragma omp critical
 
                 {
-                    propagators_thermalized = new Propagator[sim.order_int_max + 2*sim.ph_ext_max + 1];
-                    bands_thermalized = new Band[sim.order_int_max + 2*sim.ph_ext_max + 1];
-                    vertices_thermalized = new Vertex[sim.order_int_max + 2*sim.ph_ext_max + 2];
 
                     for(int i = 0; i < sim.order_int_max + 2*sim.ph_ext_max + 1; i++){
                         propagators_thermalized[i] = diagram_relax.getPropagator(i);
@@ -271,9 +271,9 @@ int main(){
                 #pragma omp critical
                 {
                     Diagram::setSeed(seed, ID*2654435761U);
-                    delete[] propagators_thermalized;
+                    /*delete[] propagators_thermalized;
                     delete[] bands_thermalized;
-                    delete[] vertices_thermalized;
+                    delete[] vertices_thermalized;*/
                 }
 
                 #pragma omp barrier
@@ -281,9 +281,9 @@ int main(){
                 {
                     diagram_simulate.setMaster(true);
                     num_threads = omp_get_num_threads();
-                    /*delete[] propagators_thermalized;
+                    delete[] propagators_thermalized;
                     delete[] bands_thermalized;
-                    delete[] vertices_thermalized;*/
+                    delete[] vertices_thermalized;
                     
                 }
                 #pragma omp barrier
@@ -364,16 +364,49 @@ int main(){
 
                 # pragma omp single nowait
                 {
-                    Z_Factor_cpus_array = new long double[num_threads*(sim.ph_ext_max + 1)];
-                    is_Z_factor_array_initialized = 1;
+                    if(sets.gs_energy){
+                        gs_energy = new long double[cpu.num_procs];
+                        gs_energy_var = new long double[cpu.num_procs];
+                    }
+                    if(sets.effective_mass){
+                        effective_mass = new long double[cpu.num_procs];
+                        effective_mass_var = new long double[cpu.num_procs];
+                        effective_masses = new long double * [cpu.num_procs];
+                        effective_masses_var = new long double * [cpu.num_procs];
+                        for (int i = 0; i < cpu.num_procs; i++){
+                            effective_masses[i] = new long double[3];
+                            effective_masses_var[i] = new long double[3];
+                        }
+                    }
+                    if(sets.histo){
+                        points_histogram = new long double * [cpu.num_procs];
+                        gf_histo = new long double * [cpu.num_procs];
+                        for(int i = 0; i < cpu.num_procs; i++){    
+                            points_histogram[i] = new long double[num_bins_histo];
+                            gf_histo[i] = new long double[num_bins_histo];
+                        }
+                    }
+                    if(sets.gf_exact){
+                        points_gf_exact = new long double * [cpu.num_procs];
+                        gf_values_exact = new long double * [cpu.num_procs];
+                        for(int i = 0; i < cpu.num_procs; i++){
+                            points_gf_exact[i] = new long double[num_points_exact_gf];
+                            gf_values_exact[i] = new long double[num_points_exact_gf];
+                        }
+                    }
+                    if(sets.Z_factor){
+                        Z_Factor_cpus_array = new long double[num_threads*(sim.ph_ext_max + 1)];
+                    }
+
+                    is_initialized = 1;
                     //std::cout << "Thread " << ID << " finished the simulation." << std::endl;
                 }
 
                 // check if Z_Factor_array is initialized before accessing it
-                while(!is_Z_factor_array_initialized){
-                    #pragma omp flush(is_Z_factor_array_initialized)
-                    if(is_Z_factor_array_initialized){break;}
-                    std::cout << "Thread " << ID << " is waiting for Z_Factor_array to be initialized." << std::endl;
+                while(!is_initialized){
+                    #pragma omp flush(is_initialized)
+                    if(is_initialized){break;}
+                    //std::cout << "Thread " << ID << " is waiting for Z_Factor_array to be initialized." << std::endl;
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 }
 
@@ -397,8 +430,6 @@ int main(){
                         }
                     }
                 }
-
-                
             }
 
             if(sets.gs_energy){
