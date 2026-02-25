@@ -3,6 +3,7 @@
 #include <omp.h>
 #include <chrono>
 #include <thread>
+#include <atomic>
 #include "../include/utils/IO_methods.hpp"
 #include "../include/utils/computational_methods.hpp"
 #include "../include/utils/MC_data_structures.hpp"
@@ -225,8 +226,6 @@ int main(){
 
             long double * Z_Factor_cpus_array = nullptr;
 
-            int is_initialized = 0;
-
             /*if(sets.Z_factor){
                 Z_Factor_array = new long double[sim.ph_ext_max + 1];
                 Z_Factor_array_var = new long double[sim.ph_ext_max + 1];
@@ -239,22 +238,25 @@ int main(){
             omp_set_num_threads(cpu.num_procs);
 
             seed = getClockTime();
-
-            Propagator * propagators_thermalized = nullptr;
-            Band * bands_thermalized = nullptr;
-            Vertex * vertices_thermalized = nullptr;
-
-            propagators_thermalized = new Propagator[sim.order_int_max + 2*sim.ph_ext_max + 1];
-            bands_thermalized = new Band[sim.order_int_max + 2*sim.ph_ext_max + 1];
-            vertices_thermalized = new Vertex[sim.order_int_max + 2*sim.ph_ext_max + 2];
+            int initialized_heap = 0;
 
             #pragma omp parallel
             {
                 int ID = omp_get_thread_num();
 
-                #pragma omp critical
+                Propagator * propagators_thermalized = nullptr;
+                Band * bands_thermalized = nullptr;
+                Vertex * vertices_thermalized = nullptr;
 
-                {
+                parameters local_sim;
+                settings local_sets;
+                cpu_info local_cpu;
+
+                #pragma omp critical
+                {   
+                    propagators_thermalized = new Propagator[sim.order_int_max + 2*sim.ph_ext_max + 1];
+                    bands_thermalized = new Band[sim.order_int_max + 2*sim.ph_ext_max + 1];
+                    vertices_thermalized = new Vertex[sim.order_int_max + 2*sim.ph_ext_max + 2];
 
                     for(int i = 0; i < sim.order_int_max + 2*sim.ph_ext_max + 1; i++){
                         propagators_thermalized[i] = diagram_relax.getPropagator(i);
@@ -262,78 +264,87 @@ int main(){
                         vertices_thermalized[i] = diagram_relax.getVertex(i);
                     }
 
-                    
+                    local_sim = sim;
+                    local_sets = sets;
+                    local_cpu = cpu;
                 }
 
                 GreenFuncNphBands diagram_simulate(propagators_thermalized, vertices_thermalized, bands_thermalized,
-                    sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max,
-                    sim.ph_ext_max, sim.num_bands, sim.num_phonon_modes);
+                    local_sim.N_diags, local_sim.tau_max, local_sim.kx, local_sim.ky, local_sim.kz, local_sim.chem_potential, local_sim.order_int_max,
+                    local_sim.ph_ext_max, local_sim.num_bands, local_sim.num_phonon_modes);
+                
                 #pragma omp critical
                 {
                     Diagram::setSeed(seed, ID*2654435761U);
-                    /*delete[] propagators_thermalized;
+                    delete[] propagators_thermalized;
                     delete[] bands_thermalized;
-                    delete[] vertices_thermalized;*/
+                    delete[] vertices_thermalized;
                 }
-
                 #pragma omp barrier
+                
                 #pragma omp master
                 {
                     diagram_simulate.setMaster(true);
                     num_threads = omp_get_num_threads();
-                    delete[] propagators_thermalized;
+                    /*delete[] propagators_thermalized;
                     delete[] bands_thermalized;
-                    delete[] vertices_thermalized;
+                    delete[] vertices_thermalized;*/
                     
                 }
                 #pragma omp barrier
+                
+                #pragma omp critical
+                {
+                    diagram_simulate.setPhononModes(phonon_modes);
+                    diagram_simulate.setDielectricResponses(dielectric_responses);
+                    diagram_simulate.setCurrentOrderInt(current_order_int);
+                    diagram_simulate.setCurrentPhExt(current_ph_ext);
+                    diagram_simulate.setProbabilities(probs);
+                }
 
-                diagram_simulate.setPhononModes(phonon_modes);
-                diagram_simulate.setDielectricResponses(dielectric_responses);
-                diagram_simulate.set1BZVolume(sim.V_BZ);
-                diagram_simulate.setBvKVolume(sim.V_BvK);
-                diagram_simulate.setDielectricConstant(sim.dielectric_const);
-                diagram_simulate.setCurrentOrderInt(current_order_int);
-                diagram_simulate.setCurrentPhExt(current_ph_ext);
-
+                diagram_simulate.set1BZVolume(local_sim.V_BZ);
+                diagram_simulate.setBvKVolume(local_sim.V_BvK);
+                diagram_simulate.setDielectricConstant(local_sim.dielectric_const);
+                    
                 if(sim.num_bands == 1){
-                    diagram_simulate.setEffectiveMasses(sim.m_x, sim.m_y, sim.m_z);
+                    diagram_simulate.setEffectiveMasses(local_sim.m_x, local_sim.m_y, local_sim.m_z);
                 }
                 else if(sim.num_bands == 3){
-                    diagram_simulate.setLuttingerKohnParameters(sim.A_LK, sim.B_LK, sim.C_LK);
+                    diagram_simulate.setLuttingerKohnParameters(local_sim.A_LK, local_sim.B_LK, local_sim.C_LK);
                 }
 
-                // Markov chain settings
-                diagram_simulate.setRelaxSteps(sim.relax_steps);
-                diagram_simulate.setAutcorrSteps(cpu.autocorr_steps);
-                diagram_simulate.setProbabilities(probs);
+                    // Markov chain settings
+                    diagram_simulate.setRelaxSteps(local_sim.relax_steps);
+                    diagram_simulate.setAutcorrSteps(local_cpu.autocorr_steps);
 
-                //histogram settings
-                diagram_simulate.setN_bins(sets.num_bins);
+                    //histogram settings
+                    diagram_simulate.setN_bins(local_sets.num_bins);
 
-                // exact GF estimator settings
-                diagram_simulate.setNumPoints(sets.num_points_exact);
-                diagram_simulate.setSelectedOrder(sets.selected_order);
+                    // exact GF estimator settings
+                    diagram_simulate.setNumPoints(local_sets.num_points_exact);
+                    diagram_simulate.setSelectedOrder(local_sets.selected_order);
 
-                // blocking method
-                diagram_simulate.setNumBlocks(sets.N_blocks);
+                    // blocking method
+                    diagram_simulate.setNumBlocks(local_sets.N_blocks);
 
-                // set calculations perfomed
-                diagram_simulate.setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor, sets.blocking_analysis, sets.fix_tau_value);
-                // set benchmarking
-                diagram_simulate.setBenchmarking(sets.time_benchmark);
-                // set MC statistics
-                diagram_simulate.setMCStatistics(sets.mc_statistics);
-                // print diagrams to file
-                diagram_simulate.writeDiagrams(sets.write_diagrams);
+                    // set calculations perfomed
+                    diagram_simulate.setCalculations(local_sets.gf_exact, local_sets.histo, local_sets.gs_energy, 
+                        local_sets.effective_mass, local_sets.Z_factor, local_sets.blocking_analysis, local_sets.fix_tau_value);
+                    // set benchmarking
+                    diagram_simulate.setBenchmarking(local_sets.time_benchmark);
+                    // set MC statistics
+                    diagram_simulate.setMCStatistics(local_sets.mc_statistics);
+                    // print diagrams to file
+                    diagram_simulate.writeDiagrams(local_sets.write_diagrams);
 
-                // exact estimators settings (time cutoffs)
-                diagram_simulate.setTauCutoffEnergy(sets.tau_cutoff_energy);
-                diagram_simulate.setTauCutoffMass(sets.tau_cutoff_mass);
-                diagram_simulate.setTauCutoffStatistics(sets.tau_cutoff_statistics);
+                    // exact estimators settings (time cutoffs)
+                    diagram_simulate.setTauCutoffEnergy(local_sets.tau_cutoff_energy);
+                    diagram_simulate.setTauCutoffMass(local_sets.tau_cutoff_mass);
+                    diagram_simulate.setTauCutoffStatistics(local_sets.tau_cutoff_statistics);
+                
 
                 // main simulation
-                if(cpu.cpu_time == true){
+                if(local_cpu.cpu_time == true){
 
                     std::string filename = "cpu_times.txt";
                     std::ofstream file;
@@ -364,11 +375,11 @@ int main(){
 
                 # pragma omp single nowait
                 {
-                    if(sets.gs_energy){
+                    if(local_sets.gs_energy){
                         gs_energy = new long double[cpu.num_procs];
                         gs_energy_var = new long double[cpu.num_procs];
                     }
-                    if(sets.effective_mass){
+                    if(local_sets.effective_mass){
                         effective_mass = new long double[cpu.num_procs];
                         effective_mass_var = new long double[cpu.num_procs];
                         effective_masses = new long double * [cpu.num_procs];
@@ -378,7 +389,7 @@ int main(){
                             effective_masses_var[i] = new long double[3];
                         }
                     }
-                    if(sets.histo){
+                    if(local_sets.histo){
                         points_histogram = new long double * [cpu.num_procs];
                         gf_histo = new long double * [cpu.num_procs];
                         for(int i = 0; i < cpu.num_procs; i++){    
@@ -386,7 +397,7 @@ int main(){
                             gf_histo[i] = new long double[num_bins_histo];
                         }
                     }
-                    if(sets.gf_exact){
+                    if(local_sets.gf_exact){
                         points_gf_exact = new long double * [cpu.num_procs];
                         gf_values_exact = new long double * [cpu.num_procs];
                         for(int i = 0; i < cpu.num_procs; i++){
@@ -394,22 +405,28 @@ int main(){
                             gf_values_exact[i] = new long double[num_points_exact_gf];
                         }
                     }
-                    if(sets.Z_factor){
+                    if(local_sets.Z_factor){
                         Z_Factor_cpus_array = new long double[num_threads*(sim.ph_ext_max + 1)];
                     }
-
-                    is_initialized = 1;
-                    //std::cout << "Thread " << ID << " finished the simulation." << std::endl;
+                    
+                    // flush to make sure data is initialized
+                    #pragma omp flush(gs_energy, gs_energy_var, effective_mass, effective_mass_var, effective_masses, effective_masses_var, points_histogram, gf_histo, points_gf_exact, gf_values_exact, Z_Factor_cpus_array)
+                    initialized_heap = 1;
+                    #pragma omp flush(initialized_heap)
                 }
 
-                // check if Z_Factor_array is initialized before accessing it
-                while(!is_initialized){
-                    #pragma omp flush(is_initialized)
-                    if(is_initialized){break;}
-                    //std::cout << "Thread " << ID << " is waiting for Z_Factor_array to be initialized." << std::endl;
+                // check to ensure that support variables are initialized before accessing them, otherwise threads sleep
+                int local = 0;
+                while(!initialized_heap){
+                    #pragma omp flush(initialized_heap)
+                    local = initialized_heap;
+                    if(local){break;}
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 }
 
+                // flush new values to ensure that they are updated in main thread before accessing them
+                #pragma omp flush(gs_energy, gs_energy_var, effective_mass, effective_mass_var, effective_masses, effective_masses_var, points_histogram, gf_histo, points_gf_exact, gf_values_exact, Z_Factor_cpus_array)
+                
                 # pragma omp critical 
                 {   
                     if(sets.gs_energy){

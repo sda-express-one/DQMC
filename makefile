@@ -15,6 +15,7 @@ SOURCES += $(wildcard $(SRC_DIR)/utils/*.cpp)
 OBJECTS = $(SOURCES:.cpp=.o)
 
 # build-specific flags
+# -fsanitize=thread -fsanitize=address
 DEBUG_FLAGS = -g -O0 -fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined -DDEBUG
 RELEASE_FLAGS = -O3 -DNDEBUG
 
