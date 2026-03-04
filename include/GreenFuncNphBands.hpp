@@ -21,13 +21,17 @@
 class GreenFuncNphBands : public Diagram {
     public:
 
-    // constructor
+    // constructors
     GreenFuncNphBands() = default;
+
     GreenFuncNphBands(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
-        double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int phonon_modes);
-    
+        double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int phonon_modes, int data_type);
+
     GreenFuncNphBands(Propagator * propagators, Vertex * vertices, Band * bands,
         unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
+        double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int phonon_modes);
+    
+    GreenFuncNphBands(FullVertex * fullvertices, int * indices, unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
         double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int phonon_modes);
 
     // destructor
@@ -35,7 +39,7 @@ class GreenFuncNphBands : public Diagram {
         delete[] _phonon_modes;
         delete[] _ext_phonon_type_num;
         delete[] _dielectric_responses;
-        delete[] _bands;
+        if(_data_type == _data_type_array[0]){delete[] _bands;}
         delete[] _new_taus;
         delete[] _bands_init;
         delete[] _bands_fin;
@@ -64,6 +68,8 @@ class GreenFuncNphBands : public Diagram {
     Propagator getPropagator(int index) const {return _propagators[index];};
     Vertex getVertex(int index) const {return _vertices[index];};
     Band getBand(int index) const {return _bands[index];};
+    FullVertex getFullVertex(int index) const {return *_full_vertices[index];}
+    int getIndices(int index) const {return _indices[index];};
     int getCurrentOrderInt() const {return _current_order_int;};
     int getCurrentPhExt() const {return _current_ph_ext;};
 
@@ -252,7 +258,7 @@ class GreenFuncNphBands : public Diagram {
     int _N_blocks = 100;
     unsigned long long int _block_size = 1000000;
 
-    // histogram method
+    // histogram variables
     int _N_bins = 100; // number of bins for histogram
     double _bin_width = _tau_max/_N_bins; // width of each bin
     double _bin_center = _bin_width/2; // center of each bin
@@ -302,7 +308,7 @@ class GreenFuncNphBands : public Diagram {
 
 
     // manage diagram
-    inline void findLastPhVertex(){_last_vertex = _vertices[_current_order_int + 2*_current_ph_ext].tau;};
+    inline void findLastPhVertex(){_last_vertex = _full_vertices[_current_order_int + 2*_current_ph_ext]->tau;};
     int chooseInternalPhononPropagator();
     int chooseExternalPhononPropagator();
     int findVertexPosition(long double tau);
@@ -313,6 +319,8 @@ class GreenFuncNphBands : public Diagram {
     void propagatorArrayRemoveRoom(int index_one, int index_two);
     void bandArrayMakeRoom(int index_one, int index_two);
     void bandArrayRemoveRoom(int index_one, int index_two);
+    void fullVertexMakeRoom(int index_one, int index_two);
+    void fullVertexRemoveRoom(int index_one, int index_two);
     void updateExternalPhononTypes(int index);
 
     //int choosePhonon();

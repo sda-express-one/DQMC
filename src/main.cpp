@@ -27,7 +27,7 @@ int main(){
     // type == simple standard DMC computation
     if(sim.type == "simple"){
         GreenFuncNph diagram(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, 
-            sim.order_int_max, sim.ph_ext_max, sim.el_eff_mass, sim.ph_dispersion);
+            sim.order_int_max, sim.ph_ext_max, sim.el_eff_mass, sim.ph_dispersion, 0);
         // simulations settings
         diagram.setAlpha(sim.alpha);
         diagram.setVolume(sim.volume);
@@ -71,7 +71,7 @@ int main(){
 
         if(cpu.parallel_mode == false){
             GreenFuncNphBands diagram(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max,
-                sim.ph_ext_max, sim.num_bands, sim.num_phonon_modes);
+                sim.ph_ext_max, sim.num_bands, sim.num_phonon_modes, 1);
         
             diagram.setPhononModes(phonon_modes);
             diagram.setDielectricResponses(dielectric_responses);
@@ -116,7 +116,7 @@ int main(){
         }
         else{           
             GreenFuncNphBands diagram_relax(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max,
-                sim.ph_ext_max, sim.num_bands, sim.num_phonon_modes);
+                sim.ph_ext_max, sim.num_bands, sim.num_phonon_modes, 1);
             
             if(omp_get_max_threads() < cpu.num_procs){
                 std::cerr << "Warning! Number of cpus per nodes set exceeds current architecture capabilities." << std::endl;
@@ -244,9 +244,11 @@ int main(){
             {
                 int ID = omp_get_thread_num();
 
-                Propagator * propagators_thermalized = nullptr;
-                Band * bands_thermalized = nullptr;
-                Vertex * vertices_thermalized = nullptr;
+                //Propagator * propagators_thermalized = nullptr;
+                //Band * bands_thermalized = nullptr;
+                //Vertex * vertices_thermalized = nullptr;
+                FullVertex * fullvertices_thermalized = nullptr;
+                int * indices_thermalized = nullptr;
 
                 parameters local_sim;
                 settings local_sets;
@@ -254,14 +256,18 @@ int main(){
 
                 #pragma omp critical
                 {   
-                    propagators_thermalized = new Propagator[sim.order_int_max + 2*sim.ph_ext_max + 1];
-                    bands_thermalized = new Band[sim.order_int_max + 2*sim.ph_ext_max + 1];
-                    vertices_thermalized = new Vertex[sim.order_int_max + 2*sim.ph_ext_max + 2];
+                    //propagators_thermalized = new Propagator[sim.order_int_max + 2*sim.ph_ext_max + 1];
+                    //bands_thermalized = new Band[sim.order_int_max + 2*sim.ph_ext_max + 1];
+                    //vertices_thermalized = new Vertex[sim.order_int_max + 2*sim.ph_ext_max + 2];
+                    fullvertices_thermalized = new FullVertex[sim.order_int_max + 2*sim.ph_ext_max + 2];
+                    indices_thermalized = new int[sim.order_int_max + 2*sim.ph_ext_max + 2];
 
                     for(int i = 0; i < sim.order_int_max + 2*sim.ph_ext_max + 1; i++){
-                        propagators_thermalized[i] = diagram_relax.getPropagator(i);
+                        /*propagators_thermalized[i] = diagram_relax.getPropagator(i);
                         bands_thermalized[i] = diagram_relax.getBand(i);
-                        vertices_thermalized[i] = diagram_relax.getVertex(i);
+                        vertices_thermalized[i] = diagram_relax.getVertex(i);*/
+                        fullvertices_thermalized[i] = diagram_relax.getFullVertex(i);
+                        indices_thermalized[i] = diagram_relax.getIndices(i);
                     }
 
                     local_sim = sim;
@@ -269,16 +275,22 @@ int main(){
                     local_cpu = cpu;
                 }
 
-                GreenFuncNphBands diagram_simulate(propagators_thermalized, vertices_thermalized, bands_thermalized,
+                /*GreenFuncNphBands diagram_simulate(propagators_thermalized, vertices_thermalized, bands_thermalized,
                     local_sim.N_diags, local_sim.tau_max, local_sim.kx, local_sim.ky, local_sim.kz, local_sim.chem_potential, local_sim.order_int_max,
+                    local_sim.ph_ext_max, local_sim.num_bands, local_sim.num_phonon_modes);*/
+                
+                GreenFuncNphBands diagram_simulate(fullvertices_thermalized, indices_thermalized, local_sim.N_diags, local_sim.tau_max,
+                    local_sim.kx, local_sim.ky, local_sim.kz, local_sim.chem_potential, local_sim.order_int_max,
                     local_sim.ph_ext_max, local_sim.num_bands, local_sim.num_phonon_modes);
                 
                 #pragma omp critical
                 {
                     Diagram::setSeed(seed, ID*2654435761U);
-                    delete[] propagators_thermalized;
-                    delete[] bands_thermalized;
-                    delete[] vertices_thermalized;
+                    //delete[] propagators_thermalized;
+                    //delete[] bands_thermalized;
+                    //delete[] vertices_thermalized;
+                    delete[] fullvertices_thermalized;
+                    delete[] indices_thermalized;
                 }
                 #pragma omp barrier
                 
@@ -313,36 +325,35 @@ int main(){
                     diagram_simulate.setLuttingerKohnParameters(local_sim.A_LK, local_sim.B_LK, local_sim.C_LK);
                 }
 
-                    // Markov chain settings
-                    diagram_simulate.setRelaxSteps(local_sim.relax_steps);
-                    diagram_simulate.setAutcorrSteps(local_cpu.autocorr_steps);
+                // Markov chain settings
+                diagram_simulate.setRelaxSteps(local_sim.relax_steps);
+                diagram_simulate.setAutcorrSteps(local_cpu.autocorr_steps);
 
-                    //histogram settings
-                    diagram_simulate.setN_bins(local_sets.num_bins);
+                //histogram settings
+                diagram_simulate.setN_bins(local_sets.num_bins);
 
-                    // exact GF estimator settings
-                    diagram_simulate.setNumPoints(local_sets.num_points_exact);
-                    diagram_simulate.setSelectedOrder(local_sets.selected_order);
+                // exact GF estimator settings
+                diagram_simulate.setNumPoints(local_sets.num_points_exact);
+                diagram_simulate.setSelectedOrder(local_sets.selected_order);
 
-                    // blocking method
-                    diagram_simulate.setNumBlocks(local_sets.N_blocks);
+                // blocking method
+                diagram_simulate.setNumBlocks(local_sets.N_blocks);
 
-                    // set calculations perfomed
-                    diagram_simulate.setCalculations(local_sets.gf_exact, local_sets.histo, local_sets.gs_energy, 
-                        local_sets.effective_mass, local_sets.Z_factor, local_sets.blocking_analysis, local_sets.fix_tau_value);
-                    // set benchmarking
-                    diagram_simulate.setBenchmarking(local_sets.time_benchmark);
-                    // set MC statistics
-                    diagram_simulate.setMCStatistics(local_sets.mc_statistics);
-                    // print diagrams to file
-                    diagram_simulate.writeDiagrams(local_sets.write_diagrams);
+                // set calculations perfomed
+                diagram_simulate.setCalculations(local_sets.gf_exact, local_sets.histo, local_sets.gs_energy, 
+                    local_sets.effective_mass, local_sets.Z_factor, local_sets.blocking_analysis, local_sets.fix_tau_value);
+                // set benchmarking
+                diagram_simulate.setBenchmarking(local_sets.time_benchmark);
+                // set MC statistics
+                diagram_simulate.setMCStatistics(local_sets.mc_statistics);
+                // print diagrams to file
+                diagram_simulate.writeDiagrams(local_sets.write_diagrams);
 
-                    // exact estimators settings (time cutoffs)
-                    diagram_simulate.setTauCutoffEnergy(local_sets.tau_cutoff_energy);
-                    diagram_simulate.setTauCutoffMass(local_sets.tau_cutoff_mass);
-                    diagram_simulate.setTauCutoffStatistics(local_sets.tau_cutoff_statistics);
+                // exact estimators settings (time cutoffs)
+                diagram_simulate.setTauCutoffEnergy(local_sets.tau_cutoff_energy);
+                diagram_simulate.setTauCutoffMass(local_sets.tau_cutoff_mass);
+                diagram_simulate.setTauCutoffStatistics(local_sets.tau_cutoff_statistics);
                 
-
                 // main simulation
                 if(local_cpu.cpu_time == true){
 
@@ -492,6 +503,8 @@ int main(){
                 for(int i=0; i < cpu.num_procs; i++){
                     delete[] effective_masses[i];
                     delete[] effective_masses_var[i];
+                    effective_masses[i] = nullptr;
+                    effective_masses_var[i] = nullptr;
                 }
                 delete[] effective_masses;
                 delete[] effective_masses_var;
@@ -514,6 +527,8 @@ int main(){
                 for(int i=0;i < cpu.num_procs; i++){
                     delete[] points_histogram[i];
                     delete[] gf_histo[i];
+                    points_histogram[i] = nullptr;
+                    gf_histo[i] = nullptr;
                 }
                 delete[] points_histogram;
                 delete[] gf_histo;
@@ -542,6 +557,8 @@ int main(){
                 for(int i=0; i < cpu.num_procs; i++){
                     delete[] points_gf_exact[i];
                     delete[] gf_values_exact[i];
+                    points_gf_exact[i] = nullptr;
+                    gf_values_exact[i] = nullptr;
                 }
                 delete[] points_gf_exact;
                 delete[] gf_values_exact;
@@ -571,9 +588,9 @@ int main(){
         }
     }
     
-    //std::cout << std::endl;
     std::cout << "Terminating the program." << std::endl;
     std::cout << std::endl;
+    # pragma omp taskwait
     return 0;
 };
 

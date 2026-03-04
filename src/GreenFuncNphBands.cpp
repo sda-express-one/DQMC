@@ -2,8 +2,8 @@
 
 // constructor
 GreenFuncNphBands::GreenFuncNphBands(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
-double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int phonon_modes) 
-: Diagram(N_diags, tau_max, kx, ky, kz, chem_potential, order_int_max, ph_ext_max) {
+double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int phonon_modes, int data_type) 
+: Diagram(N_diags, tau_max, kx, ky, kz, chem_potential, order_int_max, ph_ext_max, data_type) {
     
     // initialize flags
     _flags.gs_energy = false;
@@ -33,16 +33,27 @@ double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int pho
     _bands_init = new Band[_order_int_max + 2*_ph_ext_max + 2];
     _bands_fin = new Band[_order_int_max + 2*_ph_ext_max + 2];
 
-    // initialize bands
-    _bands = new Band[_order_int_max + 2*_ph_ext_max + 1];
+    if(_data_type == _data_type_array[0]){
+        // initialize bands
+        _bands = new Band[_order_int_max + 2*_ph_ext_max + 1];
+    }
 
     if(_num_bands == 1){
         for(int i = 0; i <_order_int_max + 2*_ph_ext_max + 1; i++){
-            _bands[i].band_number = 0;
-            _bands[i].c1 = 1;
-            _bands[i].c2 = 0;
-            _bands[i].c3 = 0;
-            
+            if(_data_type == _data_type_array[0]){
+                _bands[i].band_number = 0;
+                _bands[i].c1 = 1;
+                _bands[i].c2 = 0;
+                _bands[i].c3 = 0;
+            }
+
+            else if(_data_type == _data_type_array[1]){
+                _full_vertices[i]->electronic_band.band_number = 0;
+                _full_vertices[i]->electronic_band.c1 = 1;
+                _full_vertices[i]->electronic_band.c2 = 0;
+                _full_vertices[i]->electronic_band.c3 = 0;
+            }
+
             _bands_init[i].band_number = 0;
             _bands_init[i].c1 = 1;
             _bands_init[i].c2 = 0;
@@ -66,10 +77,20 @@ double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int pho
     }
     else if(_num_bands == 3){
         for(int i = 0; i < _order_int_max + 2*_ph_ext_max + 1; i++){
-            _bands[i].band_number = -1; // unassigned
-            _bands[i].c1 = (1./3);
-            _bands[i].c2 = (1./3);
-            _bands[i].c3 = (1./3);
+
+            if(_data_type == _data_type_array[0]){
+                _bands[i].band_number = -1; // unassigned
+                _bands[i].c1 = (1./3);
+                _bands[i].c2 = (1./3);
+                _bands[i].c3 = (1./3);
+            }
+
+            else if(_data_type == _data_type_array[1]){
+                _full_vertices[i]->electronic_band.band_number = -1;
+                _full_vertices[i]->electronic_band.c1 = static_cast<double>(1./3);
+                _full_vertices[i]->electronic_band.c2 = static_cast<double>(1./3);
+                _full_vertices[i]->electronic_band.c3 = static_cast<double>(1./3);
+            }
 
             _bands_init[i].band_number = -1;
             _bands_init[i].c1 = (1./3);
@@ -96,7 +117,7 @@ double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int pho
 GreenFuncNphBands::GreenFuncNphBands(Propagator * propagators, Vertex * vertices, Band * bands,
 unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
 double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int phonon_modes) 
-: Diagram(propagators, vertices, N_diags, tau_max, kx, ky, kz, chem_potential, order_int_max, ph_ext_max) {
+: Diagram(propagators, vertices, N_diags, tau_max, kx, ky, kz, chem_potential, order_int_max, ph_ext_max, 0) {
      // initialize flags
     _flags.gs_energy = false;
     _flags.effective_mass = false;
@@ -130,6 +151,66 @@ double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int pho
 
     for(int i = 0; i < _order_int_max + 2*_ph_ext_max + 1; i++){
         _bands[i] = bands[i];
+
+        if(_num_bands == 1){
+            _bands_init[i].band_number = 0;
+            _bands_init[i].c1 = 1;
+            _bands_init[i].c2 = 0;
+            _bands_init[i].c3 = 0;
+
+            _bands_fin[i].band_number = 0;
+            _bands_fin[i].c1 = 1;
+            _bands_fin[i].c2 = 0;
+            _bands_fin[i].c3 = 0;
+        }
+        else if(_num_bands == 3){
+            _bands_init[i].band_number = -1; // unassigned
+            _bands_init[i].c1 = (1./3);
+            _bands_init[i].c2 = (1./3);
+            _bands_init[i].c3 = (1./3);
+
+            _bands_fin[i].band_number = -1;
+            _bands_fin[i].c1 = (1./3);
+            _bands_fin[i].c2 = (1./3);
+            _bands_fin[i].c3 = (1./3);
+        }
+    }
+};
+
+GreenFuncNphBands::GreenFuncNphBands(FullVertex * fullvertices, int * indices, unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
+    double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int phonon_modes)
+    : Diagram(fullvertices, indices, N_diags, tau_max, kx, ky, kz, chem_potential, order_int_max, ph_ext_max, 1){
+    
+     // initialize flags
+    _flags.gs_energy = false;
+    _flags.effective_mass = false;
+    _flags.write_diagrams = false;
+    _flags.time_benchmark = false;
+
+    // set number of bands and phonon modes
+    num_bands = num_bands > 0 ? num_bands : 1; // ensure at least one band
+    phonon_modes = phonon_modes > 0 ? phonon_modes : 1; // ensure at least one phonon mode
+    _num_bands = num_bands;
+    _num_phonon_modes = phonon_modes;
+
+    // initialize arrays
+    _phonon_modes = new double[_num_phonon_modes];
+    _ext_phonon_type_num = new int[_num_phonon_modes];
+    _dielectric_responses = new double[_num_phonon_modes];
+
+
+    for(int i=0; i < _num_phonon_modes; i++){
+        _ext_phonon_type_num[i] = 0;
+    }
+    _bands_init = new Band[_order_int_max + 2*_ph_ext_max + 1];
+    _bands_fin = new Band[_order_int_max + 2*_ph_ext_max + 1];
+
+    // initialize support arrays
+    _new_taus = new long double[_order_int_max + 2*_ph_ext_max + 2];
+    for(int i = 0; i < _order_int_max + 2*_ph_ext_max + 2; i++){_new_taus[i] = 0.L;}
+
+
+    for(int i = 0; i < _order_int_max + 2*_ph_ext_max + 1; i++){
 
         if(_num_bands == 1){
             _bands_init[i].band_number = 0;
@@ -334,7 +415,8 @@ void GreenFuncNphBands::setTauCutoffStatistics(long double tau_cutoff_statistics
 int GreenFuncNphBands::findVertexPosition(long double tau){
     int position = 0;
     for(int i = 0; i < _current_order_int + 2*_current_ph_ext + 1; ++i){
-        if(_vertices[i].tau < tau && _vertices[i+1].tau >= tau){
+        //if(_vertices[i].tau < tau && _vertices[i+1].tau >= tau){
+        if(_full_vertices[i]->tau < tau && _full_vertices[i+1]->tau >= tau){
             position = i;
             return position;
         }
@@ -372,7 +454,7 @@ int GreenFuncNphBands::chooseInternalPhononPropagator(){
     int ph_propagator = distrib_unif(gen);
     int counter = 0;
     for(int i = 0; i < _current_order_int + 2*_current_ph_ext; ++i){
-        if(_vertices[i].type == +1){
+        if(_full_vertices[i]->type == +1){
             counter++;
         }
         if(counter == ph_propagator){
@@ -387,7 +469,7 @@ int GreenFuncNphBands::chooseExternalPhononPropagator(){
     int ph_propagator = distrib_unif(gen);
     int counter = 0;
     for(int i = 0; i < _current_order_int + 2*_current_ph_ext + 1; ++i){
-        if(_vertices[i].type == -2){
+        if(_full_vertices[i]->type == -2){
             counter++;
         }
         if(counter == ph_propagator){
@@ -455,6 +537,111 @@ void GreenFuncNphBands::bandArrayRemoveRoom(int index_one, int index_two){
     }
 };
 
+void GreenFuncNphBands::fullVertexMakeRoom(int index_one, int index_two){
+    // store pointers, otherwise memory will be lost
+    _pointer_one = _full_vertices[_current_order_int + 2*_current_ph_ext + 2];
+    _pointer_two = _full_vertices[_current_order_int + 2*_current_ph_ext + 3];
+
+    _pointer_one->k[0] = _full_vertices[index_one]->k[0];
+    _pointer_one->k[1] = _full_vertices[index_one]->k[1];
+    _pointer_one->k[2] = _full_vertices[index_one]->k[2];
+
+    _pointer_two->k[0] = _full_vertices[index_two]->k[0];
+    _pointer_two->k[1] = _full_vertices[index_two]->k[1];
+    _pointer_two->k[2] = _full_vertices[index_two]->k[2];
+
+    for(int i = _current_order_int + 2*_current_ph_ext + 1; i >= 0; --i){
+        if(_indices[i] > index_two){_indices[i] += 2;}
+        else if(_indices[i] > index_one){_indices[i] += 1;}
+
+        if(i > index_two){
+            _full_vertices[i+2] = _full_vertices[i];
+            _full_vertices[i] = nullptr;
+            _indices[i+2] = _indices[i];
+        }
+        else if(i > index_one){
+            _full_vertices[i+1] = _full_vertices[i];
+            _full_vertices[i] = nullptr;
+            _indices[i+1] = _indices[i];
+        }
+    }
+    _full_vertices[index_one + 1] = _pointer_one;
+    _full_vertices[index_two + 2] = _pointer_two;
+
+    _pointer_one = nullptr;
+    _pointer_two = nullptr;
+    /*
+    for(int i = index_one; i < _current_order_int + 2*_current_ph_ext + 1; ++i){
+        if(i > index_two - 1){_full_vertices[i+2] = _full_vertices[i];}
+        else{_full_vertices[i+1] = _full_vertices[i];}
+    }*/
+};
+
+void GreenFuncNphBands::fullVertexRemoveRoom(int index_one, int index_two){
+    // store pointers, otherwise memory will be lost
+    _pointer_one = _full_vertices[index_one];
+    _pointer_two = _full_vertices[index_two];
+
+    for(int i = 0; i < _current_order_int + 2*_current_ph_ext + 2; ++i){
+        
+        if(i > index_one - 1){
+            if(i < index_two-1){
+                _full_vertices[i] = _full_vertices[i+1];
+                if(_indices[i+1] > index_two){
+                    _indices[i+1]-=2;
+                }
+                else if(_indices[i+1] > index_one){
+                    _indices[i+1]--;
+                }
+                _indices[i] = _indices[i+1];
+                _full_vertices[i+1] = nullptr;
+            }
+            else{
+                _full_vertices[i] = _full_vertices[i+2];
+                if(_indices[i+2] > index_two){
+                    _indices[i+2]-=2;
+                }
+                else if(_indices[i+2] > index_one){
+                    _indices[i+2]--;
+                }
+                _indices[i] = _indices[i+2];
+                _full_vertices[i+2] = nullptr;
+            }
+        }
+        else{
+            if(_indices[i] > index_two){
+                _indices[i]-=2;
+            }
+            else if(_indices[i] > index_one){
+                _indices[i]--;
+            }
+        }
+        /*if(j > index_one){
+            if(j < index_two-1){
+                _indices[j-1] = _indices[j];
+            }
+            else{
+                _indices[j-2] = _indices[j];
+            }
+        }*/
+
+        
+    }
+    _full_vertices[_current_order_int + 2*_current_ph_ext + 2] = nullptr;
+    _full_vertices[_current_order_int + 2*_current_ph_ext + 3] = nullptr;
+    _full_vertices[_current_order_int + 2*_current_ph_ext + 2] = _pointer_one;
+    _full_vertices[_current_order_int + 2*_current_ph_ext + 3] = _pointer_two;
+
+    _full_vertices[0]->tau = 0L;
+    _full_vertices[0]->w[0] = 0;
+    _full_vertices[0]->w[1] = 0;
+    _full_vertices[0]->w[2] = 0;
+    _indices[0] = -1;
+    
+    _pointer_one = nullptr;
+    _pointer_two = nullptr;
+};
+
 void GreenFuncNphBands::updateExternalPhononTypes(int index){
     _ext_phonon_type_num[index] += 1;
 };
@@ -462,18 +649,24 @@ void GreenFuncNphBands::updateExternalPhononTypes(int index){
 long double GreenFuncNphBands::diagramLengthUpdate(long double tau_init){
     // initialize momentum values for last propagator
     int total_order = _current_order_int + 2*_current_ph_ext;
-    double kx = _propagators[total_order].el_propagator_kx;
+    /*double kx = _propagators[total_order].el_propagator_kx;
     double ky = _propagators[total_order].el_propagator_ky;
-    double kz = _propagators[total_order].el_propagator_kz;
+    double kz = _propagators[total_order].el_propagator_kz;*/
+
+    double kx = _full_vertices[total_order]->k[0];
+    double ky = _full_vertices[total_order]->k[1];
+    double kz = _full_vertices[total_order]->k[2];
+    double effective_mass = _full_vertices[total_order]->electronic_band.effective_mass;
 
     // generate new time value for last vertex, reject if it goes out of bounds
-    long double tau_fin = _last_vertex - std::log(1-drawUniformR())/(electronEnergy(kx,ky,kz,_bands[total_order].effective_mass)
+    long double tau_fin = _last_vertex - std::log(1-drawUniformR())/(electronEnergy(kx,ky,kz,effective_mass)
         -_chem_potential + extPhononEnergy(_ext_phonon_type_num, _phonon_modes, _num_phonon_modes));
     
     if(_num_bands > 1){updateNegativeDiagrams(0);}
 
     if(tau_fin <= _tau_max){
-        _vertices[_current_order_int + 2*_current_ph_ext + 1].tau = tau_fin;
+        //_vertices[_current_order_int + 2*_current_ph_ext + 1].tau = tau_fin;
+        _full_vertices[total_order + 1]->tau = tau_fin;
         return tau_fin;
     }
     else{return tau_init;}
@@ -488,8 +681,10 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
         // choose random electron propagator for new vertex
         std::uniform_int_distribution<int> distrib_prop(0, _current_order_int + 2*_current_ph_ext);
         int propagator = distrib_prop(gen);
-        long double tau_init = _vertices[propagator].tau;
-        long double tau_end = _vertices[propagator+1].tau;
+        //long double tau_init = _vertices[propagator].tau;
+        //long double tau_end = _vertices[propagator+1].tau;
+        long double tau_init = _full_vertices[propagator]->tau;
+        long double tau_end = _full_vertices[propagator+1]->tau;
 
         // choose phonon index
         std::uniform_int_distribution<int> distrib_phon(0, _num_phonon_modes-1);
@@ -502,7 +697,8 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
         // choose time value of second vertex, different energy for different phonon modes
         long double tau_two = tau_one - std::log(1-drawUniformR())/phononEnergy(_phonon_modes, phonon_index); // may be on a different propagator
 
-        if(tau_two >= _vertices[_current_order_int + 2*_current_ph_ext + 1].tau){
+        //if(tau_two >= _vertices[_current_order_int + 2*_current_ph_ext + 1].tau){
+        if(tau_two >= _full_vertices[_current_order_int + 2*_current_ph_ext + 1]->tau){
             if(_num_bands > 1){updateNegativeDiagrams(1);}
             return; // reject if phonon vertex goes out of bound
         }  
@@ -523,13 +719,13 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
                 return; // reject if tau values are not found in the vertices array
             } 
             if(_current_ph_ext > 0){
-                if( tau_one < _vertices[index_one].tau || isEqual(tau_one, _vertices[index_one].tau) 
-                    || isEqual(tau_one, _vertices[index_one+1].tau) || tau_one > _vertices[index_one+1].tau){
+                if( tau_one < _full_vertices[index_one]->tau || isEqual(tau_one, _full_vertices[index_one]->tau) 
+                    || isEqual(tau_one, _full_vertices[index_one+1]->tau) || tau_one > _full_vertices[index_one+1]->tau){
                     if(_num_bands > 1){updateNegativeDiagrams(1);}
                     return;
                 }
-                if(tau_two < _vertices[index_two].tau || isEqual(tau_two, _vertices[index_two].tau) 
-                    || isEqual(tau_two, _vertices[index_two+1].tau) || tau_two > _vertices[index_two+1].tau){
+                if(tau_two < _full_vertices[index_two]->tau || isEqual(tau_two, _full_vertices[index_two]->tau) 
+                    || isEqual(tau_two, _full_vertices[index_two+1]->tau) || tau_two > _full_vertices[index_two+1]->tau){
                     if(_num_bands > 1){updateNegativeDiagrams(1);}
                     return;
                 }
@@ -568,16 +764,22 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
                 j = i - index_one;
 
                 // initial diagram momenta
-                px_init = _propagators[i].el_propagator_kx;
-                py_init = _propagators[i].el_propagator_ky;
-                pz_init = _propagators[i].el_propagator_kz;
+                px_init = _full_vertices[i]->k[0];
+                py_init = _full_vertices[i]->k[1];
+                pz_init = _full_vertices[i]->k[2];
+                //px_init = _propagators[i].el_propagator_kx;
+                //py_init = _propagators[i].el_propagator_ky;
+                //pz_init = _propagators[i].el_propagator_kz;
 
                 // proposed diagram momenta
-                px_fin = _propagators[i].el_propagator_kx - w_x;
-                py_fin = _propagators[i].el_propagator_ky - w_y;
-                pz_fin = _propagators[i].el_propagator_kz - w_z;
+                px_fin = px_init - w_x;
+                py_fin = py_init - w_y;
+                pz_fin = pz_init - w_z;
+                //px_fin = _propagators[i].el_propagator_kx - w_x;
+                //py_fin = _propagators[i].el_propagator_ky - w_y;
+                //pz_fin = _propagators[i].el_propagator_kz - w_z;
 
-                _bands_init[j] = _bands[i];
+                _bands_init[j] = _full_vertices[i]->electronic_band;
 
                 if(_num_bands == 3){
                     chosen_band = unif(gen);
@@ -620,16 +822,16 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
                     action_fin += energy_fin*(tau_two-tau_one);
                 }
                 else if(i == index_one){
-                    action_init += energy_init*(_vertices[index_one+1].tau-tau_one);
-                    action_fin += energy_fin*(_vertices[index_one+1].tau-tau_one);
+                    action_init += energy_init*(_full_vertices[index_one+1]->tau-tau_one);
+                    action_fin += energy_fin*(_full_vertices[index_one+1]->tau-tau_one);
                 }
                 else if(i == index_two){
-                    action_init += energy_init*(tau_two-_vertices[index_two].tau);
-                    action_fin += energy_fin*(tau_two-_vertices[index_two].tau);
+                    action_init += energy_init*(tau_two-_full_vertices[index_two]->tau);
+                    action_fin += energy_fin*(tau_two-_full_vertices[index_two]->tau);
                 }
                 else{
-                    action_init += energy_init*(_vertices[i+1].tau - _vertices[i].tau);
-                    action_fin += energy_fin*(_vertices[i+1].tau - _vertices[i].tau);
+                    action_init += energy_init*(_full_vertices[i+1]->tau - _full_vertices[i]->tau);
+                    action_fin += energy_fin*(_full_vertices[i+1]->tau - _full_vertices[i]->tau);
                 }
             }
 
@@ -646,7 +848,7 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
             double p_A = _p_add_int*(_current_order_int/2 + 1);
 
             double numerator = p_B*std::exp(-(action_fin - action_init + (phononEnergy(_phonon_modes, phonon_index)*(tau_two - tau_one))))*
-                (tau_end-tau_init)*prefactor_fin*_V_BZ; //*_num_bands*_num_bands
+                (tau_end-tau_init)*prefactor_fin*_V_BZ;
             double denominator = p_A*std::pow(2*M_PI,_D)*phononEnergy(_phonon_modes, phonon_index)
                 *std::exp(-phononEnergy(_phonon_modes, phonon_index)*(tau_two-tau_one))
                 *std::pow(((tau_two-tau_one)/(2*M_PI)),double(_D)/2.)*std::exp(-((std::pow(w_x,2)+std::pow(w_y,2)+std::pow(w_z,2))/2)
@@ -664,12 +866,13 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
                 return;
             }
             else{
+                //phVertexMakeRoom(index_one, index_two); // make room in vertices array
+                //propagatorArrayMakeRoom(index_one, index_two); // make room in electron propagators array
+                //bandArrayMakeRoom(index_one, index_two); // make room in bands array
                 // update is accepted, build new diagram
-                phVertexMakeRoom(index_one, index_two); // make room in vertices array
-                propagatorArrayMakeRoom(index_one, index_two); // make room in electron propagators array
-                bandArrayMakeRoom(index_one, index_two); // make room in bands array
+                fullVertexMakeRoom(index_one, index_two); // make room in vertices array
 
-                // assign vertex one values
+                /*
                 _vertices[index_one+1].tau = tau_one;
                 _vertices[index_one+1].type = +1;
                 _vertices[index_one+1].linked = index_two + 2;
@@ -677,8 +880,17 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
                 _vertices[index_one+1].wy = w_y;
                 _vertices[index_one+1].wz = w_z;
                 _vertices[index_one+1].index = phonon_index;
+                */
 
-                // assign vertex two values
+                // assign vertex one values
+                _full_vertices[index_one+1]->tau = tau_one;
+                _full_vertices[index_one+1]->type = +1;
+                _full_vertices[index_one+1]->w[0] = w_x;
+                _full_vertices[index_one+1]->w[1] = w_y;
+                _full_vertices[index_one+1]->w[2] = w_z;
+                _full_vertices[index_one+1]->index = phonon_index;
+
+                /*
                 _vertices[index_two+2].tau = tau_two;
                 _vertices[index_two+2].type = -1;
                 _vertices[index_two+2].linked = index_one + 1;
@@ -686,15 +898,33 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
                 _vertices[index_two+2].wy = w_y;
                 _vertices[index_two+2].wz = w_z;
                 _vertices[index_two+2].index = phonon_index;
+                */
+                
+                // assign vertex two values
+                _full_vertices[index_two+2]->tau = tau_two;
+                _full_vertices[index_two+2]->type = -1;
+                _full_vertices[index_two+2]->w[0] = w_x;
+                _full_vertices[index_two+2]->w[1] = w_y;
+                _full_vertices[index_two+2]->w[2] = w_z;
+                _full_vertices[index_two+2]->index = phonon_index;
 
-                // update electron propagator
+                
+
+                // update electron propagators
                 for(int i=index_one+1; i<index_two+2;i++){
-                    _propagators[i].el_propagator_kx -= w_x;
-                    _propagators[i].el_propagator_ky -= w_y;
-                    _propagators[i].el_propagator_kz -= w_z;
-
-                    _bands[i] = _bands_fin[i-(index_one+1)];
+                    //_propagators[i].el_propagator_kx -= w_x;
+                    //_propagators[i].el_propagator_ky -= w_y;
+                    //_propagators[i].el_propagator_kz -= w_z;
+                    //_bands[i] = _bands_fin[i-(index_one+1)];
+                    _full_vertices[i]->k[0] -= w_x;
+                    _full_vertices[i]->k[1] -= w_y;
+                    _full_vertices[i]->k[2] -= w_z;
+                    _full_vertices[i]->electronic_band = _bands_fin[i-(index_one+1)];
                 }
+
+                // link phonon vertices
+                _indices[index_one+1] = index_two+2;
+                _indices[index_two+2] = index_one+1;
 
                 // update current order and find new last ph vertex
                 _current_order_int += 2;
@@ -726,24 +956,25 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
             if(_num_bands > 1){updateNegativeDiagrams(2);}
             return;
         }
-        int index_two = _vertices[index_one].linked;
+
+        int index_two = _indices[index_one];
 
         // vertices' time values
-        long double tau_one = _vertices[index_one].tau;
-        long double tau_two = _vertices[index_two].tau;
+        long double tau_one = _full_vertices[index_one]->tau;
+        long double tau_two = _full_vertices[index_two]->tau;
 
-        long double tau_init = _vertices[index_one-1].tau;
+        long double tau_init = _full_vertices[index_one-1]->tau;
         long double tau_end = _tau_max;
         
-        if(index_two != index_one+1){tau_end = _vertices[index_one+1].tau;}
-        else{tau_end = _vertices[index_one+2].tau;}
+        if(index_two != index_one+1){tau_end = _full_vertices[index_one+1]->tau;}
+        else{tau_end = _full_vertices[index_one+2]->tau;}
 
-        double w_x = _vertices[index_one].wx;
-        double w_y = _vertices[index_one].wy;
-        double w_z = _vertices[index_one].wz;
+        double w_x = _full_vertices[index_one]->w[0];
+        double w_y = _full_vertices[index_one]->w[1];
+        double w_z = _full_vertices[index_one]->w[2];
 
         // phonon mode
-        int phonon_index = _vertices[index_one].index;
+        int phonon_index = _full_vertices[index_one]->index;
 
         // create arrays of momentum values
 
@@ -779,17 +1010,24 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
         for(int i = index_one; i < index_two; ++i){
             j = i - index_one;
 
-            // proposed new momentum values
-            px_init = _propagators[i].el_propagator_kx + w_x;
-            py_init = _propagators[i].el_propagator_ky + w_y;
-            pz_init = _propagators[i].el_propagator_kz + w_z;
-
             // current momentum values
-            px_fin = _propagators[i].el_propagator_kx;
+            px_fin = _full_vertices[i]->k[0];
+            py_fin = _full_vertices[i]->k[1];
+            pz_fin = _full_vertices[i]->k[2];
+            /*px_fin = _propagators[i].el_propagator_kx;
             py_fin = _propagators[i].el_propagator_ky;
-            pz_fin = _propagators[i].el_propagator_kz;
+            pz_fin = _propagators[i].el_propagator_kz;*/
 
-            _bands_fin[j] = _bands[i];
+            // proposed new momentum values
+            px_init = px_fin + w_x;
+            py_init = py_fin + w_y;
+            pz_init = pz_fin + w_z;
+            /*px_init = _propagators[i].el_propagator_kx + w_x;
+            py_init = _propagators[i].el_propagator_ky + w_y;
+            pz_init = _propagators[i].el_propagator_kz + w_z;*/
+
+            //_bands_fin[j] = _bands[i];
+            _bands_fin[j] = _full_vertices[i]->electronic_band;
 
             if(_num_bands == 3){
                 chosen_band = band_number(gen);
@@ -850,16 +1088,16 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
                 action_fin += energy_fin*(tau_two-tau_one);
             }
             else if(i == index_one){
-                action_init += energy_init*(_vertices[index_one+1].tau-tau_one);
-                action_fin += energy_fin*(_vertices[index_one+1].tau-tau_one);
+                action_init += energy_init*(_full_vertices[index_one+1]->tau-tau_one);
+                action_fin += energy_fin*(_full_vertices[index_one+1]->tau-tau_one);
             }
             else if(i == index_two - 1){
-                action_init += energy_init*(tau_two-_vertices[index_two-1].tau);
-                action_fin += energy_fin*(tau_two-_vertices[index_two-1].tau);
+                action_init += energy_init*(tau_two-_full_vertices[index_two-1]->tau);
+                action_fin += energy_fin*(tau_two-_full_vertices[index_two-1]->tau);
             }
             else{
-                action_init += energy_init*(_vertices[i+1].tau - _vertices[i].tau);
-                action_fin += energy_fin*(_vertices[i+1].tau - _vertices[i].tau);
+                action_init += energy_init*(_full_vertices[i+1]->tau - _full_vertices[i]->tau);
+                action_fin += energy_fin*(_full_vertices[i+1]->tau - _full_vertices[i]->tau);
             }
         }
 
@@ -896,19 +1134,24 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
         else{
             // update is accepted, build new diagram
             for(int i=index_one; i<index_two; ++i){
-                _propagators[i].el_propagator_kx += w_x;
+                /*_propagators[i].el_propagator_kx += w_x;
                 _propagators[i].el_propagator_ky += w_y;
                 _propagators[i].el_propagator_kz += w_z;
-                _bands[i] = _bands_init[i-index_one];
+                _bands[i] = _bands_init[i-index_one];*/
+                _full_vertices[i]->k[0] += w_x;
+                _full_vertices[i]->k[1] += w_y;
+                _full_vertices[i]->k[2] += w_z;
+                _full_vertices[i]->electronic_band = _bands_init[i-index_one];
             }
 
-            phVertexRemoveRoom(index_one, index_two);
+            /*phVertexRemoveRoom(index_one, index_two);
             propagatorArrayRemoveRoom(index_one, index_two);
-            bandArrayRemoveRoom(index_one, index_two);
+            bandArrayRemoveRoom(index_one, index_two);*/
+            fullVertexRemoveRoom(index_one, index_two);
 
-            int total_order = _current_order_int + 2*_current_ph_ext;
+            //int total_order = _current_order_int + 2*_current_ph_ext;
             
-            _propagators[total_order-1].el_propagator_kx = 0;
+            /*_propagators[total_order-1].el_propagator_kx = 0;
             _propagators[total_order-1].el_propagator_ky = 0;
             _propagators[total_order-1].el_propagator_kz = 0;
             _bands[total_order-1].effective_mass = 1.0;
@@ -916,9 +1159,10 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
             _propagators[total_order].el_propagator_kx = 0;
             _propagators[total_order].el_propagator_ky = 0;
             _propagators[total_order].el_propagator_kz = 0;
-            _bands[total_order].effective_mass = 1.0;
+            _bands[total_order].effective_mass = 1.0;*/
+
             
-            if(_num_bands == 3){
+            /*if(_num_bands == 3){
                 _bands[total_order-1].band_number = -1;
                 _bands[total_order-1].c1 = (1./3);
                 _bands[total_order-1].c2 = (1./3);
@@ -928,7 +1172,7 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
                 _bands[total_order].c1 = (1./3);
                 _bands[total_order].c2 = (1./3);
                 _bands[total_order].c3 = (1./3);
-            }
+            }*/
 
             // update current order and find new last ph vertex
             _current_order_int -= 2;
@@ -954,7 +1198,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
     } 
     else{
         int total_order = _current_order_int + 2*_current_ph_ext;
-        long double tau_current = _vertices[total_order + 1].tau; // length of current diagram
+        long double tau_current = _full_vertices[total_order + 1]->tau; // length of current diagram
 
         // choose phonon index
         std::uniform_int_distribution<int> distrib_phon(0, _num_phonon_modes-1);
@@ -995,13 +1239,13 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 if(_num_bands > 1){updateNegativeDiagrams(3);}
                 return; // reject if tau values are not found in the vertices array
             } 
-            if(tau_one < _vertices[index_one].tau || isEqual(tau_one, _vertices[index_one].tau) 
-                || isEqual(tau_one, _vertices[index_one+1].tau) || tau_one > _vertices[index_one+1].tau){
+            if(tau_one < _full_vertices[index_one]->tau || isEqual(tau_one, _full_vertices[index_one]->tau) 
+                || isEqual(tau_one, _full_vertices[index_one+1]->tau) || tau_one > _full_vertices[index_one+1]->tau){
                     if(_num_bands > 1){updateNegativeDiagrams(3);}
                     return;
                 }
-            if(tau_two < _vertices[index_two].tau || isEqual(tau_two, _vertices[index_two].tau) 
-                || isEqual(tau_two, _vertices[index_two+1].tau) || tau_two > _vertices[index_two+1].tau){
+            if(tau_two < _full_vertices[index_two]->tau || isEqual(tau_two, _full_vertices[index_two]->tau) 
+                || isEqual(tau_two, _full_vertices[index_two+1]->tau) || tau_two > _full_vertices[index_two+1]->tau){
                     if(_num_bands > 1){updateNegativeDiagrams(3);}
                     return;
                 } 
@@ -1043,16 +1287,17 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             for(int i = 0; i < total_order + 1; ++i){ 
                 if(i < index_one + 1){
                     // retrieve momentum values for propagators below first ph vertex
-                    px_init = _propagators[i].el_propagator_kx;
-                    px_fin = _propagators[i].el_propagator_kx - w_x;
+                    //px_init = _propagators[i].el_propagator_kx;
+                    px_init = _full_vertices[i]->k[0];
+                    px_fin = px_init - w_x;
 
-                    py_init = _propagators[i].el_propagator_ky;
-                    py_fin = _propagators[i].el_propagator_ky - w_y;
+                    py_init = _full_vertices[i]->k[1];
+                    py_fin = py_init - w_y;
 
-                    pz_init = _propagators[i].el_propagator_kz;
-                    pz_fin = _propagators[i].el_propagator_kz - w_z;
+                    pz_init = _full_vertices[i]->k[2];
+                    pz_fin = pz_init - w_z;
 
-                    _bands_init[i] = _bands[i];
+                    _bands_init[i] = _full_vertices[i]->electronic_band;
 
                     if(_num_bands == 3){
                         chosen_band = band_number(gen);
@@ -1087,22 +1332,22 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
 
                     // compute action
                     if(i != index_one){
-                        action_one_init += energy_init*(_vertices[i+1].tau - _vertices[i].tau);
-                        action_one_fin += energy_fin*(_vertices[i+1].tau - _vertices[i].tau);
+                        action_one_init += energy_init*(_full_vertices[i+1]->tau - _full_vertices[i]->tau);
+                        action_one_fin += energy_fin*(_full_vertices[i+1]->tau - _full_vertices[i]->tau);
                     }
                     else{
-                        action_one_init += energy_init*(tau_one - _vertices[index_one].tau);
-                        action_one_fin += energy_fin*(tau_one - _vertices[index_one].tau);
+                        action_one_init += energy_init*(tau_one - _full_vertices[index_one]->tau);
+                        action_one_fin += energy_fin*(tau_one - _full_vertices[index_one]->tau);
                     }
                 }
             
                 // new vertex (left)
                 if(_num_bands == 3){
-                    prefactor_fin = prefactor_fin*vertexOverlapTerm(_bands_fin[index_one], _bands[index_one]);
+                    prefactor_fin = prefactor_fin*vertexOverlapTerm(_bands_fin[index_one], _full_vertices[index_one]->electronic_band);
                 }
 
                 if(i >= index_one && i < index_two + 1){
-                    _bands_init[i+1] = _bands[i];
+                    _bands_init[i+1] = _full_vertices[i]->electronic_band;
                 }
             
                 if(i >= index_two){
@@ -1110,16 +1355,16 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                     j = i + 2;
 
                     // retrieve momentum values for propagators above second ph vertex
-                    px_init = _propagators[i].el_propagator_kx;
-                    px_fin = _propagators[i].el_propagator_kx - w_x;
+                    px_init = _full_vertices[i]->k[0];
+                    px_fin = px_init - w_x;
 
-                    py_init = _propagators[i].el_propagator_ky;
-                    py_fin = _propagators[i].el_propagator_ky - w_y;
+                    py_init = _full_vertices[i]->k[1];
+                    py_fin = py_init - w_y;
 
-                    pz_init = _propagators[i].el_propagator_kz;
-                    pz_fin = _propagators[i].el_propagator_kz - w_z;
+                    pz_init = _full_vertices[i]->k[2];
+                    pz_fin = pz_init - w_z;
 
-                    _bands_init[j] = _bands[i];
+                    _bands_init[j] = _full_vertices[i]->electronic_band;
 
                     if(_num_bands == 3){
                         if(i != total_order){
@@ -1166,12 +1411,12 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                     energy_fin = electronEnergy(px_fin, py_fin, pz_fin, _bands_fin[j].effective_mass);
                 
                     if(i == index_two){
-                        action_two_init += energy_init*(_vertices[index_two+1].tau - tau_two);
-                        action_two_fin += energy_fin*(_vertices[index_two+1].tau - tau_two);
+                        action_two_init += energy_init*(_full_vertices[index_two+1]->tau - tau_two);
+                        action_two_fin += energy_fin*(_full_vertices[index_two+1]->tau - tau_two);
                     }
                     else{
-                        action_two_init += energy_init*(_vertices[i+1].tau - _vertices[i].tau);
-                        action_two_fin += energy_fin*(_vertices[i+1].tau - _vertices[i].tau);
+                        action_two_init += energy_init*(_full_vertices[i+1]->tau - _full_vertices[i]->tau);
+                        action_two_fin += energy_fin*(_full_vertices[i+1]->tau - _full_vertices[i]->tau);
                     }
                 }
             }
@@ -1208,44 +1453,67 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 return;
             }
             else{
-                phVertexMakeRoom(index_one, index_two); // make room in vertices array
+                /*phVertexMakeRoom(index_one, index_two); // make room in vertices array
                 propagatorArrayMakeRoom(index_one, index_two); // make room in electron propagators array
-                bandArrayMakeRoom(index_one, index_two); // make room in bands array
+                bandArrayMakeRoom(index_one, index_two); // make room in bands array*/
+                fullVertexMakeRoom(index_one, index_two);
 
                 // assign vertex one values
-                _vertices[index_one+1].tau = tau_one;
+                _full_vertices[index_one+1]->tau = tau_one;
+                _full_vertices[index_one+1]->type = -2;
+                _full_vertices[index_one+1]->index = phonon_index;
+                _full_vertices[index_one+1]->w[0] = w_x;
+                _full_vertices[index_one+1]->w[1] = w_y;
+                _full_vertices[index_one+1]->w[2] = w_z;
+                /*_vertices[index_one+1].tau = tau_one;
                 _vertices[index_one+1].type = -2;
                 _vertices[index_one+1].linked = index_two + 2;
                 _vertices[index_one+1].index = phonon_index;
                 _vertices[index_one+1].wx = w_x;
                 _vertices[index_one+1].wy = w_y;
-                _vertices[index_one+1].wz = w_z;
+                _vertices[index_one+1].wz = w_z;*/
 
                 // assign vertex two values
-                _vertices[index_two+2].tau = tau_two;
+                _full_vertices[index_two+2]->tau = tau_two;
+                _full_vertices[index_two+2]->type = +2;
+                _full_vertices[index_two+2]->index = phonon_index;
+                _full_vertices[index_two+2]->w[0] = w_x;
+                _full_vertices[index_two+2]->w[1] = w_y;
+                _full_vertices[index_two+2]->w[2] = w_z;
+                /*_vertices[index_two+2].tau = tau_two;
                 _vertices[index_two+2].type = +2;
                 _vertices[index_two+2].linked = index_one + 1;
                 _vertices[index_two+2].index = phonon_index;
                 _vertices[index_two+2].wx = w_x;
                 _vertices[index_two+2].wy = w_y;
-                _vertices[index_two+2].wz = w_z;
+                _vertices[index_two+2].wz = w_z;*/
 
+                _indices[index_one+1] = index_two + 2;
+                _indices[index_two+2] = index_one + 1;
 
                 for(int i=0; i < total_order + 3; ++i){
                     if(i < index_one + 1){
-                        _propagators[i].el_propagator_kx -= w_x;
-                    _propagators[i].el_propagator_ky -= w_y;
-                    _propagators[i].el_propagator_kz -= w_z;
-                    _bands[i] = _bands_fin[i];
-                    }
-                    else if(i < index_two + 2){
-                        _bands[i] = _bands_init[i];
-                    }
-                    else{
-                        _propagators[i].el_propagator_kx -= w_x;
+                        /*_propagators[i].el_propagator_kx -= w_x;
                         _propagators[i].el_propagator_ky -= w_y;
                         _propagators[i].el_propagator_kz -= w_z;
-                        _bands[i] = _bands_fin[i];
+                        _bands[i] = _bands_fin[i];*/
+                        _full_vertices[i]->k[0] -= w_x;
+                        _full_vertices[i]->k[1] -= w_y;
+                        _full_vertices[i]->k[2] -= w_z;
+                        _full_vertices[i]->electronic_band = _bands_fin[i];
+                    }
+                    else if(i < index_two + 2){
+                        _full_vertices[i]->electronic_band = _bands_init[i];
+                    }
+                    else{
+                        /*_propagators[i].el_propagator_kx -= w_x;
+                        _propagators[i].el_propagator_ky -= w_y;
+                        _propagators[i].el_propagator_kz -= w_z;
+                        _bands[i] = _bands_fin[i];*/
+                        _full_vertices[i]->k[0] -= w_x;
+                        _full_vertices[i]->k[1] -= w_y;
+                        _full_vertices[i]->k[2] -= w_z;
+                        _full_vertices[i]->electronic_band = _bands_fin[i];
                     }
                 }
 
@@ -1265,6 +1533,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             }
         }
         else{
+            //=========================== FIX FROM HERE PORCODIO =====================================
             int index_one = findVertexPosition(tau_two);
             int index_two = findVertexPosition(tau_one);
 
@@ -1273,13 +1542,13 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 if(_num_bands > 1){updateNegativeDiagrams(3);}
                 return; // reject if tau values are not found in the vertices array
             }
-            if( tau_two < _vertices[index_one].tau || isEqual(tau_two, _vertices[index_one].tau) 
-                || isEqual(tau_two, _vertices[index_one+1].tau) || tau_two > _vertices[index_one+1].tau){
+            if( tau_two < _full_vertices[index_one]->tau || isEqual(tau_two, _full_vertices[index_one]->tau) 
+                || isEqual(tau_two, _full_vertices[index_one+1]->tau) || tau_two > _full_vertices[index_one+1]->tau){
                     if(_num_bands > 1){updateNegativeDiagrams(3);}
                     return;
                 }
-            if(tau_one < _vertices[index_two].tau || isEqual(tau_one, _vertices[index_two].tau) 
-                || isEqual(tau_one, _vertices[index_two+1].tau) || tau_one > _vertices[index_two+1].tau){
+            if(tau_one < _full_vertices[index_two]->tau || isEqual(tau_one, _full_vertices[index_two]->tau) 
+                || isEqual(tau_one, _full_vertices[index_two+1]->tau) || tau_one > _full_vertices[index_two+1]->tau){
                     if(_num_bands > 1){updateNegativeDiagrams(3);}
                     return;
                 }
@@ -1316,11 +1585,15 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
 
                 // initial diagram
                 if(i < total_order + 1){
-                    px_init = _propagators[i].el_propagator_kx;
+                    /*px_init = _propagators[i].el_propagator_kx;
                     py_init = _propagators[i].el_propagator_ky;
-                    pz_init = _propagators[i].el_propagator_kz;
+                    pz_init = _propagators[i].el_propagator_kz;*/
+                    px_init = _full_vertices[i]->k[0];
+                    py_init = _full_vertices[i]->k[1];
+                    pz_init = _full_vertices[i]->k[2];
 
-                    _bands_init[i] = _bands[i];
+                    //_bands_init[i] = _bands[i];
+                    _bands_init[i] = _full_vertices[i]->electronic_band;
 
                     if(_num_bands == 3 && i > 0){    
                         prefactor_init = prefactor_init*vertexOverlapTerm(_bands_init[i-1], _bands_init[i]);
@@ -1328,14 +1601,14 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
 
                     energy_init = electronEnergy(px_init, py_init, pz_init, _bands_init[i].effective_mass);
 
-                    action_init += energy_init*(_vertices[i+1].tau - _vertices[i].tau);
+                    action_init += energy_init*(_full_vertices[i+1]->tau - _full_vertices[i]->tau);
                 }
 
                 // final diagram
                 if(i < index_one + 1){
-                    px_fin = _propagators[i].el_propagator_kx - w_x;
-                    py_fin = _propagators[i].el_propagator_ky - w_y;
-                    pz_fin = _propagators[i].el_propagator_kz - w_z;
+                    px_fin = px_init - w_x;
+                    py_fin = py_init - w_y;
+                    pz_fin = pz_init - w_z;
 
                     if(_num_bands == 3){
                         chosen_band = band_number(gen);
@@ -1363,16 +1636,19 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                     energy_fin = electronEnergy(px_fin, py_fin, pz_fin, _bands_fin[i].effective_mass);
 
                     if(i < index_one){
-                        action_fin += energy_fin*(_vertices[i+1].tau - _vertices[i].tau);
+                        action_fin += energy_fin*(_full_vertices[i+1]->tau - _full_vertices[i]->tau);
                     }
                     else{
-                        action_fin += energy_fin*(tau_two - _vertices[index_one].tau);
+                        action_fin += energy_fin*(tau_two - _full_vertices[index_one]->tau);
                     }
                 }
                 else if(i < index_two + 2){
-                    px_fin = _propagators[i-1].el_propagator_kx - 2*w_x;
+                    /*px_fin = _propagators[i-1].el_propagator_kx - 2*w_x;
                     py_fin = _propagators[i-1].el_propagator_ky - 2*w_y;
-                    pz_fin = _propagators[i-1].el_propagator_kz - 2*w_z;
+                    pz_fin = _propagators[i-1].el_propagator_kz - 2*w_z;*/
+                    px_fin = _full_vertices[i-1]->k[0] - 2*w_x;
+                    py_fin = _full_vertices[i-1]->k[1] - 2*w_y;
+                    pz_fin = _full_vertices[i-1]->k[2] - 2*w_z;
 
                     if(_num_bands == 3){
                         chosen_band = band_number(gen);
@@ -1398,16 +1674,20 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                     energy_fin = electronEnergy(px_fin, py_fin, pz_fin, _bands_fin[i].effective_mass);
 
                     if(i == index_one + 1){
-                        action_fin += energy_fin*(_vertices[index_one+1].tau - tau_two);
+                        action_fin += energy_fin*(_full_vertices[index_one+1]->tau - tau_two);
                     }
                     else{
-                        action_fin += energy_fin*(_vertices[i].tau - _vertices[i-1].tau);
+                        action_fin += energy_fin*(_full_vertices[i]->tau - _full_vertices[i-1]->tau);
                     }
                 }
                 else{
-                    px_fin = _propagators[i-2].el_propagator_kx - w_x;
+                    /*px_fin = _propagators[i-2].el_propagator_kx - w_x;
                     py_fin = _propagators[i-2].el_propagator_ky - w_y;
-                    pz_fin = _propagators[i-2].el_propagator_kz - w_z;
+                    pz_fin = _propagators[i-2].el_propagator_kz - w_z;*/
+
+                    px_fin = _full_vertices[i-2]->k[0] - w_x;
+                    py_fin = _full_vertices[i-2]->k[1] - w_y;
+                    pz_fin = _full_vertices[i-2]->k[2] - w_z;
 
                     if(_num_bands == 3){
                         if(i != total_order + 2){
@@ -1437,10 +1717,10 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                     energy_fin = electronEnergy(px_fin, py_fin, pz_fin, _bands_fin[i].effective_mass);
 
                     if(i == index_two + 2){
-                        action_fin += energy_fin*(_vertices[index_two+1].tau - tau_one);
+                        action_fin += energy_fin*(_full_vertices[index_two+1]->tau - tau_one);
                     }
                     else{
-                        action_fin += energy_fin*(_vertices[i-1].tau - _vertices[i-2].tau);
+                        action_fin += energy_fin*(_full_vertices[i-1]->tau - _full_vertices[i-2]->tau);
                     }
                 }
             }
@@ -1476,40 +1756,65 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 return;
             }
             else{
-                phVertexMakeRoom(index_one, index_two); // make room in vertices array
-                propagatorArrayMakeRoom(index_one, index_two); // make room in electron propagators array
+                //phVertexMakeRoom(index_one, index_two); // make room in vertices array
+                //propagatorArrayMakeRoom(index_one, index_two); // make room in electron propagators array
+                //bandArrayMakeRoom(index_one, index_two); // make room in band array
+                fullVertexMakeRoom(index_one, index_two);
 
                 // assign vertex one values
-                _vertices[index_one+1].tau = tau_two;
+                _full_vertices[index_one+1]->tau = tau_two;
+                _full_vertices[index_one+1]->type = +2;
+                //_full_vertices[index_one+1]->linked = index_two + 2;
+                _full_vertices[index_one+1]->w[0] = w_x;
+                _full_vertices[index_one+1]->w[1] = w_y;
+                _full_vertices[index_one+1]->w[2] = w_z;
+                _full_vertices[index_one+1]->index = phonon_index;
+                /*_vertices[index_one+1].tau = tau_two;
                 _vertices[index_one+1].type = +2;
                 _vertices[index_one+1].linked = index_two + 2;
                 _vertices[index_one+1].wx = w_x;
                 _vertices[index_one+1].wy = w_y;
                 _vertices[index_one+1].wz = w_z;
-                _vertices[index_one+1].index = phonon_index;
+                _vertices[index_one+1].index = phonon_index;*/
 
                 // assign vertex two values
-                _vertices[index_two+2].tau = tau_one;
+                _full_vertices[index_two+2]->tau = tau_one;
+                _full_vertices[index_two+2]->type = -2;
+                _full_vertices[index_two+2]->w[0] = w_x;
+                _full_vertices[index_two+2]->w[1] = w_y;
+                _full_vertices[index_two+2]->w[2] = w_z;
+                _full_vertices[index_two+2]->index = phonon_index;
+                /*_vertices[index_two+2].tau = tau_one;
                 _vertices[index_two+2].type = -2;
                 _vertices[index_two+2].linked = index_one + 1;
                 _vertices[index_two+2].wx = w_x;
                 _vertices[index_two+2].wy = w_y;
                 _vertices[index_two+2].wz = w_z;
-                _vertices[index_two+2].index = phonon_index;
+                _vertices[index_two+2].index = phonon_index;*/
+
+                _indices[index_one+1] = index_two + 2;
+                _indices[index_two+2] = index_one + 1;
 
                 // update electron propagator energies
                 for(int i = 0; i < total_order + 3; ++i){
                     if(i < index_one + 1 || i > index_two + 1){
-                        _propagators[i].el_propagator_kx -= w_x;
+                        /*_propagators[i].el_propagator_kx -= w_x;
                         _propagators[i].el_propagator_ky -= w_y;
-                        _propagators[i].el_propagator_kz -= w_z;
+                        _propagators[i].el_propagator_kz -= w_z;*/
+                        _full_vertices[i]->k[0] -= w_x;
+                        _full_vertices[i]->k[1] -= w_y;
+                        _full_vertices[i]->k[2] -= w_z;
                     }
                     else{
-                        _propagators[i].el_propagator_kx -= 2*w_x;
+                        /*_propagators[i].el_propagator_kx -= 2*w_x;
                         _propagators[i].el_propagator_ky -= 2*w_y;
-                        _propagators[i].el_propagator_kz -= 2*w_z;
+                        _propagators[i].el_propagator_kz -= 2*w_z;*/
+                        _full_vertices[i]->k[0] -= 2*w_x;
+                        _full_vertices[i]->k[1] -= 2*w_y;
+                        _full_vertices[i]->k[2] -= 2*w_z;
                     }
-                    _bands[i] = _bands_fin[i];
+                    //_bands[i] = _bands_fin[i];
+                    _full_vertices[i]->electronic_band = _bands_fin[i];
                 }
 
                 _current_ph_ext += 1; // update current number of external phonons
@@ -1541,7 +1846,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
             if(_num_bands > 1){updateNegativeDiagrams(4);}
             return;
         }
-        int index_two = _vertices[index_one].linked;
+        int index_two = _indices[index_one];
 
         if(index_one >= index_two){
             int temp = index_one;
@@ -1551,16 +1856,16 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
         int total_order = _current_order_int + 2*_current_ph_ext;
 
         // retrieve time values of the two vertices
-        long double tau_one = _vertices[index_one].tau;
-        long double tau_two = _vertices[index_two].tau;
+        long double tau_one = _full_vertices[index_one]->tau;
+        long double tau_two = _full_vertices[index_two]->tau;
 
         // retrieve phonon momentum
-        double w_x = _vertices[index_one].wx;
-        double w_y = _vertices[index_one].wy;
-        double w_z = _vertices[index_one].wz;
+        double w_x = _full_vertices[index_one]->w[0];
+        double w_y = _full_vertices[index_one]->w[1];
+        double w_z = _full_vertices[index_one]->w[2];
 
         // retrieve phonon mode
-        int phonon_index = _vertices[index_one].index;
+        int phonon_index = _full_vertices[index_one]->index;
 
 
         // vertices weights of two diagrams
@@ -1575,7 +1880,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
         new_overlap << 1,0,0;
         std::uniform_int_distribution<int> band_number(0, _num_bands-1);
 
-        if(_vertices[index_one].type == -2){
+        if(_full_vertices[index_one]->type == -2){
 
             // momentum values
             double px_init = 0;
@@ -1599,15 +1904,24 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
 
             for(int i = 0; i < total_order + 1; ++i){
                 if(i < index_one + 1){
-                    px_init = _propagators[i].el_propagator_kx + w_x;
+                    /*px_init = _propagators[i].el_propagator_kx + w_x;
                     py_init = _propagators[i].el_propagator_ky + w_y;
-                    pz_init = _propagators[i].el_propagator_kz + w_z;
-
-                    px_fin = _propagators[i].el_propagator_kx;
+                    pz_init = _propagators[i].el_propagator_kz + w_z;*/
+                    
+                    /*px_fin = _propagators[i].el_propagator_kx;
                     py_fin = _propagators[i].el_propagator_ky;
-                    pz_fin = _propagators[i].el_propagator_kz;
+                    pz_fin = _propagators[i].el_propagator_kz;*/
 
-                    _bands_fin[i] = _bands[i];
+                    px_fin = _full_vertices[i]->k[0];
+                    py_fin = _full_vertices[i]->k[1];
+                    pz_fin = _full_vertices[i]->k[2];
+
+                    px_init = px_fin + w_x;
+                    py_init = py_fin + w_y;
+                    pz_init = pz_fin + w_z;
+
+                    //_bands_fin[i] = _bands[i];
+                    _bands_fin[i] = _full_vertices[i]->electronic_band;    
 
                     if(_num_bands == 3){
                         if(i != index_one){
@@ -1642,7 +1956,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                             }
                         }
                         else{
-                            _bands_init[index_one] = _bands[index_one + 1];
+                            _bands_init[index_one] = _full_vertices[index_one+1]->electronic_band;
                             prefactor_fin = prefactor_fin*vertexOverlapTerm(_bands_fin[index_one-1], _bands_fin[index_one]); 
                         }
                     }
@@ -1656,21 +1970,31 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                     energy_fin = electronEnergy(px_fin, py_fin, pz_fin, _bands_fin[i].effective_mass);
 
                     // compute actions
-                    action_one_init += energy_init*(_vertices[i+1].tau - _vertices[i].tau);
-                    action_one_fin += energy_fin*(_vertices[i+1].tau - _vertices[i].tau);
+                    action_one_init += energy_init*(_full_vertices[i+1]->tau - _full_vertices[i]->tau);
+                    action_one_fin += energy_fin*(_full_vertices[i+1]->tau - _full_vertices[i]->tau);
                 }
 
                 
                 if(i > index_two){
                     j = i;
-                    px_init = _propagators[i].el_propagator_kx + w_x;
+
+                    px_fin = _full_vertices[i]->k[0];
+                    py_fin = _full_vertices[i]->k[1];
+                    pz_fin = _full_vertices[i]->k[2];
+
+                    px_init = px_fin + w_x;
+                    py_init = py_fin + w_y;
+                    pz_init = pz_fin + w_z;
+
+                    /*px_init = _propagators[i].el_propagator_kx + w_x;
                     py_init = _propagators[i].el_propagator_ky + w_y;
                     pz_init = _propagators[i].el_propagator_kz + w_z;
                     px_fin = _propagators[i].el_propagator_kx;
                     py_fin = _propagators[i].el_propagator_ky;
-                    pz_fin = _propagators[i].el_propagator_kz;
+                    pz_fin = _propagators[i].el_propagator_kz;*/
 
-                    _bands_fin[j] = _bands[i];
+                    //_bands_fin[j] = _bands[i];
+                    _bands_fin[i] = _full_vertices[i]->electronic_band;
 
                     if(_num_bands == 3){
                         if(i != index_two && i != total_order){
@@ -1703,8 +2027,8 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                             prefactor_fin = prefactor_fin*vertexOverlapTerm(_bands_fin[j-1], _bands_fin[j]);
                         }
                         else if( i == index_two){
-                            _bands_init[index_two] = _bands[index_two-1];
-                            prefactor_fin = prefactor_fin*vertexOverlapTerm(_bands[index_two-1], _bands_fin[index_two]);
+                            _bands_init[index_two] = _full_vertices[index_two-1]->electronic_band;
+                            prefactor_fin = prefactor_fin*vertexOverlapTerm(_full_vertices[index_two-1]->electronic_band, _bands_fin[index_two]);
                         }
                         else{
                             _bands_init[j] = _bands_init[0];
@@ -1721,13 +2045,13 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                     energy_init = electronEnergy(px_init, py_init, pz_init, _bands_init[j].effective_mass);
                     energy_fin = electronEnergy(px_fin, py_fin, pz_fin, _bands_fin[j].effective_mass);
 
-                    action_two_init += energy_init*(_vertices[i+1].tau - _vertices[i].tau);
-                    action_two_fin += energy_fin*(_vertices[i+1].tau - _vertices[i].tau);
+                    action_two_init += energy_init*(_full_vertices[i+1]->tau - _full_vertices[i]->tau);
+                    action_two_fin += energy_fin*(_full_vertices[i+1]->tau - _full_vertices[i]->tau);
                 }
             }
 
 
-            long double tau_current = _vertices[total_order+1].tau; // length of current diagram
+            long double tau_current = _full_vertices[total_order+1]->tau; // length of current diagram
 
             double p_A = _p_add_ext*_current_ph_ext;
             double p_B = _p_rem_ext;
@@ -1761,41 +2085,67 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
             }
             else{
                 for(int i=0; i<index_one;++i){
-                    _propagators[i].el_propagator_kx += w_x;
+                    /*_propagators[i].el_propagator_kx += w_x;
                     _propagators[i].el_propagator_ky += w_y;
                     _propagators[i].el_propagator_kz += w_z;
-                    _bands[i] = _bands_init[i];
+                    _bands[i] = _bands_init[i];*/
+                    _full_vertices[i]->k[0] += w_x;
+                    _full_vertices[i]->k[1] += w_y;
+                    _full_vertices[i]->k[2] += w_z;
+                    _full_vertices[i]->electronic_band = _bands_init[i];
                 }
                 for(int i=index_two; i<total_order+1;++i){
-                    _propagators[i].el_propagator_kx += w_x;
+                    /*_propagators[i].el_propagator_kx += w_x;
                     _propagators[i].el_propagator_ky += w_y;
                     _propagators[i].el_propagator_kz += w_z;
-                    _bands[i] = _bands_init[i];
+                    _bands[i] = _bands_init[i];*/
+                    _full_vertices[i]->k[0] += w_x;
+                    _full_vertices[i]->k[1] += w_y;
+                    _full_vertices[i]->k[2] += w_z;
+                    _full_vertices[i]->electronic_band = _bands_init[i];
                 }
 
-                phVertexRemoveRoom(index_one, index_two); // remove room in vertices array
-                propagatorArrayRemoveRoom(index_one, index_two); // remove room in electron propagators array
-                bandArrayRemoveRoom(index_one, index_two); // remove room in bands array
+                //phVertexRemoveRoom(index_one, index_two); // remove room in vertices array
+                //propagatorArrayRemoveRoom(index_one, index_two); // remove room in electron propagators array
+                //bandArrayRemoveRoom(index_one, index_two); // remove room in bands array
+                fullVertexRemoveRoom(index_one, index_two); // remove room in full vertices array
 
-                _propagators[total_order-1].el_propagator_kx = 0;
-                _propagators[total_order-1].el_propagator_ky = 0;
-                _propagators[total_order-1].el_propagator_kz = 0;
-                _bands[total_order-1].effective_mass = 1.0;         
+                //_propagators[total_order-1].el_propagator_kx = 0;
+                //_propagators[total_order-1].el_propagator_ky = 0;
+                //_propagators[total_order-1].el_propagator_kz = 0;
+                //_bands[total_order-1].effective_mass = 1.0;
+                _full_vertices[total_order-1]->k[0] = 0;
+                _full_vertices[total_order-1]->k[1] = 0;
+                _full_vertices[total_order-1]->k[2] = 0;
+                _full_vertices[total_order-1]->electronic_band.effective_mass = 1.0;
 
-                _propagators[total_order].el_propagator_kx = 0;
-                _propagators[total_order].el_propagator_ky = 0;
-                _propagators[total_order].el_propagator_kz = 0;
-                _bands[total_order].effective_mass = 1.0;
+                //_propagators[total_order].el_propagator_kx = 0;
+                //_propagators[total_order].el_propagator_ky = 0;
+                //_propagators[total_order].el_propagator_kz = 0;
+                //_bands[total_order].effective_mass = 1.0;
+
+                _full_vertices[total_order]->k[0] = 0;
+                _full_vertices[total_order]->k[1] = 0;
+                _full_vertices[total_order]->k[2] = 0;
+                _full_vertices[total_order]->electronic_band.effective_mass = 1.0;
                 
                 if(_num_bands == 3){
-                    _bands[total_order-1].band_number = -1;
+                    /*_bands[total_order-1].band_number = -1;
                     _bands[total_order-1].c1 = (1./3);
                     _bands[total_order-1].c2 = (1./3);
                     _bands[total_order-1].c3 = (1./3);
                     _bands[total_order].band_number = -1;
                     _bands[total_order].c1 = (1./3);
                     _bands[total_order].c2 = (1./3);
-                    _bands[total_order].c3 = (1./3);
+                    _bands[total_order].c3 = (1./3);*/
+                    _full_vertices[total_order-1]->electronic_band.band_number = -1;
+                    _full_vertices[total_order-1]->electronic_band.c1 = (1./3);
+                    _full_vertices[total_order-1]->electronic_band.c2 = (1./3);
+                    _full_vertices[total_order-1]->electronic_band.c3 = (1./3);
+                    _full_vertices[total_order]->electronic_band.band_number = -1;
+                    _full_vertices[total_order]->electronic_band.c1 = (1./3);
+                    _full_vertices[total_order]->electronic_band.c2 = (1./3);
+                    _full_vertices[total_order]->electronic_band.c3 = (1./3);
                 }
 
                 _current_ph_ext -= 1; // update current number of external phonons
@@ -1813,7 +2163,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                 return;
             }
         }
-        else if(_vertices[index_one].type == +2){
+        else if(_full_vertices[index_one]->type == +2){
 
                 // momentum values
                 double px_init = 0;
@@ -1831,16 +2181,20 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                 double action_fin = 0.;
 
                 for(int i = 0; i < total_order + 1; ++i){
-                    px_fin = _propagators[i].el_propagator_kx;
+                    /*px_fin = _propagators[i].el_propagator_kx;
                     py_fin = _propagators[i].el_propagator_ky;
-                    pz_fin = _propagators[i].el_propagator_kz;
+                    pz_fin = _propagators[i].el_propagator_kz;*/
+                    px_fin = _full_vertices[i]->k[0];
+                    py_fin = _full_vertices[i]->k[1];
+                    pz_fin = _full_vertices[i]->k[2];
 
-                    _bands_fin[i] = _bands[i];
+                    //_bands_fin[i] = _bands[i];
+                    _bands_fin[i] = _full_vertices[i]->electronic_band;
 
                     if(i < index_one || i >= index_two){
-                        px_init = _propagators[i].el_propagator_kx + w_x;
-                        py_init = _propagators[i].el_propagator_ky + w_y;
-                        pz_init = _propagators[i].el_propagator_kz + w_z;
+                        px_init = px_fin + w_x;
+                        py_init = py_fin + w_y;
+                        pz_init = pz_fin + w_z;
 
                         if(_num_bands == 3){
                             chosen_band = band_number(gen);
@@ -1883,9 +2237,9 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                         }
                     }
                     else{
-                        px_init = _propagators[i].el_propagator_kx + 2*w_x;
-                        py_init = _propagators[i].el_propagator_ky + 2*w_y;
-                        pz_init = _propagators[i].el_propagator_kz + 2*w_z;
+                        px_init = px_fin + 2*w_x;
+                        py_init = py_fin + 2*w_y;
+                        pz_init = pz_fin + 2*w_z;
 
                         if(_num_bands == 3){
                             if(i != total_order){
@@ -1936,11 +2290,11 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                     energy_init = electronEnergy(px_init, py_init, pz_init, _bands_init[i].effective_mass);
                     energy_fin = electronEnergy(px_fin, py_fin, pz_fin, _bands_fin[i].effective_mass);
 
-                    action_init += energy_init*(_vertices[i+1].tau - _vertices[i].tau);
-                    action_fin += energy_fin*(_vertices[i+1].tau - _vertices[i].tau);
+                    action_init += energy_init*(_full_vertices[i+1]->tau - _full_vertices[i]->tau);
+                    action_fin += energy_fin*(_full_vertices[i+1]->tau - _full_vertices[i]->tau);
                 }
 
-                long double tau_current = _vertices[total_order+1].tau; // length of current diagram
+                long double tau_current = _full_vertices[total_order+1]->tau; // length of current diagram
 
                 double p_A = _p_add_ext*_current_ph_ext;
                 double p_B = _p_rem_ext;
@@ -1973,23 +2327,30 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                 else{
                     for(int i=0; i < total_order+1; ++i){
                         if(i < index_one || i >= index_two){
-                            _propagators[i].el_propagator_kx += w_x;
+                            /*_propagators[i].el_propagator_kx += w_x;
                             _propagators[i].el_propagator_ky += w_y;
-                            _propagators[i].el_propagator_kz += w_z;
+                            _propagators[i].el_propagator_kz += w_z;*/
+                            _full_vertices[i]->k[0] += w_x;
+                            _full_vertices[i]->k[1] += w_y;
+                            _full_vertices[i]->k[2] += w_z;
                         }
                         else{
-                            _propagators[i].el_propagator_kx += 2*w_x;
+                            /*_propagators[i].el_propagator_kx += 2*w_x;
                             _propagators[i].el_propagator_ky += 2*w_y;
-                            _propagators[i].el_propagator_kz += 2*w_z;
+                            _propagators[i].el_propagator_kz += 2*w_z;*/
+                            _full_vertices[i]->k[0] += 2*w_x;
+                            _full_vertices[i]->k[1] += 2*w_y;
+                            _full_vertices[i]->k[2] += 2*w_z;
                         }
-                        _bands[i] = _bands_init[i];
+                        _full_vertices[i]->electronic_band = _bands_init[i];
                     }
 
-                    phVertexRemoveRoom(index_one, index_two); // remove room in vertices array
-                    propagatorArrayRemoveRoom(index_one, index_two); // remove room in electron propagators array
-                    bandArrayRemoveRoom(index_one, index_two); // remove room in bands array
+                    //phVertexRemoveRoom(index_one, index_two); // remove room in vertices array
+                    //propagatorArrayRemoveRoom(index_one, index_two); // remove room in electron propagators array
+                    //bandArrayRemoveRoom(index_one, index_two); // remove room in bands array
+                    fullVertexRemoveRoom(index_one, index_two);
 
-                    _propagators[total_order-1].el_propagator_kx = 0;
+                    /*_propagators[total_order-1].el_propagator_kx = 0;
                     _propagators[total_order-1].el_propagator_ky = 0;
                     _propagators[total_order-1].el_propagator_kz = 0;
                     _bands[total_order-1].effective_mass = 1.0;
@@ -1997,10 +2358,20 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                     _propagators[total_order].el_propagator_kx = 0;
                     _propagators[total_order].el_propagator_ky = 0;
                     _propagators[total_order].el_propagator_kz = 0;
-                    _bands[total_order].effective_mass = 1.0;
+                    _bands[total_order].effective_mass = 1.0;*/
+
+                    _full_vertices[total_order-1]->k[0] = 0;
+                    _full_vertices[total_order-1]->k[1] = 0;
+                    _full_vertices[total_order-1]->k[2] = 0;
+                    _full_vertices[total_order-1]->electronic_band.effective_mass = 1.0;
+
+                    _full_vertices[total_order]->k[0] = 0;
+                    _full_vertices[total_order]->k[1] = 0;
+                    _full_vertices[total_order]->k[2] = 0;
+                    _full_vertices[total_order]->electronic_band.effective_mass = 1.0;
 
                     if(_num_bands == 3){
-                        _bands[total_order-1].band_number = -1;
+                        /*_bands[total_order-1].band_number = -1;
                         _bands[total_order-1].c1 = (1./3);
                         _bands[total_order-1].c2 = (1./3);
                         _bands[total_order-1].c3 = (1./3);
@@ -2008,7 +2379,16 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                         _bands[total_order].band_number = -1;
                         _bands[total_order].c1 = (1./3);
                         _bands[total_order].c2 = (1./3);
-                        _bands[total_order].c3 = (1./3);
+                        _bands[total_order].c3 = (1./3);*/
+                        _full_vertices[total_order-1]->electronic_band.band_number = -1;
+                        _full_vertices[total_order-1]->electronic_band.c1 = (1./3);
+                        _full_vertices[total_order-1]->electronic_band.c2 = (1./3);
+                        _full_vertices[total_order-1]->electronic_band.c3 = (1./3);
+
+                        _full_vertices[total_order]->electronic_band.band_number = -1;
+                        _full_vertices[total_order]->electronic_band.c1 = (1./3);
+                        _full_vertices[total_order]->electronic_band.c2 = (1./3);
+                        _full_vertices[total_order]->electronic_band.c3 = (1./3);
                     }
 
                     _current_ph_ext -= 1; // update current number of external phonons
@@ -2042,15 +2422,15 @@ void GreenFuncNphBands::swapPhononPropagator(){
         std::uniform_int_distribution<int> distrib(1, _current_order_int + 2*_current_ph_ext - 1);
         int index_one = distrib(gen); // choose random internal propagator
         
-        if((_vertices[index_one].type != +1) && (_vertices[index_one].type != -1)){
+        if((_full_vertices[index_one]->type != +1) && (_full_vertices[index_one]->type != -1)){
             if(_num_bands > 1){updateNegativeDiagrams(5);}
             return; // reject if vertex does not belong to internal phonon propagator
         } 
-        if((_vertices[index_one+1].type != +1) && (_vertices[index_one+1].type != -1)){
+        if((_full_vertices[index_one+1]->type != +1) && (_full_vertices[index_one+1]->type != -1)){
             if(_num_bands > 1){updateNegativeDiagrams(5);}
             return; // reject if vertex does not belong to internal phonon propagator
         } 
-        if((_vertices[index_one].linked == index_one + 1) || (_vertices[index_one].linked == -1)){
+        if((/*_full_vertices[index_one].linked*/_indices[index_one] == index_one + 1) || (/*_vertices[index_one].linked*/ _indices[index_one] == -1)){
             if(_num_bands > 1){updateNegativeDiagrams(5);}
             return; // reject if the two vertices are linked
         } 
@@ -2058,29 +2438,33 @@ void GreenFuncNphBands::swapPhononPropagator(){
         int index_two = index_one +1;
 
         // get values of first vertex
-        int v1 = _vertices[index_one].type;
-        long double wx1 = _vertices[index_one].wx;
-        long double wy1 = _vertices[index_one].wy;
-        long double wz1 = _vertices[index_one].wz;
-        long double tau1 = _vertices[index_one].tau;
-        int phonon_index1 = _vertices[index_one].index;
+        int v1 = _full_vertices[index_one]->type;
+        long double wx1 = _full_vertices[index_one]->w[0];
+        long double wy1 = _full_vertices[index_one]->w[1];
+        long double wz1 = _full_vertices[index_one]->w[2];
+        long double tau1 = _full_vertices[index_one]->tau;
+        int phonon_index1 = _full_vertices[index_one]->index;
 
         // get values of second vertex
-        int v2 = _vertices[index_two].type;
-        long double wx2 = _vertices[index_two].wx;
-        long double wy2 = _vertices[index_two].wy;
-        long double wz2 = _vertices[index_two].wz;
-        long double tau2 = _vertices[index_two].tau;
-        int phonon_index2 = _vertices[index_two].index;
+        int v2 = _full_vertices[index_two]->type;
+        long double wx2 = _full_vertices[index_two]->w[0];
+        long double wy2 = _full_vertices[index_two]->w[1];
+        long double wz2 = _full_vertices[index_two]->w[2];
+        long double tau2 = _full_vertices[index_two]->tau;
+        int phonon_index2 = _full_vertices[index_two]->index;
 
         // get momentum of propagator
-        long double kx = _propagators[index_one].el_propagator_kx;
+        long double kx = _full_vertices[index_one]->k[0];
+        long double ky = _full_vertices[index_one]->k[1];
+        long double kz = _full_vertices[index_one]->k[2];
+        /*long double kx = _propagators[index_one].el_propagator_kx;
         long double ky = _propagators[index_one].el_propagator_ky;
-        long double kz = _propagators[index_one].el_propagator_kz;
+        long double kz = _propagators[index_one].el_propagator_kz;*/
 
         // retrieve value of initial electron effective mass and propose new value of final effective mass
         double eff_mass_el_initial, eff_mass_el_final;
-        eff_mass_el_initial = _bands[index_one].effective_mass;
+        //eff_mass_el_initial = _bands[index_one].effective_mass;
+        eff_mass_el_initial = _full_vertices[index_one]->electronic_band.effective_mass;
         eff_mass_el_final = 1.0;
 
         // new proposed band for propagator
@@ -2115,8 +2499,8 @@ void GreenFuncNphBands::swapPhononPropagator(){
 
             // compute only overlap term for vertices that go into R_swap evaluation,
             // the strength term does not change
-            prefactor_fin = vertexOverlapTerm(_bands[index_one-1], new_overlap)*vertexOverlapTerm(_bands[index_two], new_overlap);
-            prefactor_init = vertexOverlapTerm(_bands[index_one-1], _bands[index_one])*vertexOverlapTerm(_bands[index_two], _bands[index_one]);
+            prefactor_fin = vertexOverlapTerm(_full_vertices[index_one-1]->electronic_band, new_overlap)*vertexOverlapTerm(_full_vertices[index_two]->electronic_band, new_overlap);
+            prefactor_init = vertexOverlapTerm(_full_vertices[index_one-1]->electronic_band, _full_vertices[index_one]->electronic_band)*vertexOverlapTerm(_full_vertices[index_two]->electronic_band, _full_vertices[index_one]->electronic_band);
         }
         else if(_num_bands == 1){
             eff_mass_el_final = computeEffMassSingleBand(kx+v1*wx1-v2*wx2, ky+v1*wy1-v2*wy2, kz+v1*wz1-v2*wz2,
@@ -2144,41 +2528,51 @@ void GreenFuncNphBands::swapPhononPropagator(){
         }
         else{
             // assign new momentum values to propagator
-            _propagators[index_one].el_propagator_kx += v1*wx1-v2*wx2;
+            /*_propagators[index_one].el_propagator_kx += v1*wx1-v2*wx2;
             _propagators[index_one].el_propagator_ky += v1*wy1-v2*wy2;
-            _propagators[index_one].el_propagator_kz += v1*wz1-v2*wz2;
+            _propagators[index_one].el_propagator_kz += v1*wz1-v2*wz2;*/
+            _full_vertices[index_one]->k[0] += v1*wx1-v2*wx2;
+            _full_vertices[index_one]->k[1] += v1*wy1-v2*wy2;
+            _full_vertices[index_one]->k[2] += v1*wz1-v2*wz2;
             
             // assign new band values
-            _bands[index_one].effective_mass = eff_mass_el_final;
+            _full_vertices[index_one]->electronic_band.effective_mass = eff_mass_el_final;
             if(_num_bands == 3){
-                _bands[index_one].band_number = chosen_band;
-                _bands[index_one].c1 = new_overlap[0];
-                _bands[index_one].c2 = new_overlap[1];
-                _bands[index_one].c3 = new_overlap[2];
+                _full_vertices[index_one]->electronic_band.band_number = chosen_band;
+                _full_vertices[index_one]->electronic_band.c1 = new_overlap[0];
+                _full_vertices[index_one]->electronic_band.c2 = new_overlap[1];
+                _full_vertices[index_one]->electronic_band.c3 = new_overlap[2];
             }
 
-            int linked1 = _vertices[index_one].linked;
-            int linked2 = _vertices[index_two].linked;
+            //int linked1 = _vertices[index_one].linked;
+            //int linked2 = _vertices[index_two].linked;
+
+            int linked1 = _indices[index_one];
+            int linked2 = _indices[index_two];
 
             // assing new links to conjugate vertices
-            _vertices[linked1].linked = index_two;         
-            _vertices[linked2].linked = index_one;
+            _indices[linked1] = index_two;
+            _indices[linked2] = index_one;
+            _indices[index_one] = linked2;
+            _indices[index_two] = linked1;
+            //_vertices[linked1].linked = index_two;         
+            //_vertices[linked2].linked = index_one;
 
-            _vertices[index_one].wx = wx2;
-            _vertices[index_one].wy = wy2;
-            _vertices[index_one].wz = wz2;
-            _vertices[index_one].type = v2;
-            _vertices[index_one].linked = linked2;
-            _vertices[index_one].tau = tau1;
-            _vertices[index_one].index = phonon_index2;
+            _full_vertices[index_one]->w[0] = wx2;
+            _full_vertices[index_one]->w[1] = wy2;
+            _full_vertices[index_one]->w[2] = wz2;
+            _full_vertices[index_one]->type = v2;
+            //_vertices[index_one].linked = linked2;
+            _full_vertices[index_one]->tau = tau1;
+            _full_vertices[index_one]->index = phonon_index2;
                 
-            _vertices[index_two].wx = wx1;
-            _vertices[index_two].wy = wy1;
-            _vertices[index_two].wz = wz1;
-            _vertices[index_two].type = v1;
-            _vertices[index_two].linked = linked1;
-            _vertices[index_two].tau = tau2;
-            _vertices[index_two].index = phonon_index1;
+            _full_vertices[index_two]->w[0] = wx1;
+            _full_vertices[index_two]->w[1] = wy1;
+            _full_vertices[index_two]->w[2] = wz1;
+            _full_vertices[index_two]->type = v1;
+            //_vertices[index_two].linked = linked1;
+            _full_vertices[index_two]->tau = tau2;
+            _full_vertices[index_two]->index = phonon_index1;
 
             if(_num_bands > 1){
                 if(ratio < 0 && !isEqual(ratio, 0)){
@@ -2201,34 +2595,46 @@ void GreenFuncNphBands::shiftPhononPropagator(){
         int vertex_index = distrib(gen); // choose random vertex
 
         // necessary step to address phonon type into evaluation
-        int c = _vertices[vertex_index].type;
+        int c = _full_vertices[vertex_index]->type;
         if(c == 2){c = 1;}
         else if(c == -2){c = -1;}
-        int phonon_index = _vertices[vertex_index].index;  // index of phonon mode in el-phonon vertex
+        int phonon_index = _full_vertices[vertex_index]->index;  // index of phonon mode in el-phonon vertex
 
-        long double tau_init = _vertices[vertex_index - 1].tau;
-        long double tau_fin = _vertices[vertex_index + 1].tau;
+        long double tau_init = _full_vertices[vertex_index - 1]->tau;
+        long double tau_fin = _full_vertices[vertex_index + 1]->tau;
 
         // incoming electron momentum
-        long double kx_incoming = _propagators[vertex_index - 1].el_propagator_kx;
+        long double kx_incoming = _full_vertices[vertex_index - 1]->k[0];
+        long double ky_incoming = _full_vertices[vertex_index - 1]->k[1];
+        long double kz_incoming = _full_vertices[vertex_index - 1]->k[2];
+        double el_eff_mass_incoming = _full_vertices[vertex_index - 1]->electronic_band.effective_mass;
+        /*long double kx_incoming = _propagators[vertex_index - 1].el_propagator_kx;
         long double ky_incoming = _propagators[vertex_index - 1].el_propagator_ky;
         long double kz_incoming = _propagators[vertex_index - 1].el_propagator_kz;
-        double el_eff_mass_incoming = _bands[vertex_index - 1].effective_mass;
+        double el_eff_mass_incoming = _bands[vertex_index - 1].effective_mass;*/
 
         // outgoing electron momentum
-        long double kx_outgoing = _propagators[vertex_index].el_propagator_kx;
+        long double kx_outgoing = _full_vertices[vertex_index]->k[0];
+        long double ky_outgoing = _full_vertices[vertex_index]->k[1];
+        long double kz_outgoing = _full_vertices[vertex_index]->k[2];
+        double el_eff_mass_outgoing = _full_vertices[vertex_index]->electronic_band.effective_mass;
+        /*long double kx_outgoing = _propagators[vertex_index].el_propagator_kx;
         long double ky_outgoing = _propagators[vertex_index].el_propagator_ky;
         long double kz_outgoing = _propagators[vertex_index].el_propagator_kz;
-        double el_eff_mass_outgoing = _bands[vertex_index].effective_mass;
+        double el_eff_mass_outgoing = _bands[vertex_index].effective_mass;*/
 
         double energy_delta = electronEnergy(kx_incoming, ky_incoming, kz_incoming, el_eff_mass_incoming) 
             - electronEnergy(kx_outgoing, ky_outgoing, kz_outgoing, el_eff_mass_outgoing) - phononEnergy(_phonon_modes, phonon_index)*c;
         
         long double tau_new = tau_init - std::log(1 - drawUniformR()*(1 - std::exp(-energy_delta*(tau_fin - tau_init))))/energy_delta;
 
-        if(isEqual(tau_new, tau_init) || isEqual(tau_new, tau_fin) || tau_new < tau_init || tau_new > tau_fin){return;} // check for possible double precision errors
+         // check for possible double precision errors
+        if(isEqual(tau_new, tau_init) || isEqual(tau_new, tau_fin) || tau_new < tau_init || tau_new > tau_fin){ 
+            if(_num_bands > 1){updateNegativeDiagrams(6);} 
+            return;
+        }
         
-        _vertices[vertex_index].tau = tau_new; // assign new time value to vertex
+        _full_vertices[vertex_index]->tau = tau_new; // assign new time value to vertex
 
         findLastPhVertex();
 
@@ -2255,12 +2661,15 @@ long double GreenFuncNphBands::stretchDiagramLength(long double tau_init){
 
         j = i-1;
 
-        kx = _propagators[j].el_propagator_kx;
+        /*kx = _propagators[j].el_propagator_kx;
         ky = _propagators[j].el_propagator_ky;
-        kz = _propagators[j].el_propagator_kz;
+        kz = _propagators[j].el_propagator_kz;*/
+        kx = _full_vertices[j]->k[0];
+        ky = _full_vertices[j]->k[1];
+        kz = _full_vertices[j]->k[2];
 
-        c = _vertices[j].type;
-        phonon_index = _vertices[j].index;
+        c = _full_vertices[j]->type;
+        phonon_index = _full_vertices[j]->index;
         
         if(c == +1 || c == +2){
             phonon_lines_energies += phononEnergy(_phonon_modes, phonon_index);
@@ -2269,7 +2678,7 @@ long double GreenFuncNphBands::stretchDiagramLength(long double tau_init){
             phonon_lines_energies -= phononEnergy(_phonon_modes, phonon_index);
         }
 
-        _new_taus[i] = _new_taus[j] - std::log(1-drawUniformR())/(electronEnergy(kx,ky,kz,_bands[j].effective_mass)
+        _new_taus[i] = _new_taus[j] - std::log(1-drawUniformR())/(electronEnergy(kx,ky,kz,_full_vertices[j]->electronic_band.effective_mass)
         -_chem_potential + extPhononEnergy(_ext_phonon_type_num, _phonon_modes, _num_phonon_modes) + phonon_lines_energies);
 
         if(_new_taus[i] < _new_taus[j] || isEqual(_new_taus[i], _new_taus[j])){
@@ -2286,14 +2695,14 @@ long double GreenFuncNphBands::stretchDiagramLength(long double tau_init){
     }
 
     for(int i = 0; i < total_order+2; ++i){
-        _vertices[i].tau = _new_taus[i];
+        _full_vertices[i]->tau = _new_taus[i];
     }
 
     findLastPhVertex();
 
     if(_num_bands > 1){updateNegativeDiagrams(7);}
 
-    return _vertices[total_order+1].tau;
+    return _full_vertices[total_order+1]->tau;
 };
 
 long double GreenFuncNphBands::configSimulation(long double tau_length = 1.0L){
@@ -2534,7 +2943,8 @@ long double GreenFuncNphBands::configSimulation(long double tau_length = 1.0L){
     if(_flags.fix_tau_value){
         std::cout << "Length of diagrams is fixed to: " << _tau_max << std::endl;
         tau_length = _tau_max - 1e-7L; // fix length of diagrams to tau_max
-        _vertices[1].tau = tau_length; // assign fixed time value to first vertex
+        //_vertices[1].tau = tau_length; 
+        _full_vertices[1]->tau = _tau_max - 1e-7L; // assign fixed time value to first vertex
         std::cout << "All diagrams will have the same length (tau_max)." << std::endl;
         std::cout << std::endl;
         if(_p_length > 0 || _p_stretch > 0){
@@ -2779,7 +3189,6 @@ void GreenFuncNphBands::computeFinalQuantities(){
         if(_flags.blocking_analysis){
             long double squared_sum = 0;
             int count = 0;
-
             // compute variance using blocking analysis procedure
             for(int i = 0; i < _N_blocks; ++i){
                 if(!isEqual(_gs_energy_block_array[i],0)){
@@ -2988,7 +3397,7 @@ void GreenFuncNphBands::printEffectiveMassEstimator(){
 
         // compute variance using blocking analysis procedure
         for(int i = 0; i < _N_blocks; ++i){
-            if(!isEqual(_gs_energy_block_array[i],0)){
+            if(!isEqual(_effective_mass_block_array[i],0)){
                 squared_sum_avg += (_effective_mass_block_array[i]-_effective_mass)*(_effective_mass_block_array[i]-_effective_mass);
                 squared_sum_xP += (_effective_masses_block_array[3*i]-_effective_masses[0])*(_effective_masses_block_array[3*i]-_effective_masses[0]);
                 squared_sum_yP += (_effective_masses_block_array[3*i+1]-_effective_masses[1])*(_effective_masses_block_array[3*i+1]-_effective_masses[1]);
@@ -3381,7 +3790,7 @@ void GreenFuncNphBands::markovChainMCOnlyRelax(){
 };
 
 void GreenFuncNphBands::markovChainMCOnlySample(){
-    long double tau_length = _vertices[_current_order_int + 2*_current_ph_ext + 1].tau; // get current length of diagram
+    long double tau_length = _full_vertices[_current_order_int + 2*_current_ph_ext + 1]->tau; // get current length of diagram
     double r = 0.5;
     unsigned long long int i = 0;
 
@@ -3445,14 +3854,13 @@ void GreenFuncNphBands::markovChainMCOnlySample(){
 
     if(_flags.time_benchmark){delete _benchmark_th;}
     
-    _flags.write_diagrams = false; 
 
     if(_master){
         std::cout << "Starting simulation process" << std::endl;
         std::cout << std::endl;
 
-        if(N_diags <= 15000){
-            _flags.write_diagrams = true; // set true for master process
+        if(N_diags >= 15000){
+            _flags.write_diagrams = false; // set false for master process
         }
         bar.setTotal(N_diags);
         
@@ -3462,10 +3870,11 @@ void GreenFuncNphBands::markovChainMCOnlySample(){
             _benchmark_sim->startTimer();
         }
     }
+    else{_flags.write_diagrams = false;}
 
     for(i = 0; i < N_diags; ++i){
         r = drawUniformR();
-        if(_flags.write_diagrams){writeChosenUpdate("Updates.txt", i, r);}
+        if(_flags.write_diagrams && _master){writeChosenUpdate("Updates.txt", i, r);}
 
         tau_length = chooseUpdate(tau_length, r, _benchmark_sim);
 
@@ -3475,7 +3884,7 @@ void GreenFuncNphBands::markovChainMCOnlySample(){
 
         if(static_cast<int>(i%100000) == 0){checkTimeErrors(_current_order_int+2*_current_ph_ext);}
     
-        if(_flags.write_diagrams && _master){writeDiagram("Diagrams.txt", i, r);}
+        //if(_flags.write_diagrams && _master){writeDiagram("Diagrams.txt", i, r);}
         
         if(static_cast<int>(i%(N_diags/100)) == 0 && _master){bar.update(i);}
     }
@@ -3512,7 +3921,7 @@ void GreenFuncNphBands::exactEstimatorGF(long double tau_length, int ext_phonon_
     // compute electron bare propagators action
     int current_order = _current_order_int + 2*_current_ph_ext; // total order of diagrams (number of phonon vertices)
     double electron_energy = 0;
-    double electron_action = 0., phonon_action = 0.;
+    double electron_action = 0, phonon_action = 0;
 
     // phonon bare propagators action
     //int i = 0;
@@ -3527,22 +3936,24 @@ void GreenFuncNphBands::exactEstimatorGF(long double tau_length, int ext_phonon_
 
     // main loop
     for(int i=0; i<current_order+1; ++i){
-        electron_energy = electronEnergy(_propagators[i].el_propagator_kx, _propagators[i].el_propagator_ky, 
-            _propagators[i].el_propagator_kz, _bands[i].effective_mass);
-        electron_action += electron_energy*(_vertices[i+1].tau - _vertices[i].tau);
+        electron_energy = electronEnergy(_full_vertices[i]->k[0], _full_vertices[i]->k[1], 
+            _full_vertices[i]->k[2], _full_vertices[i]->electronic_band.effective_mass);
+        electron_action += electron_energy*(_full_vertices[i+1]->tau - _full_vertices[i]->tau);
 
-        if(_vertices[i].type == +1){
-            index_two = _vertices[i].linked;
-            phonon_index = _vertices[i].index;
-            tau_one = _vertices[i].tau;  
-            tau_two = _vertices[index_two].tau;
+        if(_full_vertices[i]->type == +1){
+            //index_two = _vertices[i].linked;
+            index_two = _indices[i];
+            phonon_index = _full_vertices[i]->index;
+            tau_one = _full_vertices[i]->tau;  
+            tau_two = _full_vertices[index_two]->tau;
             phonon_action += phononEnergy(_phonon_modes, phonon_index)*(tau_two - tau_one);
         }
-        else if(_vertices[i].type == -2){
-            index_two = _vertices[i].linked;
-            phonon_index = _vertices[i].index;
-            tau_one = _vertices[i].tau;  
-            tau_two = _vertices[index_two].tau;
+        else if(_full_vertices[i]->type == -2){
+            //index_two = _vertices[i].linked;
+            index_two = _indices[i];
+            phonon_index = _full_vertices[i]->index;
+            tau_one = _full_vertices[i]->tau;  
+            tau_two = _full_vertices[index_two]->tau;
             phonon_action += phononEnergy(_phonon_modes, phonon_index)*(tau_length + tau_one - tau_two);
         }
     }
@@ -3561,7 +3972,6 @@ void GreenFuncNphBands::exactEstimatorGF(long double tau_length, int ext_phonon_
 double GreenFuncNphBands::groundStateEnergyExactEstimator(long double tau_length){
     if(tau_length <= _tau_cutoff_energy){return 0;} // reject if below cutoff
     else{
-
         // compute electron bare propagators action
         int current_order = _current_order_int + 2*_current_ph_ext; // total order of diagrams (number of phonon vertices)
         double electron_energy = 0;
@@ -3580,22 +3990,24 @@ double GreenFuncNphBands::groundStateEnergyExactEstimator(long double tau_length
 
         // main loop
         for(int i=0; i<current_order+1; ++i){
-            electron_energy = electronEnergy(_propagators[i].el_propagator_kx, _propagators[i].el_propagator_ky, 
-                _propagators[i].el_propagator_kz, _bands[i].effective_mass);
-            electron_action += electron_energy*(_vertices[i+1].tau - _vertices[i].tau);
+            electron_energy = electronEnergy(_full_vertices[i]->k[0], _full_vertices[i]->k[1],
+                _full_vertices[i]->k[2], _full_vertices[i]->electronic_band.effective_mass);
+            electron_action += electron_energy*(_full_vertices[i+1]->tau - _full_vertices[i]->tau);
 
-            if(_vertices[i].type == +1){
-                index_two = _vertices[i].linked;
-                phonon_index = _vertices[i].index;
-                tau_one = _vertices[i].tau;  
-                tau_two = _vertices[index_two].tau;
+            if(_full_vertices[i]->type == +1){
+                //index_two = _vertices[i].linked;
+                index_two = _indices[i];
+                phonon_index = _full_vertices[i]->index;
+                tau_one = _full_vertices[i]->tau;
+                tau_two = _full_vertices[index_two]->tau;
                 phonon_action += phononEnergy(_phonon_modes, phonon_index)*(tau_two - tau_one);
             }
-            else if(_vertices[i].type == -2){
-                index_two = _vertices[i].linked;
-                phonon_index = _vertices[i].index;
-                tau_one = _vertices[i].tau;  
-                tau_two = _vertices[index_two].tau;
+            else if(_full_vertices[i]->type == -2){
+                //index_two = _vertices[i].linked;
+                index_two = _indices[i];
+                phonon_index = _full_vertices[i]->index;
+                tau_one = _full_vertices[i]->tau;  
+                tau_two = _full_vertices[index_two]->tau;
                 phonon_action += phononEnergy(_phonon_modes, phonon_index)*(tau_length + tau_one - tau_two);
             }
         }
@@ -3677,23 +4089,21 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
         double mass_average_inv_x = 0; double mass_average_inv_y = 0; double mass_average_inv_z = 0;
         double electron_average_kx = 0; double electron_average_ky = 0; double electron_average_kz = 0;
         double mx, my, mz;
+        long double imaginary_time_length;
         double xP_inv = 1, yP_inv = 1, zP_inv = 1; 
 
         if(_num_bands == 1){
             for(int i=0; i< current_order+1; ++i){
-                /*if(isEqual(_propagators[i].el_propagator_kx, 0) && isEqual(_propagators[i].el_propagator_ky, 0) && isEqual(_propagators[i].el_propagator_kz, 0)){
-                    mx = _m_x_el; my = _m_y_el; mz = _m_z_el;
-                }
-                else{*/
                 mx = _m_x_el; my = _m_y_el; mz = _m_z_el;
-                //}
-                mass_average_inv_x += (_vertices[i+1].tau - _vertices[i].tau)/mx;
-                mass_average_inv_y += (_vertices[i+1].tau - _vertices[i].tau)/my;
-                mass_average_inv_z += (_vertices[i+1].tau - _vertices[i].tau)/mz;
+                imaginary_time_length = _full_vertices[i+1]->tau - _full_vertices[i]->tau;
 
-                electron_average_kx += _propagators[i].el_propagator_kx*(_vertices[i+1].tau - _vertices[i].tau)/mx;
-                electron_average_ky += _propagators[i].el_propagator_ky*(_vertices[i+1].tau - _vertices[i].tau)/my;
-                electron_average_kz += _propagators[i].el_propagator_kz*(_vertices[i+1].tau - _vertices[i].tau)/mz;
+                mass_average_inv_x += imaginary_time_length/mx;
+                mass_average_inv_y += imaginary_time_length/my;
+                mass_average_inv_z += imaginary_time_length/mz;
+
+                electron_average_kx += _full_vertices[i]->k[0]*(imaginary_time_length)/mx;
+                electron_average_ky += _full_vertices[i]->k[1]*(imaginary_time_length)/my;
+                electron_average_kz += _full_vertices[i]->k[2]*(imaginary_time_length)/mz;
             }
 
             mass_average_inv_x = (1./tau_length)*mass_average_inv_x;
@@ -3727,8 +4137,8 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
             _effective_masses_bands.row(2) += (unit - tau_length*(std::pow(electron_average_kx,2)+std::pow(electron_average_ky,2)+std::pow(electron_average_kz,2))
                             *diagonalizeLKHamiltonianEigenval(1,1,1,_A_LK_el,_B_LK_el,_C_LK_el)/(2.)); // (111) direction
         }
-        
         */
+
         // compute inverse of (average) effective mass, _D dimensionality of the system
         double inv_mass_avg = (tau_length*(std::pow(electron_average_kx,2) + std::pow(electron_average_ky,2) + std::pow(electron_average_kz,2))/_D);
         //static_cast<long double>(_m_x_el/3.+_m_y_el/3.+_m_z_el/3.)
@@ -3846,7 +4256,8 @@ void GreenFuncNphBands::writeDiagram(std::string filename, int i, double r) cons
 
     file << "Iteration: " << i << "\n";
 
-    file << "index: " << 0 << " time: " << _vertices[0].tau << " wx: " << _vertices[0].wx << " wy: " 
+    if(_data_type == _data_type_array[0]){
+        file << "index: " << 0 << " time: " << _vertices[0].tau << " wx: " << _vertices[0].wx << " wy: " 
         << _vertices[0].wy << " wz: " << _vertices[0].wz <<" type: " << _vertices[0].type << " linked: " << _vertices[0].linked << "\n";
         file << "\n";
         file << "propagator: " << 0 << "          kx: " << _propagators[0].el_propagator_kx << " ky: " << _propagators[0].el_propagator_ky 
@@ -3855,24 +4266,54 @@ void GreenFuncNphBands::writeDiagram(std::string filename, int i, double r) cons
         << " (c1, c2, c3): (" << _bands[0].c1 << ", " << _bands[0].c2 << ", " << _bands[0].c3 << ")\n";
         file << "\n";
 
-    for(int j=1; j<_current_order_int+2*_current_ph_ext+1; j++){
-        file << "index: " << j << " time: " << _vertices[j].tau << " wx: " << _vertices[j].wx << " wy: " 
-        << _vertices[j].wy << " wz: " << _vertices[j].wz <<" type: " << _vertices[j].type << " linked: " << _vertices[j].linked << 
-        " phonon mode: " << _vertices[j].index << " phonon energy: " << _phonon_modes[_vertices[j].index] << "\n";
-        file << "\n";
-        file << "propagator: " << j << "          kx: " << _propagators[j].el_propagator_kx << " ky: " << _propagators[j].el_propagator_ky 
-        << " kz: " << _propagators[j].el_propagator_kz << "\n";
-        file << "band number: " << _bands[j].band_number << " el eff mass: " << _bands[j].effective_mass 
-        << " (c1, c2, c3): (" << _bands[j].c1 << ", " << _bands[j].c2 << ", " << _bands[j].c3 << ")\n";
+        for(int j=1; j<_current_order_int+2*_current_ph_ext+1; j++){
+            file << "index: " << j << " time: " << _vertices[j].tau << " wx: " << _vertices[j].wx << " wy: " 
+            << _vertices[j].wy << " wz: " << _vertices[j].wz <<" type: " << _vertices[j].type << " linked: " << _vertices[j].linked << 
+            " phonon mode: " << _vertices[j].index << " phonon energy: " << _phonon_modes[_vertices[j].index] << "\n";
+            file << "\n";
+            file << "propagator: " << j << "          kx: " << _propagators[j].el_propagator_kx << " ky: " << _propagators[j].el_propagator_ky 
+            << " kz: " << _propagators[j].el_propagator_kz << "\n";
+            file << "band number: " << _bands[j].band_number << " el eff mass: " << _bands[j].effective_mass 
+            << " (c1, c2, c3): (" << _bands[j].c1 << ", " << _bands[j].c2 << ", " << _bands[j].c3 << ")\n";
+            file << "\n";
+        }
+        int final_vertex = _current_order_int+2*_current_ph_ext+1;
+
+        file << "index: " << final_vertex << " time: " << _vertices[final_vertex].tau << " wx: " << _vertices[final_vertex].wx 
+        << " wy: " << _vertices[final_vertex].wy << " wz: " << _vertices[final_vertex].wz 
+        << " type: " << _vertices[final_vertex].type << " linked: " << _vertices[final_vertex].linked 
+        <<  "\n";
         file << "\n";
     }
-    int final_vertex = _current_order_int+2*_current_ph_ext+1;
+    else if(_data_type == _data_type_array[1]){
+        file << "index: " << 0 << " time: " << _full_vertices[0]->tau << " wx: " << _full_vertices[0]->w[0] << " wy: " 
+        << _full_vertices[0]->w[1] << " wz: " << _full_vertices[0]->w[2] <<" type: " << _full_vertices[0]->type << " linked: " << _indices[0] << "\n";
+        file << "\n";
+        file << "propagator: " << 0 << "          kx: " << _full_vertices[0]->k[0] << " ky: " << _full_vertices[0]->k[1] 
+        << " kz: " << _full_vertices[0]->k[2] << "\n";
+        file << "band number: " << _full_vertices[0]->electronic_band.band_number << " el eff mass: " << _full_vertices[0]->electronic_band.effective_mass 
+        << " (c1, c2, c3): (" << _full_vertices[0]->electronic_band.c1 << ", " << _full_vertices[0]->electronic_band.c2 << ", " << _full_vertices[0]->electronic_band.c3 << ")\n";
+        file << "\n";
 
-    file << "index: " << final_vertex << " time: " << _vertices[final_vertex].tau << " wx: " << _vertices[final_vertex].wx 
-    << " wy: " << _vertices[final_vertex].wy << " wz: " << _vertices[final_vertex].wz 
-    << " type: " << _vertices[final_vertex].type << " linked: " << _vertices[final_vertex].linked 
-    <<  "\n";
-    file << "\n";
+        for(int j=1; j<_current_order_int+2*_current_ph_ext+1; j++){
+            file << "index: " << j << " time: " << _full_vertices[j]->tau << " wx: " << _full_vertices[j]->w[0] << " wy: " 
+            << _full_vertices[j]->w[1] << " wz: " << _full_vertices[j]->w[2] <<" type: " << _full_vertices[j]->type << " linked: " << _indices[j] << 
+            " phonon mode: " << _full_vertices[j]->index << " phonon energy: " << _phonon_modes[_full_vertices[j]->index] << "\n";
+            file << "\n";
+            file << "propagator: " << j << "          kx: " << _full_vertices[j]->k[0] << " ky: " << _full_vertices[j]->k[1] 
+            << " kz: " << _full_vertices[j]->k[2] << "\n";
+            file << "band number: " << _full_vertices[j]->electronic_band.band_number << " el eff mass: " << _full_vertices[j]->electronic_band.effective_mass 
+            << " (c1, c2, c3): (" << _full_vertices[j]->electronic_band.c1 << ", " << _full_vertices[j]->electronic_band.c2 << ", " << _full_vertices[j]->electronic_band.c3 << ")\n";
+            file << "\n";
+        }
+        int final_vertex = _current_order_int+2*_current_ph_ext+1;
+
+        file << "index: " << final_vertex << " time: " << _full_vertices[final_vertex]->tau << " wx: " << _full_vertices[final_vertex]->w[0] 
+        << " wy: " << _full_vertices[final_vertex]->w[1] << " wz: " << _full_vertices[final_vertex]->w[2] 
+        << " type: " << _full_vertices[final_vertex]->type << " linked: " << _indices[final_vertex] 
+        <<  "\n";
+        file << "\n";
+    }
 
     file << "ext phonons: " << _current_ph_ext << " int order: " << _current_order_int << " chosen update: " << r <<"\n";
     file << "\n";

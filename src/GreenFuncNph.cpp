@@ -1,8 +1,8 @@
 #include "../include/GreenFuncNph.hpp"
 
 GreenFuncNph::GreenFuncNph(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
-    double chem_potential, int order_int_max, int ph_ext_max, double el_eff_mass, double ph_dispersion) 
-    : Diagram(N_diags, tau_max, kx, ky, kz, chem_potential, order_int_max, ph_ext_max),
+    double chem_potential, int order_int_max, int ph_ext_max, double el_eff_mass, double ph_dispersion, int data_type) 
+    : Diagram(N_diags, tau_max, kx, ky, kz, chem_potential, order_int_max, ph_ext_max, data_type),
     _el_eff_mass(el_eff_mass), _ph_dispersion(ph_dispersion){
 
     // initialize flags

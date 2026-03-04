@@ -169,4 +169,14 @@ struct Band{
     double c3 = 0; // coefficient for wavefunction phi_3 (band number 3)
 };
 
+struct FullVertex{
+    long double tau = 0; // time coordinate of the vertex
+    int type = 0; // +1 outgoing and -1 incoming (internal), +2 outgoing and -2 incoming (external), 0 unassigned (extrema)
+    double w[3] = {0, 0, 0}; // components of phonon momentum
+    //double k_in[3] = {0, 0, 0}; // components of incoming electron momentum
+    double k[3] = {0, 0, 0}; // components of outgoing electron momentum
+    Band electronic_band;
+    int index = -1; // describes link to phonon mode (0 first phonon mode, 1 second phonon mode, etc.)
+};
+
 #endif

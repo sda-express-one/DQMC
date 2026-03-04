@@ -17,16 +17,32 @@ class Diagram {
         // constructor
         Diagram() = default;
         Diagram(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz, 
-            double chem_potential, int order_int_max, int ph_ext_max);
+            double chem_potential, int order_int_max, int ph_ext_max, int data_type);
 
         Diagram(Propagator * propagators, Vertex * vertices,
             unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz, 
-            double chem_potential, int order_int_max, int ph_ext_max);
+            double chem_potential, int order_int_max, int ph_ext_max, int data_type);
+        
+        Diagram(FullVertex * fullvertices, int * indices, unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz, 
+            double chem_potential, int order_int_max, int ph_ext_max, int data_type);
+
+        //Diagram(const Diagram&) = delete;
+        //Diagram& operator=(const Diagram&) = delete;
 
         // destructor
-        ~Diagram(){
-            delete[] _vertices;
-            delete[] _propagators;
+        virtual ~Diagram(){
+            if(_data_type == _data_type_array[0]){
+                delete[] _vertices;
+                delete[] _propagators;
+            }
+            else if(_data_type == _data_type_array[1]){
+                for(int i=(_order_int_max+2*_ph_ext_max+1); i>=0; --i){
+                    delete _full_vertices[i];
+                    _full_vertices[i] = nullptr;
+                }
+                delete[] _full_vertices;
+                delete[] _indices;
+            }
         }
 
         // returns uniform random long double precision value between 0 and 1
@@ -71,24 +87,49 @@ class Diagram {
 
         // fix double precision floating errors
         inline void fixDoublePrecisionErrors(int total_order, double error_threshold){
-            for(int i = 0; i < total_order+1; i++){
-                if(std::abs(_propagators[i].el_propagator_kx - _kx) < error_threshold){
-                    _propagators[i].el_propagator_kx = _kx;
+            if(_data_type == _data_type_array[0]){
+                for(int i = 0; i < total_order+1; i++){
+                    if(std::abs(_propagators[i].el_propagator_kx - _kx) < error_threshold){
+                        _propagators[i].el_propagator_kx = _kx;
+                    }
+                    if(std::abs(_propagators[i].el_propagator_ky - _ky) < error_threshold){
+                        _propagators[i].el_propagator_ky = _ky;
+                    }
+                    if(std::abs(_propagators[i].el_propagator_kz - _kz) < error_threshold){
+                        _propagators[i].el_propagator_kz = _kz;
+                    }
                 }
-                if(std::abs(_propagators[i].el_propagator_ky - _ky) < error_threshold){
-                    _propagators[i].el_propagator_ky = _ky;
-                }
-                if(std::abs(_propagators[i].el_propagator_kz - _kz) < error_threshold){
-                    _propagators[i].el_propagator_kz = _kz;
+            }
+            else if(_data_type == _data_type_array[1]){
+                for(int i = 0; i < total_order+1; i++){
+                    if(std::abs(_full_vertices[i]->k[0] - _kx) < error_threshold){
+                        _full_vertices[i]->k[0] = _kx;
+                    }
+                    if(std::abs(_full_vertices[i]->k[1] - _ky) < error_threshold){
+                        _full_vertices[i]->k[1] = _ky;
+                    }
+                    if(std::abs(_full_vertices[i]->k[2] - _kz) < error_threshold){
+                        _full_vertices[i]->k[2] = _kz;
+                    }
                 }
             }
         };
 
         inline void checkTimeErrors(int total_order){
-            for(int i = 1; i < total_order+1; i++)
-                if(_vertices[i].tau < _vertices[i-1].tau){
-                    std::cerr << "time not valid" << std::endl;
+            if(_data_type == _data_type_array[0]){
+                for(int i = 1; i < total_order+1; i++){
+                    if(_vertices[i].tau < _vertices[i-1].tau){
+                        std::cerr << "time not valid" << std::endl;
+                    }
                 }
+            }
+            else if (_data_type == _data_type_array[1]){
+                for(int i = 1; i < total_order+1; i++){
+                    if(_full_vertices[i]->tau < _full_vertices[i-1]->tau){
+                        std::cerr << "time not valid" << std::endl;
+                    }
+                }
+            }
         };
 
     private:
@@ -111,6 +152,16 @@ class Diagram {
         // diagram backbone
         Vertex* _vertices = nullptr;
         Propagator* _propagators = nullptr;
+        FullVertex** _full_vertices = nullptr;
+        int* _indices = nullptr;
+
+        // support pointers
+        FullVertex * _pointer_one = nullptr;
+        FullVertex * _pointer_two = nullptr;
+
+        // data structure type
+        int _data_type = 0;
+        int _data_type_array[2] = {0, 1};
 
         // simulation parameters
         long double _tau_max; // maximum value for imaginary time
