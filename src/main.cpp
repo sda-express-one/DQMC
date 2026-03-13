@@ -244,9 +244,8 @@ int main(){
             {
                 int ID = omp_get_thread_num();
 
-                Propagator * propagators_thermalized = nullptr;
-                Band * bands_thermalized = nullptr;
-                Vertex * vertices_thermalized = nullptr;
+                FullVertexNode * nodes_thermalized = nullptr;
+                int current_order = 0;
 
                 parameters local_sim;
                 settings local_sets;
@@ -254,31 +253,24 @@ int main(){
 
                 #pragma omp critical
                 {   
-                    propagators_thermalized = new Propagator[sim.order_int_max + 2*sim.ph_ext_max + 1];
-                    bands_thermalized = new Band[sim.order_int_max + 2*sim.ph_ext_max + 1];
-                    vertices_thermalized = new Vertex[sim.order_int_max + 2*sim.ph_ext_max + 2];
+                    nodes_thermalized = new FullVertexNode[sim.order_int_max + 2*sim.ph_ext_max + 2];
 
-                    for(int i = 0; i < sim.order_int_max + 2*sim.ph_ext_max + 1; i++){
-                        propagators_thermalized[i] = diagram_relax.getPropagator(i);
-                        bands_thermalized[i] = diagram_relax.getBand(i);
-                        vertices_thermalized[i] = diagram_relax.getVertex(i);
-                    }
+                    diagram_relax.getNodes(nodes_thermalized, sim.order_int_max + 2*sim.ph_ext_max + 2);
+                    current_order = diagram_relax.getCurrentOrderInt() + 2*diagram_relax.getCurrentPhExt();
 
                     local_sim = sim;
                     local_sets = sets;
                     local_cpu = cpu;
                 }
 
-                GreenFuncNphBands diagram_simulate(propagators_thermalized, vertices_thermalized, bands_thermalized,
+                GreenFuncNphBands diagram_simulate(nodes_thermalized, current_order,
                     local_sim.N_diags, local_sim.tau_max, local_sim.kx, local_sim.ky, local_sim.kz, local_sim.chem_potential, local_sim.order_int_max,
                     local_sim.ph_ext_max, local_sim.num_bands, local_sim.num_phonon_modes);
                 
                 #pragma omp critical
                 {
                     Diagram::setSeed(seed, ID*2654435761U);
-                    delete[] propagators_thermalized;
-                    delete[] bands_thermalized;
-                    delete[] vertices_thermalized;
+                    delete[] nodes_thermalized;
                 }
                 #pragma omp barrier
                 

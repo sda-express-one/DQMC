@@ -169,4 +169,23 @@ struct Band{
     double c3 = 0; // coefficient for wavefunction phi_3 (band number 3)
 };
 
+struct FullVertexNode{
+    long double tau = 0; // time coordinate of the vertex
+    long double tau_next = 0; // time coordinate of next vertex
+    int type = 0; // +1 outgoing and -1 incoming (internal), +2 outgoing and -2 incoming (external), 0 unassigned (extrema)
+    Band electronic_band;
+    double k[3] = {0, 0, 0}; // momentum components of outgoing electron propagator
+    double w[3] = {0, 0, 0}; // momentum components of phonon propagator
+    int index = -1; // describes link to phonon branch (0 first phonon branch, 1 second phonon branch...)
+    FullVertexNode * prev = nullptr; // link to previous node
+    FullVertexNode * next = nullptr; // link to next node
+};
+
+struct FullVertexNodeIndicator{
+    FullVertexNode * linked = nullptr;
+    FullVertexNodeIndicator * conjugated = nullptr;
+    int position = -1;
+    bool used = false;
+};
+
 #endif

@@ -26,7 +26,7 @@ class GreenFuncNphBands : public Diagram {
     GreenFuncNphBands(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
         double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int phonon_modes);
     
-    GreenFuncNphBands(Propagator * propagators, Vertex * vertices, Band * bands,
+    GreenFuncNphBands(FullVertexNode * nodes, int current_order,
         unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
         double chem_potential, int order_int_max, int ph_ext_max, int num_bands, int phonon_modes);
 
@@ -240,11 +240,11 @@ class GreenFuncNphBands : public Diagram {
     double _p_swap = (1./8.);
     double _p_shift = (1./8.);
     double _p_stretch = (1./8.);
-
-    // important variables to keep
-    long double _last_vertex = 0.; // last current phonon vertex (0 if no vertices are present)
+    
+    // important variables to keep at runtime
+    long double _last_vertex = 0; // last current phonon vertex (0 if no vertices are present)
     int _current_order_int = 0; // internal order of diagram (2*N_{ph_{int}}) 
-    int _current_ph_ext = 0; // number of current external phonon lines in diagram (N_{ph_{ext}}) 
+    int _current_ph_ext = 0; // number of current external phonon lines in diagram (N_{ph_{ext}})
 
     Flags _flags; // flags for different calculations
 
@@ -302,10 +302,10 @@ class GreenFuncNphBands : public Diagram {
 
 
     // manage diagram
-    inline void findLastPhVertex(){_last_vertex = _vertices[_current_order_int + 2*_current_ph_ext].tau;};
-    int chooseInternalPhononPropagator();
-    int chooseExternalPhononPropagator();
-    int findVertexPosition(long double tau);
+    inline void findLastPhVertex(){_last_vertex = _tail->prev->tau;};
+    FullVertexNodeIndicator chooseInternalPhononPropagator();
+    FullVertexNodeIndicator chooseExternalPhononPropagator();
+    FullVertexNode * findVertexPosition(long double tau);
     int * findVerticesPosition(long double tau_one, long double tau_two);
     void phVertexMakeRoom(int index_one, int index_two);
     void phVertexRemoveRoom(int index_one, int index_two);
@@ -367,6 +367,7 @@ class GreenFuncNphBands : public Diagram {
     // debug methods
     void writeDiagram(std::string filename, int i, double r) const;
     void writeChosenUpdate(std::string filename, int i, double r) const;
+    void checkConnections(std::string filename) const;
 };
 
 #endif

@@ -19,15 +19,36 @@ class Diagram {
         Diagram(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz, 
             double chem_potential, int order_int_max, int ph_ext_max);
 
-        Diagram(Propagator * propagators, Vertex * vertices,
-            unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz, 
-            double chem_potential, int order_int_max, int ph_ext_max);
+        Diagram(FullVertexNode * nodes, int current_order, unsigned long long int N_diags, long double tau_max, 
+            double kx, double ky, double kz, double chem_potential, int order_int_max, int ph_ext_max);
 
         // destructor
         ~Diagram(){
-            delete[] _vertices;
-            delete[] _propagators;
-        }
+            _helper = _head;
+            _pointer_one = nullptr;
+            while(_helper != nullptr){
+                _pointer_one = _helper->next;
+                _helper->next = _free_list;
+                _helper->prev = nullptr;
+                _free_list = _helper;
+                _helper = _pointer_one;
+            }
+            
+            // reset all pointer
+            _tail = nullptr;
+            _head = nullptr;
+            _diagram_list = nullptr;
+            _pointer_one = nullptr;
+            _pointer_two = nullptr;
+            _helper = nullptr;
+
+            // free array of nodes and move _free_list to nullptr
+            delete[] _nodes;
+            _free_list = nullptr;
+            
+            delete[] _internal_used;
+            delete[] _external_used;
+        };
 
         // returns uniform random long double precision value between 0 and 1
         static inline long double drawUniformR(){std::uniform_real_distribution<long double> distrib(0,1);long double r = distrib(gen); return r;};
@@ -64,31 +85,37 @@ class Diagram {
         inline int getOrderMax() const {return _order_int_max + 2*_ph_ext_max;};
         //static inline std::mt19937 getSeed(){return gen;};
         static inline pcg32 getSeed(){return gen;};
+        void getNodes(FullVertexNode * nodes, int size);
         
         // setters
         void setRelaxSteps(unsigned long long int relax_steps);
         void setAutcorrSteps(unsigned long long int autocorr_steps);
 
         // fix double precision floating errors
-        inline void fixDoublePrecisionErrors(int total_order, double error_threshold){
-            for(int i = 0; i < total_order+1; i++){
-                if(std::abs(_propagators[i].el_propagator_kx - _kx) < error_threshold){
-                    _propagators[i].el_propagator_kx = _kx;
+        inline void fixDoublePrecisionErrors(double error_threshold){
+            _helper = _head;
+            while(_helper->next != nullptr){
+                if(std::abs(_helper->k[0] - _kx) < error_threshold){
+                    _helper->k[0] = _kx;
                 }
-                if(std::abs(_propagators[i].el_propagator_ky - _ky) < error_threshold){
-                    _propagators[i].el_propagator_ky = _ky;
+                if(std::abs(_helper->k[1] - _ky) < error_threshold){
+                    _helper->k[1] = _ky;
                 }
-                if(std::abs(_propagators[i].el_propagator_kz - _kz) < error_threshold){
-                    _propagators[i].el_propagator_kz = _kz;
+                if(std::abs(_helper->k[2] - _kz) < error_threshold){
+                    _helper->k[2] = _kz;
                 }
+                _helper = _helper->next;
             }
+            _helper = nullptr;
         };
 
-        inline void checkTimeErrors(int total_order){
-            for(int i = 1; i < total_order+1; i++)
-                if(_vertices[i].tau < _vertices[i-1].tau){
+        inline void checkTimeErrors(){
+            _helper = _head;
+            while(_helper->next != nullptr){
+                if(_helper->tau < _helper->next->tau){
                     std::cerr << "time not valid" << std::endl;
                 }
+            }
         };
 
     private:
@@ -108,18 +135,42 @@ class Diagram {
         //static thread_local std::mt19937 gen; // Mersenne Twister Algorithm, 32-bit
         static thread_local pcg32 gen; // Permuted Congruential Generator, 32-bit
 
-        // diagram backbone
         Vertex* _vertices = nullptr;
         Propagator* _propagators = nullptr;
 
-        // simulation parameters
-        long double _tau_max; // maximum value for imaginary time
-        double _kx; // x momentum
-        double _ky; // y momentum
-        double _kz; // z momentum
-        double _chem_potential; // chemical potential, normalization factor
-        int _order_int_max; // maximum internal order of diagram
-        int _ph_ext_max; // maximum number of external phonon lines
+        // pool of nodes (allocated as array)
+        FullVertexNode * _nodes = nullptr;
 
+        // pointer to array of free nodes
+        FullVertexNode* _free_list = nullptr;
+
+        // diagram backbone
+        FullVertexNode* _diagram_list = nullptr;
+
+        // support arrays for phonon propagator tracing
+        FullVertexNodeIndicator* _internal_used = nullptr;
+        FullVertexNodeIndicator* _external_used = nullptr;
+
+        // support variables
+        FullVertexNode * _head = nullptr;
+        FullVertexNode * _tail = nullptr;
+        FullVertexNode * _pointer_one = nullptr;
+        FullVertexNode * _pointer_two = nullptr;
+        FullVertexNode * _helper = nullptr;
+
+        // simulation parameters
+        long double _tau_max = 50; // maximum value for imaginary time
+        double _kx = 0; // x momentum
+        double _ky = 0; // y momentum
+        double _kz = 0; // z momentum
+        double _chem_potential = -1; // chemical potential, normalization factor
+        int _order_int_max = 0; // maximum internal order of diagram
+        int _ph_ext_max = 0; // maximum number of external phonon lines
+
+        // diagram list methods
+        void insertNode(FullVertexNode * node_pointer);
+        void deleteNode(FullVertexNode * node_pointer);
+        inline FullVertexNode * findInternalPhononVertex(int index){return _internal_used[index].linked;};
+        inline FullVertexNode * findExternalPhononVertex(int index){return _external_used[index].linked;};
 };
 #endif
