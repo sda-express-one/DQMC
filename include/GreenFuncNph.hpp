@@ -21,7 +21,7 @@ class GreenFuncNph : public Diagram {
     // constructor 
     GreenFuncNph() = default;
     GreenFuncNph(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz, 
-        double chem_potential, int order_int_max, int ph_ext_max, double el_eff_mass, double ph_dispersion);
+        double chem_potential, int order_int_max, int ph_ext_max, int data_type, double el_eff_mass, double ph_dispersion);
 
     // destructor
     ~GreenFuncNph(){

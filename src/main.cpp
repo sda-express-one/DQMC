@@ -27,7 +27,7 @@ int main(){
     // type == simple standard DMC computation
     if(sim.type == "simple"){
         GreenFuncNph diagram(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, 
-            sim.order_int_max, sim.ph_ext_max, sim.el_eff_mass, sim.ph_dispersion);
+            sim.order_int_max, sim.ph_ext_max, 0, sim.el_eff_mass, sim.ph_dispersion);
         // simulations settings
         diagram.setAlpha(sim.alpha);
         diagram.setVolume(sim.volume);
@@ -71,7 +71,7 @@ int main(){
 
         if(cpu.parallel_mode == false){
             GreenFuncNphBands diagram(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max,
-                sim.ph_ext_max, sim.num_bands, sim.num_phonon_modes);
+                sim.ph_ext_max, 1, sim.num_bands, sim.num_phonon_modes);
         
             diagram.setPhononModes(phonon_modes);
             diagram.setDielectricResponses(dielectric_responses);
@@ -116,7 +116,7 @@ int main(){
         }
         else{           
             GreenFuncNphBands diagram_relax(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max,
-                sim.ph_ext_max, sim.num_bands, sim.num_phonon_modes);
+                sim.ph_ext_max, 1, sim.num_bands, sim.num_phonon_modes);
             
             if(omp_get_max_threads() < cpu.num_procs){
                 std::cerr << "Warning! Number of cpus per nodes set exceeds current architecture capabilities." << std::endl;
@@ -177,59 +177,28 @@ int main(){
             // main simulation
             diagram_relax.markovChainMCOnlyRelax();
 
+            // gs energy estimator
             long double * gs_energy = nullptr;
             long double * gs_energy_var = nullptr;
-            /*if(sets.gs_energy){
-                gs_energy = new long double[cpu.num_procs];
-                gs_energy_var = new long double[cpu.num_procs];
-            }*/
 
+            // effective mass estimator
             long double * effective_mass = nullptr;
             long double * effective_mass_var = nullptr;
             long double ** effective_masses = nullptr;
             long double ** effective_masses_var = nullptr;
-            /*if(sets.effective_mass){
-                effective_mass = new long double[cpu.num_procs];
-                effective_mass_var = new long double[cpu.num_procs];
-                effective_masses = new long double * [cpu.num_procs];
-                effective_masses_var = new long double * [cpu.num_procs];
-                for (int i = 0; i < cpu.num_procs; i++){
-                    effective_masses[i] = new long double[3];
-                    effective_masses_var[i] = new long double[3];
-                }
-            }*/
 
+            // histogram method (GF)
             long double ** points_histogram = nullptr;
             long double ** gf_histo = nullptr;
             int num_bins_histo = diagram_relax.getNumBins();
             int num_points_exact_gf = diagram_relax.getNumPoints();
 
-            /*if(sets.histo){
-                points_histogram = new long double * [cpu.num_procs];
-                gf_histo = new long double * [cpu.num_procs];
-                for(int i = 0; i < cpu.num_procs; i++){    
-                    points_histogram[i] = new long double[num_bins_histo];
-                    gf_histo[i] = new long double[num_bins_histo];
-                }
-            }*/
-
+            // GF exact estimator
             long double ** points_gf_exact = nullptr;
             long double ** gf_values_exact = nullptr;
-            /*if(sets.gf_exact){
-                points_gf_exact = new long double * [cpu.num_procs];
-                gf_values_exact = new long double * [cpu.num_procs];
-                for(int i = 0; i < cpu.num_procs; i++){
-                    points_gf_exact[i] = new long double[num_points_exact_gf];
-                    gf_values_exact[i] = new long double[num_points_exact_gf];
-                }
-            }*/
 
+            // quasiparticle weights estimator
             long double * Z_Factor_cpus_array = nullptr;
-
-            /*if(sets.Z_factor){
-                Z_Factor_array = new long double[sim.ph_ext_max + 1];
-                Z_Factor_array_var = new long double[sim.ph_ext_max + 1];
-            }*/
 
             int current_order_int = diagram_relax.getCurrentOrderInt();
             int current_ph_ext = diagram_relax.getCurrentPhExt();
@@ -256,7 +225,7 @@ int main(){
                     nodes_thermalized = new FullVertexNode[sim.order_int_max + 2*sim.ph_ext_max + 2];
 
                     diagram_relax.getNodes(nodes_thermalized, sim.order_int_max + 2*sim.ph_ext_max + 2);
-                    current_order = diagram_relax.getCurrentOrderInt() + 2*diagram_relax.getCurrentPhExt();
+                    current_order = current_order_int + 2*current_ph_ext;
 
                     local_sim = sim;
                     local_sets = sets;
@@ -265,7 +234,7 @@ int main(){
 
                 GreenFuncNphBands diagram_simulate(nodes_thermalized, current_order,
                     local_sim.N_diags, local_sim.tau_max, local_sim.kx, local_sim.ky, local_sim.kz, local_sim.chem_potential, local_sim.order_int_max,
-                    local_sim.ph_ext_max, local_sim.num_bands, local_sim.num_phonon_modes);
+                    local_sim.ph_ext_max, 1, local_sim.num_bands, local_sim.num_phonon_modes);
                 
                 #pragma omp critical
                 {
@@ -278,10 +247,6 @@ int main(){
                 {
                     diagram_simulate.setMaster(true);
                     num_threads = omp_get_num_threads();
-                    /*delete[] propagators_thermalized;
-                    delete[] bands_thermalized;
-                    delete[] vertices_thermalized;*/
-                    
                 }
                 #pragma omp barrier
                 

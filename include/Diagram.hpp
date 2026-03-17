@@ -17,37 +17,43 @@ class Diagram {
         // constructor
         Diagram() = default;
         Diagram(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz, 
-            double chem_potential, int order_int_max, int ph_ext_max);
+            double chem_potential, int order_int_max, int ph_ext_max, int data_type);
 
         Diagram(FullVertexNode * nodes, int current_order, unsigned long long int N_diags, long double tau_max, 
-            double kx, double ky, double kz, double chem_potential, int order_int_max, int ph_ext_max);
+            double kx, double ky, double kz, double chem_potential, int order_int_max, int ph_ext_max, int data_type);
 
         // destructor
         ~Diagram(){
-            _helper = _head;
-            _pointer_one = nullptr;
-            while(_helper != nullptr){
-                _pointer_one = _helper->next;
-                _helper->next = _free_list;
-                _helper->prev = nullptr;
-                _free_list = _helper;
-                _helper = _pointer_one;
+            if(_data_type == _data_type_array[0]){
+                delete[] _vertices;
+                delete[] _propagators;
             }
+            else if(_data_type == _data_type_array[1]){
+                _helper = _head;
+                _pointer_one = nullptr;
+                while(_helper != nullptr){
+                    _pointer_one = _helper->next;
+                    _helper->next = _free_list;
+                    _helper->prev = nullptr;
+                    _free_list = _helper;
+                    _helper = _pointer_one;
+                }
             
-            // reset all pointer
-            _tail = nullptr;
-            _head = nullptr;
-            _diagram_list = nullptr;
-            _pointer_one = nullptr;
-            _pointer_two = nullptr;
-            _helper = nullptr;
+                // reset all pointer
+                _tail = nullptr;
+                _head = nullptr;
+                _diagram_list = nullptr;
+                _pointer_one = nullptr;
+                _pointer_two = nullptr;
+                _helper = nullptr;
 
-            // free array of nodes and move _free_list to nullptr
-            delete[] _nodes;
-            _free_list = nullptr;
+                // free array of nodes and move _free_list to nullptr
+                delete[] _nodes;
+                _free_list = nullptr;
             
-            delete[] _internal_used;
-            delete[] _external_used;
+                delete[] _internal_used;
+                delete[] _external_used;
+            }
         };
 
         // returns uniform random long double precision value between 0 and 1
@@ -112,9 +118,10 @@ class Diagram {
         inline void checkTimeErrors(){
             _helper = _head;
             while(_helper->next != nullptr){
-                if(_helper->tau < _helper->next->tau){
+                if(_helper->tau > _helper->next->tau){
                     std::cerr << "time not valid" << std::endl;
                 }
+                _helper = _helper->next;
             }
         };
 
@@ -167,9 +174,13 @@ class Diagram {
         int _order_int_max = 0; // maximum internal order of diagram
         int _ph_ext_max = 0; // maximum number of external phonon lines
 
+        // data structure type
+        const int _data_type = 0;
+        int _data_type_array[2] = {0, 1};
+
         // diagram list methods
         void insertNode(FullVertexNode * node_pointer);
-        void deleteNode(FullVertexNode * node_pointer);
+        void deleteNode(FullVertexNode *& node_pointer);
         inline FullVertexNode * findInternalPhononVertex(int index){return _internal_used[index].linked;};
         inline FullVertexNode * findExternalPhononVertex(int index){return _external_used[index].linked;};
 };
