@@ -362,7 +362,10 @@ class GreenFuncNphBands : public Diagram {
     void effectiveMassBlockEstimator(long double avg, long double xP, long double yP, long double zP);
     // quasiparticle weight estimator
     void ZFactorExactEstimator(long double tau_length);
-    inline long double computeZFactor(int i) const {return static_cast<long double>(_Z_factor_array[i])/static_cast<long double>(_Z_factor_count);};
+    inline long double computeZFactor(int i) const {
+        if(_Z_factor_count == 0){return 0;}
+        return static_cast<long double>(_Z_factor_array[i])/static_cast<long double>(_Z_factor_count);
+    };
 
     // debug methods
     void writeDiagram(std::string filename, int i, double r) const;

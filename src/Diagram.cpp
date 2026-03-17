@@ -89,33 +89,17 @@ Diagram::Diagram(FullVertexNode * nodes, int current_order, unsigned long long i
     _diagram_list = &_nodes[0];
     _head = &_nodes[0];
     _tail = &_nodes[1];
-    for(int i = 0; i < _order_int_max + 2*_ph_ext_max + 2; ++i){
-        if(i < current_order + 2){
-            _nodes[i] = nodes[i];
 
-            if(i == 0){
-                _nodes[i].prev = nullptr;
-                _nodes[i].next = &_nodes[2];
-            }
-            else if(i == 1){
-                _nodes[i].prev = &_nodes[current_order+1];
-                _nodes[i].next = nullptr;
-            }
-            else if(i == 2){
-                _nodes[i].prev = &_nodes[0];
-                _nodes[i].next = &_nodes[i+1];
-            }
-            else if(i == current_order + 1){
-                _nodes[i].prev = &_nodes[i-1];
-                _nodes[i].next = &_nodes[1];
-            }
-            else{
-                _nodes[i].prev = &_nodes[i-1];
-                _nodes[i].next = &_nodes[i+1];
-            }
-        }
-        else{
-            if(i == current_order + 2){
+    if(current_order == 0){
+        _nodes[0] = nodes[0];
+        _nodes[1] = nodes[1];
+        _nodes[0].prev = nullptr;
+        _nodes[0].next = &_nodes[1];
+        _nodes[1].prev = &_nodes[0];
+        _nodes[1].next = nullptr;
+
+        for(int i = 2; i < _order_int_max + 2*_ph_ext_max; ++i){
+            if(i == 2){
                 _free_list = &_nodes[i];
                 _nodes[i].prev = nullptr;
                 _nodes[i].next = &_nodes[i+1];
@@ -123,13 +107,62 @@ Diagram::Diagram(FullVertexNode * nodes, int current_order, unsigned long long i
             else if(i == _order_int_max + 2*_ph_ext_max +1){
                 _nodes[i].prev = &_nodes[i-1];
                 _nodes[i].next = nullptr;
-            }
+            }   
             else{
                 _nodes[i].prev = &_nodes[i-1];
                 _nodes[i].next = &_nodes[i+1];
             }
         }
     }
+    else{
+        for(int i = 0; i < _order_int_max + 2*_ph_ext_max + 2; ++i){
+            if(i < current_order + 2){
+                _nodes[i] = nodes[i];
+
+                if(i == 0){
+                    _nodes[i].prev = nullptr;
+                    _nodes[i].next = &_nodes[2];
+                }
+                else if(i == 1){
+                    _nodes[i].prev = &_nodes[current_order+1];
+                    _nodes[i].next = nullptr;
+                }
+                else if(i == 2){
+                    _nodes[i].prev = &_nodes[0];
+                    _nodes[i].next = &_nodes[i+1];
+                }
+                else if(i == current_order + 1){
+                    _nodes[i].prev = &_nodes[i-1];
+                    _nodes[i].next = &_nodes[1];
+                }
+                else{
+                    _nodes[i].prev = &_nodes[i-1];
+                    _nodes[i].next = &_nodes[i+1];
+                }
+            }
+            else{
+                if(i == current_order + 2){
+                    _free_list = &_nodes[i];
+                    _nodes[i].prev = nullptr;
+                    _nodes[i].next = &_nodes[i+1];
+                }
+                else if(i == _order_int_max + 2*_ph_ext_max +1){
+                    _nodes[i].prev = &_nodes[i-1];
+                    _nodes[i].next = nullptr;
+                }   
+                else{
+                    _nodes[i].prev = &_nodes[i-1];
+                    _nodes[i].next = &_nodes[i+1];
+                }
+            }
+        }
+    }
+
+    /*_helper = _head;
+    while(_helper != nullptr){
+        std::cout << _helper->tau << " next: " << _helper->tau_next << std::endl;
+        _helper = _helper->next;
+    }*/
 
     _internal_used = new FullVertexNodeIndicator[_order_int_max];
     _external_used = new FullVertexNodeIndicator[2*_ph_ext_max];
@@ -160,6 +193,7 @@ Diagram::Diagram(FullVertexNode * nodes, int current_order, unsigned long long i
                     _internal_used[internal_index].linked = &_nodes[j];
                     _internal_used[internal_index].used = true;
                     _internal_used[internal_index].position = internal_index;
+                    _internal_used[internal_index].conjugated = &_internal_used[internal_index - 1];
                     ++internal_index;
                 }
                 ++j;
@@ -179,6 +213,7 @@ Diagram::Diagram(FullVertexNode * nodes, int current_order, unsigned long long i
                     _external_used[external_index].linked = &_nodes[j];
                     _external_used[external_index].used = true;
                     _external_used[external_index].position = external_index;
+                    _external_used[external_index].conjugated = &_external_used[external_index - 1];
                     ++external_index;
                 }
                 ++j;

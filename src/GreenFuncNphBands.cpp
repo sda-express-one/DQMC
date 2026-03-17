@@ -131,7 +131,6 @@ double chem_potential, int order_int_max, int ph_ext_max, int data_type = 1, int
     }
 
     findLastPhVertex();
-    std::cout << _last_vertex << std::endl;
 };
 
 void GreenFuncNphBands::getEffectiveMasses(long double * effective_masses) const {
@@ -3941,7 +3940,7 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
 
         if(_num_bands == 1){
             mx = _m_x_el; my = _m_y_el; mz = _m_z_el;
-            
+
             mass_average_inv_x = (_head->tau_next - _head->tau)/mx;
             mass_average_inv_y = (_head->tau_next - _head->tau)/my;
             mass_average_inv_z = (_head->tau_next - _head->tau)/mz;

@@ -10,7 +10,7 @@ kx 0
 ky 0
 kz 0
 coupling_strength 0.276
-chemical_potential -0.5
+chemical_potential -0.6
 max_internal_order 5000
 max_num_ext_phonons 500
 # electron_effective_mass 0.089

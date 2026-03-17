@@ -4,8 +4,8 @@
 # choose number of cpus to use in each node, write MAX to use all available cpus
 # choose number of iterations to perform to avoid correlations between different cpus
 
-parallel_mode false
+parallel_mode true
 nodes 1
-cpus 2
-autocorr_steps 100000
+cpus 4
+autocorr_steps 10000000
 cpu_time true
