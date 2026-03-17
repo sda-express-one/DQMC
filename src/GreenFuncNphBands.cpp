@@ -306,27 +306,30 @@ void GreenFuncNphBands::setTauCutoffStatistics(long double tau_cutoff_statistics
     _tau_cutoff_statistics = tau_cutoff_statistics;
 };
 
+// NOT OKAY???
 FullVertexNode * GreenFuncNphBands::findVertexPosition(long double tau){
-    if(_head->next == _tail){
-        if(tau <= _tail->tau){return _head;}
-        return nullptr;
+    // ?????????????????????????
+    if(tau > _tail->tau || isEqual(tau, _tail->tau)){return nullptr;}
+    else if(tau < _head->tau_next){
+        if(!isEqual(0, tau) && !isEqual(tau, _head->tau_next)){return _head;}
+        else{return nullptr;}
     }
     else{
         double tau_inf = 0;
         double tau_sup = _tau_max;
-        int iterations = std::max(_order_int_max, 2*_ph_ext_max);
+        int iterations = std::max(_current_order_int, 2*_current_ph_ext);
         for(int i=0; i<iterations; ++i){
             if(i < _current_order_int){
                 tau_inf = _internal_used[i].linked->tau;
                 tau_sup = _internal_used[i].linked->tau_next;
                 // return pointer if conditions are satisfied
-                if(tau > tau_inf && tau < tau_sup){return _internal_used[i].linked;}
+                if(tau > tau_inf && tau < tau_sup && !isEqual(tau, tau_inf) && !isEqual(tau, tau_sup)){return _internal_used[i].linked;}
             }
             if(i < 2*_current_ph_ext){
                 tau_inf = _external_used[i].linked->tau;
                 tau_sup = _external_used[i].linked->tau_next;
                 // return pointer if condition is satisfied
-                if(tau > tau_inf && tau < tau_sup){return _external_used[i].linked;}
+                if(tau > tau_inf && tau < tau_sup && !isEqual(tau, tau_inf) && !isEqual(tau, tau_sup)){return _external_used[i].linked;}
             }
         }
         return nullptr;
@@ -473,7 +476,7 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
         if(propagator > 0){
             int temp = propagator;
             if(propagator < _current_order_int + 1){
-                propagator = propagator--;
+                propagator = propagator - 1;
                 _pointer_one = findInternalPhononVertex(propagator);
                 tau_init = _pointer_one->tau;
                 tau_end = _pointer_one->next->tau;
@@ -573,7 +576,7 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
 
             _helper = _pointer_one;
 
-            while(_helper->prev != _pointer_two){
+            while(_helper != _pointer_two->next){
                 
                 // initial diagram momenta
                 px_init = _helper->k[0];
@@ -603,7 +606,7 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
                     _bands_fin[i].c3 = new_overlap(2);
                         
                     // compute vertex terms
-                    if(i == 0){
+                    if(_helper == _pointer_one){
                         prefactor_fin = prefactor_fin*vertexOverlapTerm(_bands_init[0], new_overlap);
                     }
                     else{
@@ -626,7 +629,7 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
                     action_init += energy_init*(tau_two-tau_one);
                     action_fin += energy_fin*(tau_two-tau_one);
                 }
-                else if(i == 0){
+                else if(_helper == _pointer_one){
                     action_init += energy_init*(_helper->tau_next-tau_one);
                     action_fin += energy_fin*(_helper->tau_next-tau_one);
                 }
@@ -729,7 +732,7 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
                     _helper->k[1] -= w_y;
                     _helper->k[2] -= w_z;
                     _helper->electronic_band = _bands_fin[i];
-                    i++;
+                    ++i;
                     _helper = _helper->next;
                 }
                 _helper = nullptr;
@@ -2357,6 +2360,7 @@ void GreenFuncNphBands::swapPhononPropagator(){
         if(_pointer_two->type != 1 || _pointer_two->type != -1){
             _pointer_one = nullptr;
             _pointer_two = nullptr;
+            if(_num_bands > 1){updateNegativeDiagrams(5);}
             return; // reject if they are not both internal vertices
         }
 
@@ -2408,7 +2412,7 @@ void GreenFuncNphBands::swapPhononPropagator(){
             }
             else{
                 // choose at random one of the bands
-                std::uniform_int_distribution<int> distrib_unif(0,2);
+                std::uniform_int_distribution<int> distrib_unif(0,_num_bands-1);
                 chosen_band = distrib_unif(gen);
 
                 double eigenval = new_values_matrix(0,chosen_band);
@@ -3937,9 +3941,14 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
 
         if(_num_bands == 1){
             mx = _m_x_el; my = _m_y_el; mz = _m_z_el;
+            
             mass_average_inv_x = (_head->tau_next - _head->tau)/mx;
             mass_average_inv_y = (_head->tau_next - _head->tau)/my;
             mass_average_inv_z = (_head->tau_next - _head->tau)/mz;
+
+            electron_average_kx = _head->k[0]*(_head->tau_next - _head->tau);
+            electron_average_ky = _head->k[1]*(_head->tau_next - _head->tau);
+            electron_average_kz = _head->k[2]*(_head->tau_next - _head->tau);
 
             for(int i=0; i < std::max(_current_order_int, 2*_current_ph_ext); ++i){
                 if(i < _current_order_int){
@@ -4001,7 +4010,6 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
 
         // compute inverse of (average) effective mass, _D dimensionality of the system
         double inv_mass_avg = (tau_length*(std::pow(electron_average_kx,2) + std::pow(electron_average_ky,2) + std::pow(electron_average_kz,2))/_D);
-        //static_cast<long double>(_m_x_el/3.+_m_y_el/3.+_m_z_el/3.)
 
         if(_flags.blocking_analysis){effectiveMassBlockEstimator(inv_mass_avg, xP_inv, yP_inv, zP_inv);}
         _effective_mass_count++;
@@ -4316,6 +4324,9 @@ void GreenFuncNphBands::writeMCStatistics(std::string filename) const {
         file << "Total ratio (simulation): " << _ratio_negative_updates << "." << std::endl;
         file << "\n";
     }
+    file << "Probabilities: " << _p_length << ", " <<  _p_add_int << ", " << _p_rem_int << ", " << _p_add_ext << ", "
+        << _p_rem_ext << ", "<< _p_swap << ", " << _p_shift << ", " << _p_stretch << ".\n";
+    file << "\n";
 
     file.close();
     std::cout << "Values' statistics written to file " << filename << "." << std::endl;
