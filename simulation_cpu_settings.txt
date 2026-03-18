@@ -6,6 +6,6 @@
 
 parallel_mode true
 nodes 1
-cpus 4
+cpus 2
 autocorr_steps 10000000
 cpu_time true
