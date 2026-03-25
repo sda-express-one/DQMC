@@ -19,7 +19,8 @@ class Diagram {
         Diagram(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz, 
             double chem_potential, int order_int_max, int ph_ext_max, int data_type);
 
-        Diagram(FullVertexNode * nodes, int current_order, unsigned long long int N_diags, long double tau_max, 
+        Diagram(FullVertexNode * nodes, FullVertexNodeIndicator * internal_used, FullVertexNodeIndicator * external_used, 
+            int current_order, unsigned long long int N_diags, long double tau_max, 
             double kx, double ky, double kz, double chem_potential, int order_int_max, int ph_ext_max, int data_type);
 
         // destructor
@@ -91,7 +92,7 @@ class Diagram {
         inline int getOrderMax() const {return _order_int_max + 2*_ph_ext_max;};
         //static inline std::mt19937 getSeed(){return gen;};
         static inline pcg32 getSeed(){return gen;};
-        void getNodes(FullVertexNode * nodes, int size);
+        void getNodes(FullVertexNode * nodes, FullVertexNodeIndicator * internal_used, FullVertexNodeIndicator * external_used, int size);
         
         // setters
         void setRelaxSteps(unsigned long long int relax_steps);

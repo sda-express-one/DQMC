@@ -26,8 +26,8 @@ class GreenFuncNphBands : public Diagram {
     GreenFuncNphBands(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
         double chem_potential, int order_int_max, int ph_ext_max, int data_type, int num_bands, int phonon_modes);
     
-    GreenFuncNphBands(FullVertexNode * nodes, int current_order,
-        unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
+    GreenFuncNphBands(FullVertexNode * nodes, FullVertexNodeIndicator * internal_used, FullVertexNodeIndicator * external_used, 
+        int current_order, unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
         double chem_potential, int order_int_max, int ph_ext_max, int data_type, int num_bands, int phonon_modes);
 
     // destructor

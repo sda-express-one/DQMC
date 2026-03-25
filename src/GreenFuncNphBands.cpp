@@ -69,10 +69,10 @@ double chem_potential, int order_int_max, int ph_ext_max, int data_type = 1, int
     findLastPhVertex();
 };
 
-GreenFuncNphBands::GreenFuncNphBands(FullVertexNode* nodes, int current_order,
+GreenFuncNphBands::GreenFuncNphBands(FullVertexNode* nodes, FullVertexNodeIndicator * internal_used, FullVertexNodeIndicator * external_used, int current_order,
 unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
 double chem_potential, int order_int_max, int ph_ext_max, int data_type = 1, int num_bands = 1, int phonon_modes = 1) 
-: Diagram(nodes, current_order, N_diags, tau_max, kx, ky, kz, chem_potential, order_int_max, ph_ext_max, data_type) {
+: Diagram(nodes, internal_used, external_used, current_order, N_diags, tau_max, kx, ky, kz, chem_potential, order_int_max, ph_ext_max, data_type) {
      // initialize flags
     _flags.gs_energy = false;
     _flags.effective_mass = false;
@@ -1143,11 +1143,11 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             double action_two_fin = 0.;
 
             int i = 0;
-            bool first_part = false, second_part = true;
+            bool first_part = false;
             _helper = _head;
 
             while(_helper->next != nullptr){ 
-                while(!first_part){
+                if(!first_part){
                     // retrieve momentum values for propagators below first ph vertex
                     px_init = _helper->k[0];
                     px_fin = px_init - w_x;
@@ -1199,20 +1199,14 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                     else{
                         action_one_init += energy_init*(tau_one - _helper->tau);
                         action_one_fin += energy_fin*(tau_one - _helper->tau);
-                        first_part = true;
-                        second_part = false;
+                        // new vertex (left)
+                        if(_num_bands == 3){
+                            prefactor_fin = prefactor_fin*vertexOverlapTerm(_bands_fin[i], _pointer_one->electronic_band);
+                        }
+                        //first_part = true;
                     }
-                    _helper = _helper->next;
-                    ++i;
                 }
-
-                // new vertex (left)
-                if(_num_bands == 3){
-                     prefactor_fin = prefactor_fin*vertexOverlapTerm(_bands_fin[i-1], _pointer_one->electronic_band);
-                }
-                _helper = _pointer_two;
-
-                while(!second_part){
+                else{
                     // retrieve momentum values for propagators above second ph vertex
                     px_init = _helper->k[0];
                     px_fin = px_init - w_x;
@@ -1277,11 +1271,14 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                         action_two_init += energy_init*(_helper->tau_next - _helper->tau);
                         action_two_fin += energy_fin*(_helper->tau_next - _helper->tau);
                     }
-                    if(_helper->next == _tail){second_part = true;}
-
-                    _helper = _helper->next;
-                    ++i;
                 }
+
+                _helper = _helper->next;
+                if(_helper == _pointer_one->next && !first_part){
+                    _helper = _pointer_two;
+                    first_part = true;
+                }
+                ++i;
             }
             
             double p_B = _p_rem_ext;
@@ -1297,7 +1294,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                                         _dielectric_responses[phonon_index], _dielectric_const, mass_q);
 
             double numerator = p_B*std::exp(-(action_two_fin + action_one_fin - action_two_init - action_one_init + 
-                phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))*prefactor_fin*_V_BZ; // *_num_bands*_num_bands
+                phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))*prefactor_fin*_V_BZ;
 
             double denominator = p_A*std::pow(2*M_PI,_D)
                 *phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*tau_one)
@@ -1470,7 +1467,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
 
                 _bands_init[i] = _helper->electronic_band;
 
-                if(_num_bands == 3 && _helper != _head){    
+                if(_num_bands == 3 && _helper != _head){
                     prefactor_init = prefactor_init*vertexOverlapTerm(_bands_init[i-1], _bands_init[i]);
                 }
 
@@ -1621,7 +1618,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                                         _dielectric_responses[phonon_index], _dielectric_const, mass_q);
 
             double numerator = p_B*std::exp(-(action_fin - action_init + phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two+tau_one)))
-                                *prefactor_fin*_V_BZ; // *_num_bands*_num_bands
+                                *prefactor_fin*_V_BZ;
 
             double denominator = p_A*std::pow(2*M_PI,_D)*phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*tau_one)
                                 *phononEnergy(_phonon_modes, phonon_index)*std::exp(-phononEnergy(_phonon_modes, phonon_index)*(tau_current-tau_two))
@@ -3881,37 +3878,37 @@ double GreenFuncNphBands::groundStateEnergyExactEstimator(long double tau_length
 
         // main loop
         for(int i = 0; i < std::max(_current_order_int, 2*_current_ph_ext); ++i){
-        if(i < _current_order_int){
-            _helper = _internal_used[i].linked;
-            tau_one = _helper->tau;
-            electron_energy = electronEnergy(_helper->k[0], _helper->k[1], _helper->k[2], _helper->electronic_band.effective_mass);
-            electron_action += electron_energy*(_helper->tau_next - tau_one);
+            if(i < _current_order_int){
+                _helper = _internal_used[i].linked;
+                tau_one = _helper->tau;
+                electron_energy = electronEnergy(_helper->k[0], _helper->k[1], _helper->k[2], _helper->electronic_band.effective_mass);
+                electron_action += electron_energy*(_helper->tau_next - tau_one);
 
-            if(_helper->type == 1){
-                phonon_index = _helper->index;
-                second_helper = _internal_used[i].conjugated->linked;
-                tau_two = second_helper->tau;
-                phonon_action += phononEnergy(_phonon_modes, phonon_index)*(tau_two - tau_one);
+                if(_helper->type == 1){
+                    phonon_index = _helper->index;
+                    second_helper = _internal_used[i].conjugated->linked;
+                    tau_two = second_helper->tau;
+                    phonon_action += phononEnergy(_phonon_modes, phonon_index)*(tau_two - tau_one);
+                }
             }
-        }
-        _helper = nullptr;
-        second_helper = nullptr;
-        if(i < 2*_current_ph_ext){
-            _helper = _external_used[i].linked;
-            tau_one = _helper->tau;
-            electron_energy = electronEnergy(_helper->k[0], _helper->k[1], _helper->k[2], _helper->electronic_band.effective_mass);
-            electron_action += electron_energy*(_helper->tau_next - tau_one);
+            _helper = nullptr;
+            second_helper = nullptr;
+            if(i < 2*_current_ph_ext){
+                _helper = _external_used[i].linked;
+                tau_one = _helper->tau;
+                electron_energy = electronEnergy(_helper->k[0], _helper->k[1], _helper->k[2], _helper->electronic_band.effective_mass);
+                electron_action += electron_energy*(_helper->tau_next - tau_one);
 
-            if(_helper->type == -2){
-                phonon_index = _helper->index;
-                second_helper = _external_used[i].conjugated->linked;
-                tau_two = second_helper->tau;
-                phonon_action += phononEnergy(_phonon_modes, phonon_index)*(tau_length + tau_one - tau_two);
+                if(_helper->type == -2){
+                    phonon_index = _helper->index;
+                    second_helper = _external_used[i].conjugated->linked;
+                    tau_two = second_helper->tau;
+                    phonon_action += phononEnergy(_phonon_modes, phonon_index)*(tau_length + tau_one - tau_two);
+                }
             }
+            _helper = nullptr;
+            second_helper = nullptr;
         }
-        _helper = nullptr;
-        second_helper = nullptr;
-    }
 
         double diagram_energy = (electron_action + phonon_action - static_cast<double>(current_order))/tau_length; // energy of current diagram
 
@@ -3933,7 +3930,7 @@ void GreenFuncNphBands::groundStateEnergyBlockEstimator(long double gs_energy){
 double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
     if(tau_length <= _tau_cutoff_mass){return 0;}
     else{
-        double mass_average_inv_x = 0; double mass_average_inv_y = 0; double mass_average_inv_z = 0;
+        //double mass_average_inv_x = 0; double mass_average_inv_y = 0; double mass_average_inv_z = 0;
         double electron_average_kx = 0; double electron_average_ky = 0; double electron_average_kz = 0;
         double mx, my, mz;
         double xP_inv = 1, yP_inv = 1, zP_inv = 1; 
@@ -3941,9 +3938,9 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
         if(_num_bands == 1){
             mx = _m_x_el; my = _m_y_el; mz = _m_z_el;
 
-            mass_average_inv_x = (_head->tau_next - _head->tau)/mx;
-            mass_average_inv_y = (_head->tau_next - _head->tau)/my;
-            mass_average_inv_z = (_head->tau_next - _head->tau)/mz;
+            //mass_average_inv_x = (_head->tau_next - _head->tau)/mx;
+            //mass_average_inv_y = (_head->tau_next - _head->tau)/my;
+            //mass_average_inv_z = (_head->tau_next - _head->tau)/mz;
 
             electron_average_kx = _head->k[0]*(_head->tau_next - _head->tau);
             electron_average_ky = _head->k[1]*(_head->tau_next - _head->tau);
@@ -3953,9 +3950,9 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
                 if(i < _current_order_int){
                     _helper = _internal_used[i].linked;
 
-                    mass_average_inv_x += (_helper->tau_next - _helper->tau)/mx;
-                    mass_average_inv_y += (_helper->tau_next - _helper->tau)/my;
-                    mass_average_inv_z += (_helper->tau_next - _helper->tau)/mz;
+                    //mass_average_inv_x += (_helper->tau_next - _helper->tau)/mx;
+                    //mass_average_inv_y += (_helper->tau_next - _helper->tau)/my;
+                    //mass_average_inv_z += (_helper->tau_next - _helper->tau)/mz;
 
                     electron_average_kx += _helper->k[0]*(_helper->tau_next - _helper->tau)/mx;
                     electron_average_ky += _helper->k[1]*(_helper->tau_next - _helper->tau)/my;
@@ -3964,9 +3961,9 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
                 if(i < 2*_current_ph_ext){
                     _helper = _external_used[i].linked;
                     
-                    mass_average_inv_x += (_helper->tau_next - _helper->tau)/mx;
-                    mass_average_inv_y += (_helper->tau_next - _helper->tau)/my;
-                    mass_average_inv_z += (_helper->tau_next - _helper->tau)/mz;
+                    //mass_average_inv_x += (_helper->tau_next - _helper->tau)/mx;
+                    //mass_average_inv_y += (_helper->tau_next - _helper->tau)/my;
+                    //mass_average_inv_z += (_helper->tau_next - _helper->tau)/mz;
 
                     electron_average_kx += _helper->k[0]*(_helper->tau_next - _helper->tau)/mx;
                     electron_average_ky += _helper->k[1]*(_helper->tau_next - _helper->tau)/my;
@@ -3974,17 +3971,17 @@ double GreenFuncNphBands::effectiveMassExactEstimator(long double tau_length){
                 }
             }
 
-            mass_average_inv_x = (1./tau_length)*mass_average_inv_x;
-            mass_average_inv_y = (1./tau_length)*mass_average_inv_y;
-            mass_average_inv_z = (1./tau_length)*mass_average_inv_z;
+            //mass_average_inv_x = (1./tau_length)*mass_average_inv_x;
+            //mass_average_inv_y = (1./tau_length)*mass_average_inv_y;
+            //mass_average_inv_z = (1./tau_length)*mass_average_inv_z;
 
             electron_average_kx = (1./tau_length)*electron_average_kx*electron_average_kx;
             electron_average_ky = (1./tau_length)*electron_average_ky*electron_average_ky;
             electron_average_kz = (1./tau_length)*electron_average_kz*electron_average_kz;
 
-            xP_inv = static_cast<long double>(mass_average_inv_x - electron_average_kx); // x component
-            yP_inv = static_cast<long double>(mass_average_inv_y - electron_average_ky); // y component
-            zP_inv = static_cast<long double>(mass_average_inv_z - electron_average_kz); // z component
+            xP_inv = static_cast<long double>(1./_m_x_el) - static_cast<long double>(electron_average_kx); // x component
+            yP_inv = static_cast<long double>(1./_m_y_el) - static_cast<long double>(electron_average_ky); // y component
+            zP_inv = static_cast<long double>(1./_m_z_el) - static_cast<long double>(electron_average_kz); // z component
 
             _effective_masses[0] += xP_inv; // x component
             _effective_masses[1] += yP_inv; // y component

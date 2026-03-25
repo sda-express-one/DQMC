@@ -214,6 +214,8 @@ int main(){
                 int ID = omp_get_thread_num();
 
                 FullVertexNode * nodes_thermalized = nullptr;
+                FullVertexNodeIndicator * internal_used_thermalized = nullptr;
+                FullVertexNodeIndicator * external_used_thermalized = nullptr;
                 int current_order = 0;
 
                 parameters local_sim;
@@ -223,8 +225,10 @@ int main(){
                 #pragma omp critical
                 {   
                     nodes_thermalized = new FullVertexNode[sim.order_int_max + 2*sim.ph_ext_max + 2];
+                    internal_used_thermalized = new FullVertexNodeIndicator[sim.order_int_max];
+                    external_used_thermalized = new FullVertexNodeIndicator[2*sim.ph_ext_max];
 
-                    diagram_relax.getNodes(nodes_thermalized, sim.order_int_max + 2*sim.ph_ext_max + 2);
+                    diagram_relax.getNodes(nodes_thermalized, internal_used_thermalized, external_used_thermalized, sim.order_int_max + 2*sim.ph_ext_max + 2);
                     current_order = current_order_int + 2*current_ph_ext;
 
                     local_sim = sim;
@@ -232,7 +236,7 @@ int main(){
                     local_cpu = cpu;
                 }
 
-                GreenFuncNphBands diagram_simulate(nodes_thermalized, current_order,
+                GreenFuncNphBands diagram_simulate(nodes_thermalized, internal_used_thermalized, external_used_thermalized, current_order,
                     local_sim.N_diags, local_sim.tau_max, local_sim.kx, local_sim.ky, local_sim.kz, local_sim.chem_potential, local_sim.order_int_max,
                     local_sim.ph_ext_max, 1, local_sim.num_bands, local_sim.num_phonon_modes);
                 
@@ -240,6 +244,8 @@ int main(){
                 {
                     Diagram::setSeed(seed, ID*2654435761U);
                     delete[] nodes_thermalized;
+                    delete[] internal_used_thermalized;
+                    delete[] external_used_thermalized;
                 }
                 #pragma omp barrier
                 

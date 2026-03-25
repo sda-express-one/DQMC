@@ -76,7 +76,8 @@ Diagram::Diagram(unsigned long long int N_diags, long double tau_max, double kx,
     }
 };
 
-Diagram::Diagram(FullVertexNode * nodes, int current_order, unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
+Diagram::Diagram(FullVertexNode * nodes, FullVertexNodeIndicator * internal_used, FullVertexNodeIndicator * external_used, 
+    int current_order, unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
     double chem_potential, int order_int_max, int ph_ext_max, int data_type) : _N_diags(N_diags), _tau_max(tau_max),
     _chem_potential(chem_potential), _order_int_max(returnEven(order_int_max)), _ph_ext_max(ph_ext_max), _data_type(data_type) {
 
@@ -85,10 +86,18 @@ Diagram::Diagram(FullVertexNode * nodes, int current_order, unsigned long long i
     _ky = ky;
     _kz = kz;
 
+    _internal_used = new FullVertexNodeIndicator[_order_int_max];
+    _external_used = new FullVertexNodeIndicator[2*_ph_ext_max];
+
     _nodes = new FullVertexNode[_order_int_max + 2*_ph_ext_max + 2];
     _diagram_list = &_nodes[0];
     _head = &_nodes[0];
     _tail = &_nodes[1];
+    
+    int j = 0, k = 0;
+    int counter_int = 0, counter_ext = 0;
+    FullVertexNode * second_helper = nullptr;
+    FullVertexNode * third_helper = nullptr;
 
     if(current_order == 0){
         _nodes[0] = nodes[0];
@@ -98,13 +107,21 @@ Diagram::Diagram(FullVertexNode * nodes, int current_order, unsigned long long i
         _nodes[1].prev = &_nodes[0];
         _nodes[1].next = nullptr;
 
-        for(int i = 2; i < _order_int_max + 2*_ph_ext_max; ++i){
+        _internal_used[0].position = 0;
+        _external_used[0].position = 0;
+        _internal_used[1].position = 1;
+        _external_used[1].position = 1;
+
+        for(int i = 2; i < _order_int_max + 2*_ph_ext_max + 2; ++i){
+            if(i < _order_int_max){_internal_used[i].position = i;}
+            if(i < 2*_ph_ext_max){_external_used[i].position = i;}
+
             if(i == 2){
                 _free_list = &_nodes[i];
                 _nodes[i].prev = nullptr;
                 _nodes[i].next = &_nodes[i+1];
             }
-            else if(i == _order_int_max + 2*_ph_ext_max +1){
+            else if(i == _order_int_max + 2*_ph_ext_max + 1){
                 _nodes[i].prev = &_nodes[i-1];
                 _nodes[i].next = nullptr;
             }   
@@ -116,6 +133,9 @@ Diagram::Diagram(FullVertexNode * nodes, int current_order, unsigned long long i
     }
     else{
         for(int i = 0; i < _order_int_max + 2*_ph_ext_max + 2; ++i){
+            if(i < _order_int_max){_internal_used[i].position = i;}
+            if(i < 2*_ph_ext_max){_external_used[i].position = i;}
+
             if(i < current_order + 2){
                 _nodes[i] = nodes[i];
 
@@ -139,6 +159,49 @@ Diagram::Diagram(FullVertexNode * nodes, int current_order, unsigned long long i
                     _nodes[i].prev = &_nodes[i-1];
                     _nodes[i].next = &_nodes[i+1];
                 }
+
+                
+                if(_nodes[i].type == +1){
+                    second_helper = &nodes[i];
+                    j = 0;
+                    k = 0;
+                    
+                    while(internal_used[j].linked != second_helper){++j;}
+                    _internal_used[counter_int].linked = &_nodes[i];
+                    _internal_used[counter_int].used = true;
+                    ++counter_int;
+
+                    third_helper = internal_used[j].conjugated->linked;
+                    while(&nodes[k] != third_helper){++k;}
+                    _internal_used[counter_int].linked = &_nodes[k];
+                    _internal_used[counter_int].used = true;
+
+                    _internal_used[counter_int].conjugated = &_internal_used[counter_int - 1];
+                    _internal_used[counter_int - 1].conjugated = &_internal_used[counter_int];
+                    ++counter_int;
+                }
+                else if(_nodes[i].type == -2){
+                    second_helper = &nodes[i];
+                    j = 0;
+                    k = 0;
+
+                    while(external_used[j].linked != second_helper){++j;}
+                    _external_used[counter_ext].linked = &_nodes[i];
+                    _external_used[counter_ext].used = true;
+                    ++counter_ext;
+
+                    third_helper = external_used[j].conjugated->linked;
+                    while(&nodes[k] != third_helper){++k;}
+                    _external_used[counter_ext].linked = &_nodes[k];
+                    _external_used[counter_ext].used = true;
+
+                    _external_used[counter_ext].conjugated = &_external_used[counter_ext - 1];
+                    _external_used[counter_ext - 1].conjugated = &_external_used[counter_ext];
+                    ++counter_ext;
+                }
+
+                second_helper = nullptr;
+                third_helper = nullptr;
             }
             else{
                 if(i == current_order + 2){
@@ -162,17 +225,9 @@ Diagram::Diagram(FullVertexNode * nodes, int current_order, unsigned long long i
     while(_helper != nullptr){
         std::cout << _helper->tau << " next: " << _helper->tau_next << std::endl;
         _helper = _helper->next;
-    }*/
-
-    _internal_used = new FullVertexNodeIndicator[_order_int_max];
-    _external_used = new FullVertexNodeIndicator[2*_ph_ext_max];
+    }
 
 
-    // recollect links between arrays and node list (initialize support arrays)
-    int j = 0;
-    int internal_index = 0;
-    int external_index = 0;
-    bool found = false;
     // ugly double loop, if there is any other possibility please fix
     for(int i = 0; i < _order_int_max + 2*_ph_ext_max + 2; ++i){
 
@@ -219,16 +274,27 @@ Diagram::Diagram(FullVertexNode * nodes, int current_order, unsigned long long i
                 ++j;
             }
         }
-    }
+    }*/
     nodes = nullptr;
+    internal_used = nullptr;
+    external_used = nullptr;
 };
 
-void Diagram::getNodes(FullVertexNode * nodes, int size){
+void Diagram::getNodes(FullVertexNode * nodes, FullVertexNodeIndicator * internal_used, FullVertexNodeIndicator * external_used, int size){
     // check if array given in input is long enough
     if(size < _order_int_max + 2*_ph_ext_max + 2){return;}
 
+    for(int i = 0; i < std::max(_order_int_max, 2*_ph_ext_max); ++i){
+        if(i < _order_int_max){internal_used[i].position = i;}
+        if(i < 2*_ph_ext_max){external_used[i].position = i;}
+    }
+
     _helper = _head;
+    FullVertexNode * second_helper = nullptr;
+    FullVertexNode * third_helper = nullptr;
     int i = 2;
+    int j = 0, k = 0;
+    int counter_int = 0, counter_ext = 0;
     while(_helper != nullptr){
         if(_helper == _head){
             nodes[0].electronic_band = _helper->electronic_band;
@@ -306,6 +372,93 @@ void Diagram::getNodes(FullVertexNode * nodes, int size){
                 nodes[i].prev = &nodes[i-1];
                 nodes[i].next = &nodes[i+1];
             }
+
+            if(_helper->type == +1){
+                j = 0;
+                while(_internal_used[j].linked != _helper){++j;}
+                second_helper = _internal_used[j].conjugated->linked;
+                internal_used[counter_int].linked = &nodes[i];
+                internal_used[counter_int].used = true;
+                ++counter_int;
+
+                k = 0;
+                third_helper = _head;
+                while(third_helper != second_helper && third_helper != nullptr){
+                    third_helper = third_helper->next;
+                    ++k;
+                }
+                internal_used[counter_int].linked = &nodes[k+1]; // to be checked
+                internal_used[counter_int].used = true;
+                internal_used[counter_int].conjugated = &internal_used[counter_int-1];
+                internal_used[counter_int-1].conjugated = &internal_used[counter_int];
+                ++counter_int;
+
+                second_helper = nullptr;
+                third_helper = nullptr;
+            }
+            else if(_helper->type == -2){
+                j = 0;
+                while(_external_used[j].linked != _helper){++j;}
+                second_helper = _external_used[j].conjugated->linked;
+                external_used[counter_ext].linked = &nodes[i];
+                external_used[counter_ext].used = true;
+                ++counter_ext;
+
+                k = 0;
+                third_helper = _head;
+                while(third_helper != second_helper && third_helper != nullptr){
+                    ++k;
+                    third_helper = third_helper->next;
+                }
+                external_used[counter_ext].linked = &nodes[k+1];
+                external_used[counter_ext].used = true;
+                external_used[counter_ext].conjugated = &external_used[counter_ext-1];
+                external_used[counter_ext-1].conjugated = &external_used[counter_ext];
+                ++counter_ext;
+
+                second_helper = nullptr;
+                third_helper = nullptr;
+            }
+
+            /*if(_helper->type == +1){
+                temp_nodes[i-2] = _helper;
+                //while(_internal_used[j].linked != _helper){++j;}
+                //temp_position_int[i-2] = i-2;
+            }
+            else if(_helper->type == -1){
+                temp_nodes[i-2] = _helper;
+                j = 0;
+                while(_internal_used[j].linked != _helper){++j;}
+                FullVertexNode * second_helper = _internal_used[j].conjugated->linked;
+                int k = 0;
+                while(second_helper != temp_nodes[k]){++k;}
+                position[i-2] = k+1;
+                position[k] = i-1;                
+            }
+            else if(_helper->type == -2){
+                temp_nodes[i-2] = _helper;
+                while(_external_used[j].linked != _helper){++j;}
+                FullVertexNode * second_helper = _external_used[j].conjugated->linked;
+                int k = 0;
+                while (second_helper != temp_nodes[k] && k < _order_int_max+2*_ph_ext_max){++k;}
+                if(k != _order_int_max + 2*_ph_ext_max){
+                    position[i-2] = -k-1;
+                    position[k] = -i+1;
+                }
+            }
+            else if(_helper->type == +2){
+                temp_nodes[i-2] = _helper;
+                j = 0;
+                while(_external_used[j].linked != _helper){++j;}
+                FullVertexNode * second_helper = _external_used[j].conjugated->linked;
+                int k = 0;
+                while (second_helper != temp_nodes[k] && k < _order_int_max+2*_ph_ext_max){++k;}
+                if(k != _order_int_max + 2*_ph_ext_max){
+                    position[i-2] = -k-1;
+                    position[k] = -i+1;
+                }
+                
+            }*/
             ++i;
         }
         _helper = _helper->next;
