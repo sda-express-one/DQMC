@@ -220,61 +220,6 @@ Diagram::Diagram(FullVertexNode * nodes, FullVertexNodeIndicator * internal_used
             }
         }
     }
-
-    /*_helper = _head;
-    while(_helper != nullptr){
-        std::cout << _helper->tau << " next: " << _helper->tau_next << std::endl;
-        _helper = _helper->next;
-    }
-
-
-    // ugly double loop, if there is any other possibility please fix
-    for(int i = 0; i < _order_int_max + 2*_ph_ext_max + 2; ++i){
-
-        if(i < _order_int_max){_internal_used[i].position = i;}
-        if(i < 2*_ph_ext_max){_external_used[i].position = i;}
-
-        if(_nodes[i].type == +1){
-            found = false;
-            _internal_used[internal_index].linked = &_nodes[i];
-            _internal_used[internal_index].used = true;
-            _internal_used[internal_index].position = internal_index;
-            j = 0;
-            while(!found){
-                if(_nodes[j].type == -1 && isEqual(_nodes[i].w[0], _nodes[j].w[0])){
-                    found = true;
-                    _internal_used[internal_index].conjugated = &_internal_used[internal_index + 1];
-                    ++internal_index;
-                    _internal_used[internal_index].linked = &_nodes[j];
-                    _internal_used[internal_index].used = true;
-                    _internal_used[internal_index].position = internal_index;
-                    _internal_used[internal_index].conjugated = &_internal_used[internal_index - 1];
-                    ++internal_index;
-                }
-                ++j;
-            }
-        }
-        else if(_nodes[i].type == -2){
-            found = false;
-            _external_used[external_index].linked = &_nodes[i];
-            _external_used[external_index].used = true;
-            _external_used[external_index].position = external_index;
-            j = 0;
-            while(!found){
-                if(_nodes[j].type == +2 && isEqual(_nodes[i].w[0], _nodes[j].w[0])){
-                    found = true;
-                    _external_used[external_index].conjugated = &_external_used[external_index + 1];
-                    ++external_index;
-                    _external_used[external_index].linked = &_nodes[j];
-                    _external_used[external_index].used = true;
-                    _external_used[external_index].position = external_index;
-                    _external_used[external_index].conjugated = &_external_used[external_index - 1];
-                    ++external_index;
-                }
-                ++j;
-            }
-        }
-    }*/
     nodes = nullptr;
     internal_used = nullptr;
     external_used = nullptr;
@@ -419,46 +364,6 @@ void Diagram::getNodes(FullVertexNode * nodes, FullVertexNodeIndicator * interna
                 second_helper = nullptr;
                 third_helper = nullptr;
             }
-
-            /*if(_helper->type == +1){
-                temp_nodes[i-2] = _helper;
-                //while(_internal_used[j].linked != _helper){++j;}
-                //temp_position_int[i-2] = i-2;
-            }
-            else if(_helper->type == -1){
-                temp_nodes[i-2] = _helper;
-                j = 0;
-                while(_internal_used[j].linked != _helper){++j;}
-                FullVertexNode * second_helper = _internal_used[j].conjugated->linked;
-                int k = 0;
-                while(second_helper != temp_nodes[k]){++k;}
-                position[i-2] = k+1;
-                position[k] = i-1;                
-            }
-            else if(_helper->type == -2){
-                temp_nodes[i-2] = _helper;
-                while(_external_used[j].linked != _helper){++j;}
-                FullVertexNode * second_helper = _external_used[j].conjugated->linked;
-                int k = 0;
-                while (second_helper != temp_nodes[k] && k < _order_int_max+2*_ph_ext_max){++k;}
-                if(k != _order_int_max + 2*_ph_ext_max){
-                    position[i-2] = -k-1;
-                    position[k] = -i+1;
-                }
-            }
-            else if(_helper->type == +2){
-                temp_nodes[i-2] = _helper;
-                j = 0;
-                while(_external_used[j].linked != _helper){++j;}
-                FullVertexNode * second_helper = _external_used[j].conjugated->linked;
-                int k = 0;
-                while (second_helper != temp_nodes[k] && k < _order_int_max+2*_ph_ext_max){++k;}
-                if(k != _order_int_max + 2*_ph_ext_max){
-                    position[i-2] = -k-1;
-                    position[k] = -i+1;
-                }
-                
-            }*/
             ++i;
         }
         _helper = _helper->next;

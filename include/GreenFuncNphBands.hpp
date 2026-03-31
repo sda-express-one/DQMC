@@ -371,6 +371,7 @@ class GreenFuncNphBands : public Diagram {
     void writeDiagram(std::string filename, int i, double r) const;
     void writeChosenUpdate(std::string filename, int i, double r) const;
     void checkConnections(std::string filename) const;
+    void writeSupportArrays(std::string filename) const;
 };
 
 #endif

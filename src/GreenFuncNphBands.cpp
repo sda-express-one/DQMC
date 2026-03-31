@@ -305,9 +305,8 @@ void GreenFuncNphBands::setTauCutoffStatistics(long double tau_cutoff_statistics
     _tau_cutoff_statistics = tau_cutoff_statistics;
 };
 
-// NOT OKAY???
+// find vertex position in nodes list
 FullVertexNode * GreenFuncNphBands::findVertexPosition(long double tau){
-    // ?????????????????????????
     if(tau > _tail->tau || isEqual(tau, _tail->tau)){return nullptr;}
     else if(tau < _head->tau_next){
         if(!isEqual(0, tau) && !isEqual(tau, _head->tau_next)){return _head;}
@@ -477,22 +476,19 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
             if(propagator < _current_order_int + 1){
                 propagator = propagator - 1;
                 _pointer_one = findInternalPhononVertex(propagator);
-                tau_init = _pointer_one->tau;
-                tau_end = _pointer_one->next->tau;
+                
             }
             else{
                 propagator -= (_current_order_int + 1);
                 _pointer_one = findExternalPhononVertex(propagator);
-                tau_init = _pointer_one->tau;
-                tau_end = _pointer_one->next->tau;
-            }
+            }            
             propagator = temp;
         }
         else{
-            tau_init = _head->tau;
-            tau_end = _head->next->tau;
             _pointer_one = _head;
         }
+        tau_init = _pointer_one->tau;
+        tau_end = _pointer_one->next->tau;
 
         // choose phonon index
         std::uniform_int_distribution<int> distrib_phon(0, _num_phonon_modes-1);
@@ -567,8 +563,8 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
             std::uniform_int_distribution<int> unif(0, _num_bands-1);
 
             // initial and final action
-            double action_init = 0.;
-            double action_fin = 0.;
+            double action_init = 0;
+            double action_fin = 0;
 
             int i = 0;
             //int current_order = _current_order_int + 2*_current_ph_ext + 1;
@@ -779,6 +775,9 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
         _pointer_two = nullptr;
 
         FullVertexNodeIndicator vertex_data = chooseInternalPhononPropagator();
+        // only outgoing vertices can be chosen, context factor condition for detail balance
+        while(vertex_data.linked->type == -1){vertex_data = chooseInternalPhononPropagator();}
+
         _pointer_one = vertex_data.linked;
         _pointer_two = vertex_data.conjugated->linked;
         if(_pointer_one == nullptr || _pointer_two == nullptr){
@@ -1059,7 +1058,6 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
         // choose phonon index
         std::uniform_int_distribution<int> distrib_phon(0, _num_phonon_modes-1);
         int phonon_index = distrib_phon(gen);
-        //int phonon_index = choosePhonon();
 
         // time of ingoing vertex of ext phonon propagator
         long double tau_one = 0 - std::log(1-drawUniformR())/phononEnergy(_phonon_modes, phonon_index); // time of ingoing vertex of ext phonon propagator
@@ -1137,29 +1135,30 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             double energy_fin = 0;
 
             // initial and final action
-            double action_one_init = 0.; 
-            double action_two_init = 0.;
-            double action_one_fin = 0.;
-            double action_two_fin = 0.;
+            double action_one_init = 0; 
+            double action_two_init = 0;
+            double action_one_fin = 0;
+            double action_two_fin = 0;
 
             int i = 0;
-            bool first_part = false;
+            bool first_part = true;
             _helper = _head;
 
-            while(_helper->next != nullptr){ 
-                if(!first_part){
-                    // retrieve momentum values for propagators below first ph vertex
-                    px_init = _helper->k[0];
-                    px_fin = px_init - w_x;
+            while(_helper->next != nullptr){
+                // retrieve momentum values for propagators
+                px_init = _helper->k[0];
+                px_fin = px_init - w_x;
 
-                    py_init = _helper->k[1];
-                    py_fin = py_init - w_y;
+                py_init = _helper->k[1];
+                py_fin = py_init - w_y;
 
-                    pz_init = _helper->k[2];
-                    pz_fin = pz_init - w_z;
+                pz_init = _helper->k[2];
+                pz_fin = pz_init - w_z;
 
-                    _bands_init[i] = _helper->electronic_band;
+                _bands_init[i] = _helper->electronic_band;
 
+                // below first vertex
+                if(first_part){
                     if(_num_bands == 3){
                         chosen_band = band_number(gen);
                         _bands_fin[i].band_number = chosen_band;
@@ -1203,22 +1202,10 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                         if(_num_bands == 3){
                             prefactor_fin = prefactor_fin*vertexOverlapTerm(_bands_fin[i], _pointer_one->electronic_band);
                         }
-                        //first_part = true;
                     }
                 }
+                // above second vertex
                 else{
-                    // retrieve momentum values for propagators above second ph vertex
-                    px_init = _helper->k[0];
-                    px_fin = px_init - w_x;
-
-                    py_init = _helper->k[1];
-                    py_fin = py_init - w_y;
-
-                    pz_init = _helper->k[2];
-                    pz_fin = pz_init - w_z;
-
-                    _bands_init[i] = _helper->electronic_band;
-
                     if(_num_bands == 3){
                         if(_helper->next != _tail){
                             chosen_band = band_number(gen);
@@ -1274,9 +1261,9 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 }
 
                 _helper = _helper->next;
-                if(_helper == _pointer_one->next && !first_part){
+                if(_helper == _pointer_one->next && first_part){
                     _helper = _pointer_two;
-                    first_part = true;
+                    first_part = false;
                 }
                 ++i;
             }
@@ -1286,6 +1273,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
 
             double mass_q = 1;
             if(_num_bands == 1){mass_q = computeEffMassSingleBand(w_x, w_y, w_z, _m_x_el, _m_y_el, _m_z_el);}
+            else if(_num_bands == 3){}
 
             // multiply prefactor final by strength term of 2 extrema
             prefactor_fin = prefactor_fin*vertexStrengthTerm(w_x, w_y, w_z, _V_BZ, _V_BvK, _phonon_modes[phonon_index],
@@ -1330,7 +1318,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 _pointer_one->w[1] = w_y;
                 _pointer_one->w[2] = w_z;
                 _pointer_one->k[0] = _pointer_one->prev->k[0];
-                _pointer_one->k[1] = _pointer_one->prev->k[1]; // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                _pointer_one->k[1] = _pointer_one->prev->k[1];
                 _pointer_one->k[2] = _pointer_one->prev->k[2];
                 _pointer_one->electronic_band = _pointer_one->prev->electronic_band;
 
@@ -1588,8 +1576,9 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                         _bands_fin[i+2].effective_mass = computeEffMassSingleBand(px_fin, py_fin, pz_fin, 
                                                                             _m_x_el, _m_y_el, _m_z_el);
                     }
-
-                    energy_fin = electronEnergy(px_fin, py_fin, pz_fin, _bands_fin[i].effective_mass);
+                    // ##########################
+                    energy_fin = electronEnergy(px_fin, py_fin, pz_fin, _bands_fin[i+2].effective_mass);
+                    // ##########################
 
                     if(_helper == _pointer_two){
                         action_fin += energy_fin*(_helper->tau_next - tau_one);
@@ -1610,6 +1599,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
 
             double mass_q = 1;
             if(_num_bands == 1){mass_q = computeEffMassSingleBand(w_x, w_y, w_z, _m_x_el, _m_y_el, _m_z_el);}
+            else if(_num_bands == 3){}
 
             // multiply prefactor final by strength term of 2 extrema
             prefactor_fin = prefactor_fin*vertexStrengthTerm(w_x, w_y, w_z, _V_BZ, _V_BvK, _phonon_modes[phonon_index],
@@ -1638,9 +1628,6 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 return;
             }
             else{
-                //phVertexMakeRoom(index_one, index_two); // make room in vertices array
-                //propagatorArrayMakeRoom(index_one, index_two); // make room in electron propagators array
-
                 // insert new nodes
                 insertNode(_pointer_one);
                 insertNode(_pointer_two);
@@ -1681,8 +1668,6 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 _pointer_one->prev->tau_next = tau_two;
                 _pointer_two->tau_next = _pointer_two->next->tau;
                 _pointer_two->prev->tau_next = tau_one;
-
-                
 
                 // update electron propagator energies
                 _helper = _head;
@@ -1745,6 +1730,8 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
         _pointer_two = nullptr;
         // indexes of initial and final vertices of a random internal phonon propagator
         FullVertexNodeIndicator vertex_data = chooseExternalPhononPropagator();
+        // ensure that the chosen vertex is incoming (context factor condition for detailed balance)
+        while(vertex_data.linked->type == 2){vertex_data = chooseExternalPhononPropagator();}
         
         if(vertex_data.linked == nullptr){
             if(_num_bands > 1){updateNegativeDiagrams(4);}
@@ -1755,7 +1742,6 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
         _pointer_two = vertex_data.conjugated->linked;
 
         if(isEqual(_pointer_one->tau, _pointer_two->tau)){
-            _pointer_one = nullptr; _pointer_two = nullptr;
             if(_num_bands > 1){updateNegativeDiagrams(4);}
             _pointer_one = nullptr;
             _pointer_two = nullptr;
@@ -1894,7 +1880,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                     _bands_fin[i] = _helper->electronic_band;
 
                     if(_num_bands == 3){
-                        if(_helper != _pointer_two && _helper->next != _tail /*i != index_two && i != total_order*/){
+                        if(_helper != _pointer_two && _helper->next != _tail){
                             chosen_band = band_number(gen);
 
                             new_values_matrix = diagonalizeLKHamiltonian(px_init, py_init, pz_init,
@@ -4160,6 +4146,7 @@ void GreenFuncNphBands::writeDiagram(std::string filename, int i, double r) cons
     file.close();
 
     checkConnections(filename);
+    writeSupportArrays(filename);
 };
 
 void GreenFuncNphBands::writeChosenUpdate(std::string filename, int i, double r) const {
@@ -4218,6 +4205,29 @@ void GreenFuncNphBands::checkConnections(std::string filename) const{
 
     file.close();
 };
+
+void GreenFuncNphBands::writeSupportArrays(std::string filename) const {
+    std::ofstream file(filename, std::ofstream::app);
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open file for writing.\n";
+        return;
+    }
+
+    file << "Array of internal phonon vertices. Current internal order of the diagram is: " << _current_order_int << "\n";
+    for(int i = 0; i < _current_order_int; ++i){
+        file << "Position: " << _internal_used[i].position << ", time link: " << _internal_used[i].linked->tau << ", time link conjugated: " << _internal_used[i].conjugated->linked->tau << "\n";
+    }
+    file << "\n";
+    file << "\n";
+    file << "Array of external phonon vertices. Current number of external phonons is: " << _current_ph_ext << "\n";
+    for(int i = 0; i < 2*_current_ph_ext; ++i){
+        file << "Position: " << _external_used[i].position << ", time link: " << _external_used[i].linked->tau << ", time link conjugated: " << _external_used[i].conjugated->linked->tau << "\n";
+    }
+    file << "\n";
+    file << "\n";
+
+    file.close();
+}
 
 void GreenFuncNphBands::writeZFactor(const std::string& filename) const {
     std::ofstream file;
