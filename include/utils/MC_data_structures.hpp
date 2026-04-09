@@ -64,6 +64,7 @@ struct settings{
     long double tau_cutoff_energy = 10;
     long double tau_cutoff_mass = 10;
     long double tau_cutoff_statistics = 0;
+    long double tau_cutoff_Z = 10;
 };
 
 // string to type conversion functions

@@ -7,7 +7,7 @@
 # if fix_tau_value = true, please set prob_length = 0 and prob_stretch = 0, otherwise it will be done automatically
 
 exact_GF true
-num_points 500
+num_points 10000
 selected_order_(GF) -1
 histo true
 bins_(histogram) 500
@@ -16,10 +16,11 @@ cutoff_tau_(gs_energy) 30
 effective_mass true
 cutoff_tau_(mass) 30
 Z_factor true
+cutoff_tau_(Z) 30
 write_diagrams true
 time_benchmark true
 stats true
 cutoff_tau_stats 0
 blocking_method true
 N_blocks 100
-fix_tau_value true
+fix_tau_value false

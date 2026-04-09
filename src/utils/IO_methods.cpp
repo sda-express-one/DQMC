@@ -323,6 +323,11 @@ settings readSimSettingstxt(const std::string& filename){
                 iss >> value;
                 sets.tau_cutoff_mass = stringToLongDouble(value);
             }
+            else if(key == "cutoff_tau_(Z_factor)" || key == "cutoff_tau_(Z)" || key == "cutoff_tau_Z"){
+                std::string value;
+                iss >> value;
+                sets.tau_cutoff_Z = stringToLongDouble(value);
+            }
             else if(key == "cutoff_tau_stats" || key == "cutoff_tau_statistics"){
                 std::string value;
                 iss >> value;

@@ -273,24 +273,31 @@ void GreenFuncNphBands::setSelectedOrder(int selected_order){
 
 // exact energy estimator setters
 void GreenFuncNphBands::setTauCutoffEnergy(long double tau_cutoff_energy){
-    while(tau_cutoff_energy <= 0 || tau_cutoff_energy >= _tau_max){
-        std::cout << "Invalid energy cutoff! Cutoff must be > 0 and < " << _tau_max << " (max tau value).\n";
-        std::cout << "Enter new energy cutoff: ";
-        std::cin >> tau_cutoff_energy;
-        std::cout << "\n";
+    if(tau_cutoff_energy <= 0 || tau_cutoff_energy >= _tau_max){
+        std::cerr << "Invalid energy cutoff! Cutoff must be > 0 and < " << _tau_max << " (max tau value)." << std::endl;
+        std::cerr << "Energy cutoff is set to default value " << _tau_cutoff_energy << "." << std::endl;
+        return;
     }
     _tau_cutoff_energy = tau_cutoff_energy;
 }
 
 // exact mass estimator setters
 void GreenFuncNphBands::setTauCutoffMass(long double tau_cutoff_mass){
-    while(tau_cutoff_mass <= 0 || tau_cutoff_mass >= _tau_max){
-        std::cout << "Invalid mass cutoff! Cutoff must be > 0 and < " << _tau_max << " (max tau value).\n";
-        std::cout << "Enter new mass cutoff: ";
-        std::cin >> tau_cutoff_mass;
-        std::cout << "\n";
+    if(tau_cutoff_mass <= 0 || tau_cutoff_mass >= _tau_max){
+        std::cerr << "Invalid mass cutoff! Cutoff must be > 0 and < " << _tau_max << " (max tau value)." << std::endl;
+        std::cerr << "Mass cutoff is set to default value " << _tau_cutoff_mass << "." << std::endl;
+        return;
     }
     _tau_cutoff_mass = tau_cutoff_mass;
+}
+
+void GreenFuncNphBands::setTauCutoffZ(long double tau_cutoff_Z){
+    if(tau_cutoff_Z <= 0 || tau_cutoff_Z >= _tau_max){
+        std::cerr << "Invalid Z factor cutoff! Cutoff must be > 0 and < " << _tau_max << " (max tau value)." << std::endl;
+        std::cerr << "Z factor cutoff is set to default value " << _tau_cutoff_Z << "." << std::endl;
+        return;
+    }
+    _tau_cutoff_Z = tau_cutoff_Z;
 }
 
 void GreenFuncNphBands::setNumBlocks(int N_blocks){if(N_blocks > 0){_N_blocks = N_blocks;}};

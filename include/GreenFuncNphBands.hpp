@@ -157,6 +157,9 @@ class GreenFuncNphBands : public Diagram {
     // mass estimator
     void setTauCutoffMass(long double tau_cutoff_mass);
 
+    // quasiparticle weight estimator
+    void setTauCutoffZ(long double tau_cutoff_Z);
+
     // blocking method
     void setNumBlocks(int N_blocks);
 

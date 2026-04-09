@@ -109,6 +109,7 @@ int main(){
             // exact estimators settings (time cutoffs)
             diagram.setTauCutoffEnergy(sets.tau_cutoff_energy);
             diagram.setTauCutoffMass(sets.tau_cutoff_mass);
+            diagram.setTauCutoffZ(sets.tau_cutoff_Z);
             diagram.setTauCutoffStatistics(sets.tau_cutoff_statistics);
 
             // main simulation
@@ -172,6 +173,7 @@ int main(){
             // exact estimators settings (time cutoffs)
             diagram_relax.setTauCutoffEnergy(sets.tau_cutoff_energy);
             diagram_relax.setTauCutoffMass(sets.tau_cutoff_mass);
+            diagram_relax.setTauCutoffZ(sets.tau_cutoff_Z);
             diagram_relax.setTauCutoffStatistics(sets.tau_cutoff_statistics);
 
             // main simulation
@@ -303,6 +305,7 @@ int main(){
                     // exact estimators settings (time cutoffs)
                     diagram_simulate.setTauCutoffEnergy(local_sets.tau_cutoff_energy);
                     diagram_simulate.setTauCutoffMass(local_sets.tau_cutoff_mass);
+                    diagram_simulate.setTauCutoffZ(local_sets.tau_cutoff_Z);
                     diagram_simulate.setTauCutoffStatistics(local_sets.tau_cutoff_statistics);
                 
 
