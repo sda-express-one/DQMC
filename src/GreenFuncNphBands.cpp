@@ -342,30 +342,6 @@ FullVertexNode * GreenFuncNphBands::findVertexPosition(long double tau){
     return nullptr;
 };
 
-int * GreenFuncNphBands::findVerticesPosition(long double tau_one, long double tau_two){
-    int* positions = new int[2];
-    int counts = 0;
-    for(int i = 0; i < _current_order_int + 2*_current_ph_ext + 1; ++i){
-        if(_vertices[i].tau < tau_one && _vertices[i+1].tau >= tau_one){
-            positions[0] = i;
-            counts+=1;
-        }
-        if(counts > 0 && _vertices[i].tau < tau_two && _vertices[i+1].tau >= tau_two){
-            positions[1] = i;
-            counts+=1;
-        }
-    }
-
-    // return [-1,-1] if tau_one or tau_two is not found in the vertices array (or multiple positions are somehow found)
-    if(counts != 2){
-        positions[0] = -1;
-        positions[1] = -1;
-        return positions;
-    }
-    else{
-        return positions;
-    }
-};
 
 FullVertexNodeIndicator GreenFuncNphBands::chooseInternalPhononPropagator(){
     std::uniform_int_distribution<int> distrib_unif(0,_current_order_int-1); // chooses one of the internal phonon propagators at random
@@ -2809,7 +2785,7 @@ long double GreenFuncNphBands::configSimulation(long double tau_length = 1.0L){
         for(int i=0; i<_ph_ext_max+1; i++){_Z_factor_array[i] = 0;}
     }
 
-    if(_flags.blocking_analysis){
+    if(_flags.blocking_analysis && (_flags.gs_energy || _flags.effective_mass || _flags.Z_factor)){
         std::cout << "Blocking analysis method will be employed to compute variance of quantities." << std::endl;
         if(getNdiags() % _N_blocks != 0){
             _N_blocks = _N_blocks - 1;
@@ -2819,6 +2795,7 @@ long double GreenFuncNphBands::configSimulation(long double tau_length = 1.0L){
         std::cout << "Number of blocks computed: " << _N_blocks << std::endl;
         _block_size = static_cast<long long int>(getNdiags()/_N_blocks);
         std::cout << "Size of each block is: " << _block_size << "." << std::endl;
+        std::cout << std::endl;
     }
 
     if(_flags.write_diagrams){

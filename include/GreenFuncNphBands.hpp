@@ -309,7 +309,6 @@ class GreenFuncNphBands : public Diagram {
     FullVertexNodeIndicator chooseInternalPhononPropagator();
     FullVertexNodeIndicator chooseExternalPhononPropagator();
     FullVertexNode * findVertexPosition(long double tau);
-    int * findVerticesPosition(long double tau_one, long double tau_two);
     void phVertexMakeRoom(int index_one, int index_two);
     void phVertexRemoveRoom(int index_one, int index_two);
     void propagatorArrayMakeRoom(int index_one, int index_two);
