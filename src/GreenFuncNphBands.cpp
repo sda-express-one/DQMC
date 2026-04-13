@@ -2619,7 +2619,7 @@ long double GreenFuncNphBands::configSimulation(long double tau_length = 1.0L){
         std::cout << std::endl;
     }
     std::cout << "Number of thermalization steps: " << getRelaxSteps() << std::endl;
-    if(_master){std::cout << "Number of steps to perform to avoid correlations between different parallel processes: " << getAutocorrSteps() << std::endl;}
+    if(_master && getAutocorrSteps() != 0){std::cout << "Number of steps to perform to avoid correlations between different parallel processes: " << getAutocorrSteps() << std::endl;}
     std::cout << "Number of diagrams to be generated: " << getNdiags() << std::endl;
     std::cout << "Maximum length of diagram: " << _tau_max << std::endl;
     std::cout << "Maximum number of internal phonons: " << _order_int_max/2 << std::endl;
