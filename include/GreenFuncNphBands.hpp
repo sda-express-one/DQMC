@@ -79,6 +79,7 @@ class GreenFuncNphBands : public Diagram {
     // phonon modes
     int getNumPhononModes() const {return _num_phonon_modes;};
     double getPhononMode(int index) const {return _phonon_modes[index];};
+    int getExtPhononTypeNum(int index) const {return _ext_phonon_type_num[index];};
     double getDielectricResponse(int index) const {return _dielectric_responses[index];};
 
     // other input quantities
@@ -121,6 +122,7 @@ class GreenFuncNphBands : public Diagram {
 
     // phonons modes
     void setPhononModes(double* phonon_modes);
+    void setExtPhononTypeNum(int* ext_phonon_type_num);
     void setDielectricResponses(double* dielectric_responses);
 
     // other input quantities

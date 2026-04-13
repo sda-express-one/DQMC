@@ -391,7 +391,12 @@ cpu_info readCPUSettingstxt(const std::string& filename){
                 // enable openMP parallelization
                 cpu.parallel_mode = stringToBool(value);
             }
-            if(key == "cpus" || key == "num_procs" || key == "number_of_processors"){
+            else if(key == "parallel_type"){
+                std::string value;
+                iss >> value;
+                cpu.parallel_type = value;
+            }
+            else if(key == "cpus" || key == "num_procs" || key == "number_of_processors"){
                 std::string value;
                 iss >> value;
                 cpu.num_procs = stringToInt(value);

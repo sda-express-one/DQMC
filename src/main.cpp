@@ -11,6 +11,8 @@
 #include "../include/GreenFuncNphBands.hpp"
 
 uint64_t getClockTime();
+// set internal parameters of diagram class
+void setDiagramClassParameters(GreenFuncNphBands * diagram, parameters sim, settings sets, cpu_info cpu, double * probs, double * phonon_modes, double * dielectric_responses);
 
 int main(){
     // read simulation parameters from file
@@ -73,111 +75,37 @@ int main(){
             GreenFuncNphBands diagram(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max,
                 sim.ph_ext_max, 1, sim.num_bands, sim.num_phonon_modes);
         
-            diagram.setPhononModes(phonon_modes);
-            diagram.setDielectricResponses(dielectric_responses);
-            diagram.set1BZVolume(sim.V_BZ);
-            diagram.setBvKVolume(sim.V_BvK);
-            diagram.setDielectricConstant(sim.dielectric_const);
-
-            if(sim.num_bands == 1){
-                diagram.setEffectiveMasses(sim.m_x, sim.m_y, sim.m_z);
-            }
-            else if(sim.num_bands == 3){
-                diagram.setLuttingerKohnParameters(sim.A_LK, sim.B_LK, sim.C_LK);
-            }
-
-            // Markov chain settings
-            diagram.setRelaxSteps(sim.relax_steps);
-            diagram.setProbabilities(probs);
-
-            //histogram settings
-            diagram.setN_bins(sets.num_bins);
-
-            // exact GF estimator settings
-            diagram.setNumPoints(sets.num_points_exact);
-            diagram.setSelectedOrder(sets.selected_order);
-
-            // set calculations perfomed
-            diagram.setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor, sets.blocking_analysis, sets.fix_tau_value);
-            // set benchmarking
-            diagram.setBenchmarking(sets.time_benchmark);
-            // set MC statistics
-            diagram.setMCStatistics(sets.mc_statistics);
-            // print diagrams to file
-            diagram.writeDiagrams(sets.write_diagrams);
-
-            // exact estimators settings (time cutoffs)
-            diagram.setTauCutoffEnergy(sets.tau_cutoff_energy);
-            diagram.setTauCutoffMass(sets.tau_cutoff_mass);
-            diagram.setTauCutoffZ(sets.tau_cutoff_Z);
-            diagram.setTauCutoffStatistics(sets.tau_cutoff_statistics);
+            setDiagramClassParameters(&diagram, sim, sets, cpu, probs, phonon_modes, dielectric_responses);
 
             // main simulation
             diagram.markovChainMC();
         }
-        else{           
-            GreenFuncNphBands diagram_relax(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max,
+        else{
+
+            // set diagram object for input parameters and parallelization settings retrieval (no computation will be performed with this object)
+            GreenFuncNphBands diagram_input(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max,
                 sim.ph_ext_max, 1, sim.num_bands, sim.num_phonon_modes);
-            
+
             if(omp_get_max_threads() < cpu.num_procs){
-                std::cerr << "Warning! Number of cpus per nodes set exceeds current architecture capabilities." << std::endl;
-                std::cerr << "Setting number of parallel processes per node to " << omp_get_max_threads() << "." << std::endl;
-                std::cerr << std::endl;
-                cpu.num_procs = omp_get_max_threads();
+                    std::cerr << "Warning! Number of cpus per nodes set exceeds current architecture capabilities." << std::endl;
+                    std::cerr << "Setting number of parallel processes per node to " << omp_get_max_threads() << "." << std::endl;
+                    std::cerr << std::endl;
+                    cpu.num_procs = omp_get_max_threads();
             }
+
             if(cpu.num_procs <= 0){
                 cpu.num_procs = omp_get_num_procs();
             }
             
-            diagram_relax.setMaster(cpu.parallel_mode);
-            diagram_relax.setNumNodes(cpu.num_nodes);
-            diagram_relax.setNumProcs(cpu.num_procs);
+            diagram_input.setMaster(cpu.parallel_mode);
+            diagram_input.setNumNodes(cpu.num_nodes);
+            diagram_input.setNumProcs(cpu.num_procs);
             
-            diagram_relax.setPhononModes(phonon_modes);
-            diagram_relax.setDielectricResponses(dielectric_responses);
-            diagram_relax.set1BZVolume(sim.V_BZ);
-            diagram_relax.setBvKVolume(sim.V_BvK);
-            diagram_relax.setDielectricConstant(sim.dielectric_const);
+            // set internal parameters
+            setDiagramClassParameters(&diagram_input, sim, sets, cpu, probs, phonon_modes, dielectric_responses);
 
-            if(sim.num_bands == 1){
-                diagram_relax.setEffectiveMasses(sim.m_x, sim.m_y, sim.m_z);
-            }
-            else if(sim.num_bands == 3){
-                diagram_relax.setLuttingerKohnParameters(sim.A_LK, sim.B_LK, sim.C_LK);
-            }
-
-            // Markov chain settings
-            diagram_relax.setRelaxSteps(sim.relax_steps);
-            diagram_relax.setAutcorrSteps(cpu.autocorr_steps);
-            diagram_relax.setProbabilities(probs);
-
-            //histogram settings
-            diagram_relax.setN_bins(sets.num_bins);
-
-            // exact GF estimator settings
-            diagram_relax.setNumPoints(sets.num_points_exact);
-            diagram_relax.setSelectedOrder(sets.selected_order);
-
-            // blocking method
-            diagram_relax.setNumBlocks(sets.N_blocks);
-
-            // set calculations perfomed
-            diagram_relax.setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor, sets.blocking_analysis, sets.fix_tau_value);
-            // set benchmarking
-            diagram_relax.setBenchmarking(sets.time_benchmark);
-            // set MC statistics
-            diagram_relax.setMCStatistics(sets.mc_statistics);
-            // print diagrams to file
-            diagram_relax.writeDiagrams(sets.write_diagrams);
-            
-            // exact estimators settings (time cutoffs)
-            diagram_relax.setTauCutoffEnergy(sets.tau_cutoff_energy);
-            diagram_relax.setTauCutoffMass(sets.tau_cutoff_mass);
-            diagram_relax.setTauCutoffZ(sets.tau_cutoff_Z);
-            diagram_relax.setTauCutoffStatistics(sets.tau_cutoff_statistics);
-
-            // main simulation
-            diagram_relax.markovChainMCOnlyRelax();
+            // number of threads for parallelization
+            int num_threads = 1;
 
             // gs energy estimator
             long double * gs_energy = nullptr;
@@ -192,234 +120,222 @@ int main(){
             // histogram method (GF)
             long double ** points_histogram = nullptr;
             long double ** gf_histo = nullptr;
-            int num_bins_histo = diagram_relax.getNumBins();
-            int num_points_exact_gf = diagram_relax.getNumPoints();
+            int num_bins_histo = sets.num_bins;
 
             // GF exact estimator
             long double ** points_gf_exact = nullptr;
             long double ** gf_values_exact = nullptr;
+            int num_points_exact_gf = sets.num_points_exact;
 
             // quasiparticle weights estimator
             long double * Z_Factor_cpus_array = nullptr;
 
-            int current_order_int = diagram_relax.getCurrentOrderInt();
-            int current_ph_ext = diagram_relax.getCurrentPhExt();
-
-            int num_threads = 1;
-            omp_set_num_threads(cpu.num_procs);
-
-            seed = getClockTime();
-            int initialized_heap = 0;
-
-            #pragma omp parallel
-            {
-                int ID = omp_get_thread_num();
-
-                FullVertexNode * nodes_thermalized = nullptr;
-                FullVertexNodeIndicator * internal_used_thermalized = nullptr;
-                FullVertexNodeIndicator * external_used_thermalized = nullptr;
-                int current_order = 0;
-
-                parameters local_sim;
-                settings local_sets;
-                cpu_info local_cpu;
-
-                #pragma omp critical
-                {   
-                    nodes_thermalized = new FullVertexNode[sim.order_int_max + 2*sim.ph_ext_max + 2];
-                    internal_used_thermalized = new FullVertexNodeIndicator[sim.order_int_max];
-                    external_used_thermalized = new FullVertexNodeIndicator[2*sim.ph_ext_max];
-
-                    diagram_relax.getNodes(nodes_thermalized, internal_used_thermalized, external_used_thermalized, sim.order_int_max + 2*sim.ph_ext_max + 2);
-                    current_order = current_order_int + 2*current_ph_ext;
-
-                    local_sim = sim;
-                    local_sets = sets;
-                    local_cpu = cpu;
+            if(cpu.parallel_type == "start_sequential"){
+                GreenFuncNphBands diagram_relax(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max,
+                    sim.ph_ext_max, 1, sim.num_bands, sim.num_phonon_modes);
+            
+                if(omp_get_max_threads() < cpu.num_procs){
+                    std::cerr << "Warning! Number of cpus per nodes set exceeds current architecture capabilities." << std::endl;
+                    std::cerr << "Setting number of parallel processes per node to " << omp_get_max_threads() << "." << std::endl;
+                    std::cerr << std::endl;
+                    cpu.num_procs = omp_get_max_threads();
                 }
-
-                GreenFuncNphBands diagram_simulate(nodes_thermalized, internal_used_thermalized, external_used_thermalized, current_order,
-                    local_sim.N_diags, local_sim.tau_max, local_sim.kx, local_sim.ky, local_sim.kz, local_sim.chem_potential, local_sim.order_int_max,
-                    local_sim.ph_ext_max, 1, local_sim.num_bands, local_sim.num_phonon_modes);
-                
-                #pragma omp critical
-                {
-                    Diagram::setSeed(seed, ID*2654435761U);
-                    delete[] nodes_thermalized;
-                    delete[] internal_used_thermalized;
-                    delete[] external_used_thermalized;
+                if(cpu.num_procs <= 0){
+                    cpu.num_procs = omp_get_num_procs();
                 }
-                #pragma omp barrier
-                
-                #pragma omp master
-                {
-                    diagram_simulate.setMaster(true);
-                    num_threads = omp_get_num_threads();
-                }
-                #pragma omp barrier
-                
-                #pragma omp critical
-                {
-                    diagram_simulate.setPhononModes(phonon_modes);
-                    diagram_simulate.setDielectricResponses(dielectric_responses);
-                    diagram_simulate.setCurrentOrderInt(current_order_int);
-                    diagram_simulate.setCurrentPhExt(current_ph_ext);
-                    diagram_simulate.setProbabilities(probs);
-                }
-
-                diagram_simulate.set1BZVolume(local_sim.V_BZ);
-                diagram_simulate.setBvKVolume(local_sim.V_BvK);
-                diagram_simulate.setDielectricConstant(local_sim.dielectric_const);
-                    
-                if(sim.num_bands == 1){
-                    diagram_simulate.setEffectiveMasses(local_sim.m_x, local_sim.m_y, local_sim.m_z);
-                }
-                else if(sim.num_bands == 3){
-                    diagram_simulate.setLuttingerKohnParameters(local_sim.A_LK, local_sim.B_LK, local_sim.C_LK);
-                }
-
-                    // Markov chain settings
-                    diagram_simulate.setRelaxSteps(local_sim.relax_steps);
-                    diagram_simulate.setAutcorrSteps(local_cpu.autocorr_steps);
-
-                    //histogram settings
-                    diagram_simulate.setN_bins(local_sets.num_bins);
-
-                    // exact GF estimator settings
-                    diagram_simulate.setNumPoints(local_sets.num_points_exact);
-                    diagram_simulate.setSelectedOrder(local_sets.selected_order);
-
-                    // blocking method
-                    diagram_simulate.setNumBlocks(local_sets.N_blocks);
-
-                    // set calculations perfomed
-                    diagram_simulate.setCalculations(local_sets.gf_exact, local_sets.histo, local_sets.gs_energy, 
-                        local_sets.effective_mass, local_sets.Z_factor, local_sets.blocking_analysis, local_sets.fix_tau_value);
-                    // set benchmarking
-                    diagram_simulate.setBenchmarking(local_sets.time_benchmark);
-                    // set MC statistics
-                    diagram_simulate.setMCStatistics(local_sets.mc_statistics);
-                    // print diagrams to file
-                    diagram_simulate.writeDiagrams(local_sets.write_diagrams);
-
-                    // exact estimators settings (time cutoffs)
-                    diagram_simulate.setTauCutoffEnergy(local_sets.tau_cutoff_energy);
-                    diagram_simulate.setTauCutoffMass(local_sets.tau_cutoff_mass);
-                    diagram_simulate.setTauCutoffZ(local_sets.tau_cutoff_Z);
-                    diagram_simulate.setTauCutoffStatistics(local_sets.tau_cutoff_statistics);
-                
+            
+                diagram_relax.setMaster(cpu.parallel_mode);
+                diagram_relax.setNumNodes(cpu.num_nodes);
+                diagram_relax.setNumProcs(cpu.num_procs);
+            
+                setDiagramClassParameters(&diagram_relax, sim, sets, cpu, probs, phonon_modes, dielectric_responses);
 
                 // main simulation
-                if(local_cpu.cpu_time == true){
+                diagram_relax.markovChainMCOnlyRelax();
+                
+                // retrieve parameters for main simulation
+                num_bins_histo = diagram_relax.getNumBins();
+                num_points_exact_gf = diagram_relax.getNumPoints();
+                int current_order_int = diagram_relax.getCurrentOrderInt();
+                int current_ph_ext = diagram_relax.getCurrentPhExt();
+                int ext_phonon_type_num[sim.ph_ext_max];
+                for(int i=0; i < sim.ph_ext_max; i++){
+                    ext_phonon_type_num[i] = diagram_relax.getExtPhononTypeNum(i);
+                }
 
-                    std::string filename = "cpu_times.txt";
-                    std::ofstream file;
+                omp_set_num_threads(cpu.num_procs);
 
-                    #pragma omp master 
-                    {
-                    file.open(filename);
-                    file.close();
-                    }
+                seed = getClockTime();
+                int initialized_heap = 0;
 
-                    auto start = std::chrono::steady_clock::now();
-                    diagram_simulate.markovChainMCOnlySample();
-                    auto end = std::chrono::steady_clock::now();
+                #pragma omp parallel
+                {
+                    int ID = omp_get_thread_num();
+
+                    FullVertexNode * nodes_thermalized = nullptr;
+                    FullVertexNodeIndicator * internal_used_thermalized = nullptr;
+                    FullVertexNodeIndicator * external_used_thermalized = nullptr;
+                    int current_order = 0;
+
+                    parameters local_sim;
+                    settings local_sets;
+                    cpu_info local_cpu;
 
                     #pragma omp critical
-                    {
-                    file.open(filename, std::ofstream::app);
-                    if(!file.is_open()){std::cout << "Could not open file " << filename << std::endl;}
-                    auto duration_s = std::chrono::duration_cast<std::chrono::seconds>(end - start);
-                    file << ID << " finished the computation." << std::endl;
-                    file << "Elapsed time: " << duration_s.count() << " seconds" << std::endl;
-                    file.close();
-                    }
-                }
-                else{
-                    diagram_simulate.markovChainMCOnlySample();
-                }
+                    {   
+                        nodes_thermalized = new FullVertexNode[sim.order_int_max + 2*sim.ph_ext_max + 2];
+                        internal_used_thermalized = new FullVertexNodeIndicator[sim.order_int_max];
+                        external_used_thermalized = new FullVertexNodeIndicator[2*sim.ph_ext_max];
 
-                # pragma omp single nowait
-                {
-                    if(local_sets.gs_energy){
-                        gs_energy = new long double[cpu.num_procs];
-                        gs_energy_var = new long double[cpu.num_procs];
-                    }
-                    if(local_sets.effective_mass){
-                        effective_mass = new long double[cpu.num_procs];
-                        effective_mass_var = new long double[cpu.num_procs];
-                        effective_masses = new long double * [cpu.num_procs];
-                        effective_masses_var = new long double * [cpu.num_procs];
-                        for (int i = 0; i < cpu.num_procs; i++){
-                            effective_masses[i] = new long double[3];
-                            effective_masses_var[i] = new long double[3];
-                        }
-                    }
-                    if(local_sets.histo){
-                        points_histogram = new long double * [cpu.num_procs];
-                        gf_histo = new long double * [cpu.num_procs];
-                        for(int i = 0; i < cpu.num_procs; i++){    
-                            points_histogram[i] = new long double[num_bins_histo];
-                            gf_histo[i] = new long double[num_bins_histo];
-                        }
-                    }
-                    if(local_sets.gf_exact){
-                        points_gf_exact = new long double * [cpu.num_procs];
-                        gf_values_exact = new long double * [cpu.num_procs];
-                        for(int i = 0; i < cpu.num_procs; i++){
-                            points_gf_exact[i] = new long double[num_points_exact_gf];
-                            gf_values_exact[i] = new long double[num_points_exact_gf];
-                        }
-                    }
-                    if(local_sets.Z_factor){
-                        Z_Factor_cpus_array = new long double[num_threads*(sim.ph_ext_max + 1)];
-                    }
-                    
-                    // flush to make sure data is initialized
-                    #pragma omp flush(gs_energy, gs_energy_var, effective_mass, effective_mass_var, effective_masses, effective_masses_var, points_histogram, gf_histo, points_gf_exact, gf_values_exact, Z_Factor_cpus_array)
-                    initialized_heap = 1;
-                    #pragma omp flush(initialized_heap)
-                }
+                        diagram_relax.getNodes(nodes_thermalized, internal_used_thermalized, external_used_thermalized, sim.order_int_max + 2*sim.ph_ext_max + 2);
+                        current_order = current_order_int + 2*current_ph_ext;
 
-                // check to ensure that support variables are initialized before accessing them, otherwise threads sleep
-                int local = 0;
-                while(!initialized_heap){
-                    #pragma omp flush(initialized_heap)
-                    local = initialized_heap;
-                    if(local){break;}
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                }
+                        local_sim = sim;
+                        local_sets = sets;
+                        local_cpu = cpu;
+                    }
 
-                // flush new values to ensure that they are updated in main thread before accessing them
-                #pragma omp flush(gs_energy, gs_energy_var, effective_mass, effective_mass_var, effective_masses, effective_masses_var, points_histogram, gf_histo, points_gf_exact, gf_values_exact, Z_Factor_cpus_array)
+                    GreenFuncNphBands diagram_simulate(nodes_thermalized, internal_used_thermalized, external_used_thermalized, current_order,
+                        local_sim.N_diags, local_sim.tau_max, local_sim.kx, local_sim.ky, local_sim.kz, local_sim.chem_potential, local_sim.order_int_max,
+                        local_sim.ph_ext_max, 1, local_sim.num_bands, local_sim.num_phonon_modes);
                 
-                # pragma omp critical 
-                {   
-                    if(sets.gs_energy){
-                        gs_energy[ID] = diagram_simulate.getGSEnergy();
-                        gs_energy_var[ID] = diagram_simulate.getGSEnergyVar();
+                    #pragma omp critical
+                    {
+                        Diagram::setSeed(seed, ID*2654435761U);
+                        delete[] nodes_thermalized;
+                        delete[] internal_used_thermalized;
+                        delete[] external_used_thermalized;
                     }
-                    if(sets.effective_mass){
-                        effective_mass[ID] = diagram_simulate.getEffectiveMass();
-                        effective_mass_var[ID] = diagram_simulate.getEffectiveMassVar();
-                        diagram_simulate.getEffectiveMasses(effective_masses[ID]);
-                        diagram_simulate.getEffectiveMassesVar(effective_masses_var[ID]);
+                    #pragma omp barrier
+                
+                    #pragma omp master
+                    {
+                        diagram_simulate.setMaster(true);
+                        num_threads = omp_get_num_threads();
                     }
-                    if(sets.histo){diagram_simulate.getHistogram(points_histogram[ID], gf_histo[ID]);}
-                    if(sets.gf_exact){diagram_simulate.getGFExactPoints(points_gf_exact[ID], gf_values_exact[ID]);}
-                    if(sets.Z_factor){
-                        for(int i=0; i < sim.ph_ext_max + 1; i++){
-                            Z_Factor_cpus_array[ID*(sim.ph_ext_max + 1) + i] = diagram_simulate.getZFactorValue(i);
+                    #pragma omp barrier
+                
+                    #pragma omp critical
+                    {
+                        setDiagramClassParameters(&diagram_simulate, local_sim, local_sets, local_cpu, probs, phonon_modes, dielectric_responses);
+                        diagram_simulate.setExtPhononTypeNum(ext_phonon_type_num);
+                        diagram_simulate.setCurrentOrderInt(current_order_int);
+                        diagram_simulate.setCurrentPhExt(current_ph_ext);
+                    }
+
+                    // main simulation
+                    if(local_cpu.cpu_time == true){
+
+                        std::string filename = "cpu_times.txt";
+                        std::ofstream file;
+
+                        #pragma omp master 
+                        {
+                        file.open(filename);
+                        file.close();
+                        }
+
+                        auto start = std::chrono::steady_clock::now();
+                        diagram_simulate.markovChainMCOnlySample();
+                        auto end = std::chrono::steady_clock::now();
+
+                        #pragma omp critical
+                        {
+                        file.open(filename, std::ofstream::app);
+                        if(!file.is_open()){std::cout << "Could not open file " << filename << std::endl;}
+                        auto duration_s = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+                        file << ID << " finished the computation." << std::endl;
+                        file << "Elapsed time: " << duration_s.count() << " seconds" << std::endl;
+                        file.close();
+                        }
+                    }
+                    else{
+                        diagram_simulate.markovChainMCOnlySample();
+                    }
+
+                    # pragma omp single nowait
+                    {
+                        if(local_sets.gs_energy){
+                            gs_energy = new long double[cpu.num_procs];
+                            gs_energy_var = new long double[cpu.num_procs];
+                        }
+                        if(local_sets.effective_mass){
+                            effective_mass = new long double[cpu.num_procs];
+                            effective_mass_var = new long double[cpu.num_procs];
+                            effective_masses = new long double * [cpu.num_procs];
+                            effective_masses_var = new long double * [cpu.num_procs];
+                            for (int i = 0; i < cpu.num_procs; i++){
+                                effective_masses[i] = new long double[3];
+                                effective_masses_var[i] = new long double[3];
+                            }
+                        }
+                        if(local_sets.histo){
+                            points_histogram = new long double * [cpu.num_procs];
+                            gf_histo = new long double * [cpu.num_procs];
+                            for(int i = 0; i < cpu.num_procs; i++){    
+                                points_histogram[i] = new long double[num_bins_histo];
+                                gf_histo[i] = new long double[num_bins_histo];
+                            }
+                        }
+                        if(local_sets.gf_exact){
+                            points_gf_exact = new long double * [cpu.num_procs];
+                            gf_values_exact = new long double * [cpu.num_procs];
+                            for(int i = 0; i < cpu.num_procs; i++){
+                                points_gf_exact[i] = new long double[num_points_exact_gf];
+                                gf_values_exact[i] = new long double[num_points_exact_gf];
+                            }
+                        }
+                        if(local_sets.Z_factor){
+                            Z_Factor_cpus_array = new long double[num_threads*(sim.ph_ext_max + 1)];
+                        }
+                    
+                        // flush to make sure data is initialized
+                        #pragma omp flush(gs_energy, gs_energy_var, effective_mass, effective_mass_var, effective_masses, effective_masses_var, points_histogram, gf_histo, points_gf_exact, gf_values_exact, Z_Factor_cpus_array)
+                        initialized_heap = 1;
+                        #pragma omp flush(initialized_heap)
+                    }
+
+                    // check to ensure that support variables are initialized before accessing them, otherwise threads sleep
+                    int local = 0;
+                    while(!initialized_heap){
+                        #pragma omp flush(initialized_heap)
+                        local = initialized_heap;
+                        if(local){break;}
+                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    }
+
+                    // flush new values to ensure that they are updated in main thread before accessing them
+                    #pragma omp flush(gs_energy, gs_energy_var, effective_mass, effective_mass_var, effective_masses, effective_masses_var, points_histogram, gf_histo, points_gf_exact, gf_values_exact, Z_Factor_cpus_array)
+                
+                    # pragma omp critical 
+                    {   
+                        if(sets.gs_energy){
+                           gs_energy[ID] = diagram_simulate.getGSEnergy();
+                            gs_energy_var[ID] = diagram_simulate.getGSEnergyVar();
+                        }
+                        if(sets.effective_mass){
+                            effective_mass[ID] = diagram_simulate.getEffectiveMass();
+                            effective_mass_var[ID] = diagram_simulate.getEffectiveMassVar();
+                            diagram_simulate.getEffectiveMasses(effective_masses[ID]);
+                            diagram_simulate.getEffectiveMassesVar(effective_masses_var[ID]);
+                        }
+                        if(sets.histo){diagram_simulate.getHistogram(points_histogram[ID], gf_histo[ID]);}
+                        if(sets.gf_exact){diagram_simulate.getGFExactPoints(points_gf_exact[ID], gf_values_exact[ID]);}
+                        if(sets.Z_factor){
+                            for(int i=0; i < sim.ph_ext_max + 1; i++){
+                                Z_Factor_cpus_array[ID*(sim.ph_ext_max + 1) + i] = diagram_simulate.getZFactorValue(i);
+                            }
                         }
                     }
                 }
             }
+            
 
             if(sets.gs_energy){
                 long double gs_energy_mean = computeMean(gs_energy, num_threads);
                 long double gs_energy_mean_var = computeMean(gs_energy_var, num_threads)*(num_threads)/(num_threads-1);
     
-                writeGS_Energy("gs_energy.txt", &diagram_relax, num_threads, sets.blocking_analysis,
+                writeGS_Energy("gs_energy.txt", &diagram_input, num_threads, sets.blocking_analysis,
                     gs_energy_mean, gs_energy,
                     gs_energy_mean_var, gs_energy_var
                 );
@@ -445,7 +361,7 @@ int main(){
                     effective_masses_mean_var[i] = computeMean(effective_masses_values_var, num_threads)*num_threads/(num_threads-1);
                 }
 
-                writeEffectiveMass("effective_mass.txt", &diagram_relax, num_threads, sets.blocking_analysis,
+                writeEffectiveMass("effective_mass.txt", &diagram_input, num_threads, sets.blocking_analysis,
                     effective_mass_mean, effective_mass_mean_var,
                     effective_masses_mean, effective_masses,
                     effective_masses_mean_var, effective_masses_var
@@ -473,7 +389,7 @@ int main(){
                     gf_histo_mean[i] = computeMean(gf_histo_threads, num_threads);
                 }
                 
-                writeGF_Histo("histo.txt", &diagram_relax, num_threads, points_histogram[0], gf_histo_mean);
+                writeGF_Histo("histo.txt", &diagram_input, num_threads, points_histogram[0], gf_histo_mean);
 
                 delete[] gf_histo_threads;
                 delete[] gf_histo_mean;
@@ -495,13 +411,13 @@ int main(){
                     gf_exact_mean[i] = computeMean(gf_exact_threads, num_threads);
                 }
                 std::string a = "GF_";
-                auto b = std::to_string(diagram_relax.getGFSelectedOrder());
-                if(diagram_relax.getGFSelectedOrder() < 0){
+                auto b = std::to_string(diagram_input.getGFSelectedOrder());
+                if(diagram_input.getGFSelectedOrder() < 0){
                     b = "total";
                 }
                 std::string c = "_exact.txt";
                 
-                writeGF_Exact(a+b+c, &diagram_relax, num_threads, points_gf_exact[0], gf_exact_mean);
+                writeGF_Exact(a+b+c, &diagram_input, num_threads, points_gf_exact[0], gf_exact_mean);
 
                 delete[] gf_exact_threads;
                 delete[] gf_exact_mean;
@@ -527,7 +443,7 @@ int main(){
                     Z_Factor_array_var[i] = computeStdDev(Z_Factor_thread_array, Z_Factor_array[i], num_threads);
                 }
 
-                writeZFactor("quasiparticle_weights.txt", &diagram_relax, num_threads, Z_Factor_array, Z_Factor_array_var);
+                writeZFactor("quasiparticle_weights.txt", &diagram_input, num_threads, Z_Factor_array, Z_Factor_array_var);
 
                 delete[] Z_Factor_cpus_array;
                 delete[] Z_Factor_thread_array;
@@ -547,4 +463,49 @@ uint64_t getClockTime(){
     uint64_t seed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count() ^
         std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
     return seed;
+};
+
+void setDiagramClassParameters(GreenFuncNphBands * diagram, parameters sim, settings sets, cpu_info cpu, double * probs, double * phonon_modes, double * dielectric_responses){
+    diagram->setPhononModes(phonon_modes);
+    diagram->setDielectricResponses(dielectric_responses);
+    diagram->set1BZVolume(sim.V_BZ);
+    diagram->setBvKVolume(sim.V_BvK);
+    diagram->setDielectricConstant(sim.dielectric_const);
+
+    if(sim.num_bands == 1){
+        diagram->setEffectiveMasses(sim.m_x, sim.m_y, sim.m_z);
+    }
+    else if(sim.num_bands == 3){
+        diagram->setLuttingerKohnParameters(sim.A_LK, sim.B_LK, sim.C_LK);
+    }
+
+    // Markov chain settings
+    diagram->setRelaxSteps(sim.relax_steps);
+    diagram->setAutcorrSteps(cpu.autocorr_steps);
+    diagram->setProbabilities(probs);
+
+    //histogram settings
+    diagram->setN_bins(sets.num_bins);
+
+    // exact GF estimator settings
+    diagram->setNumPoints(sets.num_points_exact);
+    diagram->setSelectedOrder(sets.selected_order);
+
+    // blocking method
+    diagram->setNumBlocks(sets.N_blocks);
+
+    // set calculations perfomed
+    diagram->setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor, sets.blocking_analysis, sets.fix_tau_value);
+    // set benchmarking
+    diagram->setBenchmarking(sets.time_benchmark);
+    // set MC statistics
+    diagram->setMCStatistics(sets.mc_statistics);
+    // print diagrams to file
+    diagram->writeDiagrams(sets.write_diagrams);
+
+    // exact estimators settings (time cutoffs)
+    diagram->setTauCutoffEnergy(sets.tau_cutoff_energy);
+    diagram->setTauCutoffMass(sets.tau_cutoff_mass);
+    diagram->setTauCutoffZ(sets.tau_cutoff_Z);
+    diagram->setTauCutoffStatistics(sets.tau_cutoff_statistics);
 };

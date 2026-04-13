@@ -179,6 +179,12 @@ void GreenFuncNphBands::setPhononModes(double * phonon_modes){
     }
 };
 
+void GreenFuncNphBands::setExtPhononTypeNum(int * ext_phonon_type_num){
+    for(int i = 0; i < _num_phonon_modes; i++){
+        _ext_phonon_type_num[i] = ext_phonon_type_num[i];
+    }
+};
+
 void GreenFuncNphBands::setDielectricResponses(double * dielectric_responses){
     for(int i = 0; i < _num_phonon_modes; i++){
         _dielectric_responses[i] = dielectric_responses[i];
@@ -3702,18 +3708,22 @@ void GreenFuncNphBands::markovChainMCOnlySample(){
     if(_num_bands > 1){resetNegativeDiagrams();} // compute ratio of negative updates to total updates for autocorrelation process
 
     if(_flags.time_benchmark){delete _benchmark_th;}
-    
-    _flags.write_diagrams = false; 
+
+    if(_flags.write_diagrams){
+        _flags.write_diagrams = false; 
+        if(_master){
+            if(N_diags <= 15000){
+                _flags.write_diagrams = true; // set true for master process
+            }
+        }
+    }
 
     if(_master){
         std::cout << "Starting simulation process" << std::endl;
         std::cout << std::endl;
-
-        if(N_diags <= 15000){
-            _flags.write_diagrams = true; // set true for master process
-        }
-        bar.setTotal(N_diags);
         
+        bar.setTotal(N_diags);
+
         if(_flags.time_benchmark){
             std::cout << "Benchmarking simulation time..." << std::endl;
             std::cout << std::endl;
@@ -3732,8 +3742,6 @@ void GreenFuncNphBands::markovChainMCOnlySample(){
         if(static_cast<int>(i%100000) == 0){fixDoublePrecisionErrors(1e-9);}
 
         if(static_cast<int>(i%100000) == 0){checkTimeErrors();}
-    
-        if(_flags.write_diagrams && _master){writeDiagram("Diagrams.txt", i, r);}
         
         if(static_cast<int>(i%(N_diags/100)) == 0 && _master){bar.update(i);}
     }
