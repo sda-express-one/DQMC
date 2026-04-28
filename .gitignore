@@ -46,4 +46,7 @@ pcg-cpp-0.98
 matrix.cpp
 
 # ignore ipynb files
-*ipynb
+*.ipynb
+
+# ignore .h5 files
+*.h5

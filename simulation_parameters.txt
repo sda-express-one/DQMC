@@ -2,7 +2,7 @@
 
 type bands
 thermalization_steps 10000000
-simulation_steps 1000000000
+simulation_steps 100000000
 max_tau_value 50
 dimensions 3
 volume 1
@@ -27,6 +27,8 @@ phonon_mode(0) 1
 # phonon_mode(3) 0.0023152061268438963
 
 dielectric_response(0) 0.1414213562373095
+# 0.35355339059327373
+# 0.1414213562373095
 # dielectric_response(0) 4.548950695322376 MgO
 # dielectric_response(0) 54.07420792079206 AlAs
 # dielectric_response(1) 15.170584738979068

@@ -2,10 +2,13 @@
 #define COMPUTATIONAL_METHODS_HPP
 #include <iostream>
 #include <iterator>
-#include "../../thirdparty/Eigen/Core"
-#include "../../thirdparty/Eigen/Eigenvalues"
-#include "../../thirdparty/Eigen/LU"
-#include "MC_data_structures.hpp"
+//#include "../../thirdparty/Eigen/Core"
+//#include "../../thirdparty/Eigen/Eigenvalues"
+//#include "../../thirdparty/Eigen/LU"
+#include <Eigen/Core>
+#include <Eigen/Eigenvalues>
+#include <Eigen/LU>
+//#include "MC_data_structures.hpp"
 
 
 // evaluates equality between two double precision values
