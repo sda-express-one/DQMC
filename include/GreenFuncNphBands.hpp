@@ -14,8 +14,8 @@
 #include "utils/MC_Benchmarking.hpp"
 #include "utils/computational_methods.hpp"
 #include <omp.h>
-#include "../thirdparty/Eigen/Core"        // built with Eigen 3.4.0, download it from https://gitlab.com/libeigen/eigen/-/releases
-#include "../thirdparty/Eigen/Eigenvalues" // add Eigen directory inside project directory to compile
+#include <Eigen/Core>        // built with Eigen 3.4.0, download it from https://gitlab.com/libeigen/eigen/-/releases
+#include <Eigen/Eigenvalues> // add Eigen directory inside project directory to compile
 #include "Diagram.hpp"
 
 class GreenFuncNphBands : public Diagram {

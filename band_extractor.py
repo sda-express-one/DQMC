@@ -4,6 +4,7 @@ Extract selected band energies with k-point information from vaspout.h5
 """
 
 import py4vasp as pv
+import h5py
 import spglib
 import numpy as np
 import os
@@ -95,10 +96,17 @@ def extract_selected_bands(vaspout_dir=".", band_indices=None, output_file="sele
     # Get k-point coordinates and weights
     kpoint_coords = kpoint_data['coordinates']
     kpoint_weights = kpoint_data['weights']
-    mesh_dims = kpoint_data.get('mesh', None)
-    if mesh_dims is None:
-        print("  Note: No mesh information available in kpoint_data")
-        mesh_dims = [30,30,30]
+    
+    with h5py.File("vaspout.h5", "r") as f:
+        if "input/kpoints/nkpx" in f:
+            nkpx = f["input/kpoints/nkpx"][()]
+            nkpy = f["input/kpoints/nkpx"][()]
+            nkpz = f["input/kpoints/nkpx"][()]
+            print(f"k-mesh dimensions: {nkpx}, {nkpy}, {nkpz}")
+            mesh_dims = [nkpx, nkpy, nkpz]
+        else:
+            print("k-mesh dimensions non available (line mode or explicit list)")
+            mesh_dims = [30, 30, 30]
 
     # Get band occupations
     try:
@@ -431,30 +439,26 @@ def reconstruct_full_brillouin_zone(ir_kpoints, ir_weights, lattice, rotations, 
     tolerance = 1e-6
     # Apply all symmetry rotations to each irreducible k-point
     for ir_idx, kpt in enumerate(ir_kpoints):
-        # transform to cartesian coordinates
-        k_basis = np.dot(reciprocal_lattice, kpt)
         num_point_diff = 0
         current_k_values = []
         for rot in rotations:
             # Rotate k-point: k' = R @ k (rotation in fractional coordinates)
-            print(rot)
-            k_rot = np.dot(rot, k_basis)
-            duplicate, _ = is_duplicate(k_rot, current_k_values)
+            rot = np.transpose(rot)
+            k_rot = np.dot(rot, kpt)
+            k_folded = fold_to_bz(k_rot)
+            duplicate, _ = is_duplicate(k_folded, current_k_values)
             if not duplicate:
-                current_k_values.append(k_rot)
-                k_rot = np.dot(lattice, k_rot)
-                k_folded = fold_to_bz(k_rot)
+                current_k_values.append(k_folded)
                 full_kpoints.append(k_folded)
                 kpoint_to_ir_map.append(ir_idx)
                 num_point_diff = num_point_diff + 1
-
         if(num_point_diff != integer_multiplicities[ir_idx]):
             print(f"Warning! Different number of k-points for {ir_idx} than expected. Expected {integer_multiplicities[ir_idx]}, found {num_point_diff}.")
 
     full_kpoints = np.array(full_kpoints)
-    for i in range(len(full_kpoints)):
-        full_kpoints[i] = np.dot(lattice, full_kpoints[i])
-        full_kpoints[i] = fold_to_bz(full_kpoints[i])
+    #for i in range(len(full_kpoints)):
+        #full_kpoints[i] = np.dot(lattice, full_kpoints[i])
+        #full_kpoints[i] = fold_to_bz(full_kpoints[i])
     kpoint_to_ir_map = np.array(kpoint_to_ir_map)
 
     # Assign energies from irreducible k-point mapping
