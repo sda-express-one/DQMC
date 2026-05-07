@@ -430,7 +430,7 @@ def reconstruct_full_brillouin_zone(ir_kpoints, ir_weights, lattice, rotations, 
         existing = np.array(existing_kpoints)
         diff = existing - k[np.newaxis, :]
         # Account for periodicity: shift by integers and check if difference is near zero
-        #diff -= np.round(diff)
+        diff -= np.round(diff)
         dist = np.linalg.norm(diff, axis=1)
         idx = np.argmin(dist)
         if dist[idx] < tolerance:
@@ -456,9 +456,6 @@ def reconstruct_full_brillouin_zone(ir_kpoints, ir_weights, lattice, rotations, 
             print(f"Warning! Different number of k-points for {ir_idx} than expected. Expected {integer_multiplicities[ir_idx]}, found {num_point_diff}.")
 
     full_kpoints = np.array(full_kpoints)
-    #for i in range(len(full_kpoints)):
-        #full_kpoints[i] = np.dot(lattice, full_kpoints[i])
-        #full_kpoints[i] = fold_to_bz(full_kpoints[i])
     kpoint_to_ir_map = np.array(kpoint_to_ir_map)
 
     # Assign energies from irreducible k-point mapping
@@ -534,6 +531,41 @@ def save_full_kpoints(full_kpoints, filename="full_kpoints.txt"):
             f.write(f"{kpt[0]:.6f}, {kpt[1]:.6f}, {kpt[2]:.6f}\n")
     
     print(f"✓ Full k-points saved to {filename}")
+
+def find_all_indices_in_array(arr, target, tol=1e-10):
+    """
+    Returns a list of all indices where array component equals target within tolerance.
+    
+    Args:
+        arr: List/tuple of 3 elements
+        target: Target number to check for
+        tol: Tolerance for floating-point comparison
+    
+    Returns:
+        list: List of matching indices (e.g., [0, 2] or [])
+    """
+    if len(arr) != 3:
+        raise ValueError("Array must have exactly 3 components")
+    
+    return [i for i, element in enumerate(arr) if abs(element - target) <= tol]
+
+def check_value_in_array(arr, target, tol=1e-10):
+    """
+    Checks if any of the 3 components in the array equal the target number,
+    accounting for floating-point numerical errors.
+    
+    Args:
+        arr: A list/tuple of 3 elements (can be ints or floats)
+        target: The number to check for (int or float)
+        tol: Tolerance for floating-point comparison (default: 1e-10)
+    
+    Returns:
+        bool: True if any element is within tolerance of target, False otherwise
+    """
+    if len(arr) != 3:
+        raise ValueError("Array must have exactly 3 components")
+    
+    return any(abs(element - target) <= tol for element in arr)
 
 def main():
     """
