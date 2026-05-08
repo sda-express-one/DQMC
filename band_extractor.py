@@ -485,41 +485,6 @@ def get_irreducible_kpoints_from_vaspout(vaspout_dir="."):
     
     return ir_kpoints, ir_weights, mesh_dims
 
-def find_little_group_operations(rotations, kpoint, tolerance=1e-6):
-    """
-    Find symmetry operations that leave a given k-point invariant (modulo reciprocal lattice).
-    This is the "little group" of the k-point.
-    """
-    little_group = []
-    
-    for rot in rotations:
-        # Transform k-point
-        k_transformed = np.dot(rot, kpoint)
-        # Check if k_transformed is equivalent to k (difference is integer)
-        diff = k_transformed - kpoint
-        diff = diff - np.round(diff)  # Bring to [-0.5, 0.5]
-        
-        if np.all(np.abs(diff) < tolerance):
-            little_group.append(rot)
-    
-    return little_group
-
-def save_symmetry_operations(rotations, translations, filename="symmetry_operations.txt"):
-    """Save symmetry operations to a text file."""
-    with open(filename, 'w') as f:
-        f.write("# Space group symmetry operations\n")
-        f.write(f"# Number of operations: {len(rotations)}\n")
-        f.write("# Format: rotation_matrix (row-major) and translation vector\n\n")
-        
-        for i, (rot, trans) in enumerate(zip(rotations, translations)):
-            f.write(f"Operation {i+1}:\n")
-            f.write(f"  Rotation:\n")
-            for row in rot:
-                f.write(f"    [{row[0]:3d}, {row[1]:3d}, {row[2]:3d}]\n")
-            f.write(f"  Translation: [{trans[0]:.6f}, {trans[1]:.6f}, {trans[2]:.6f}]\n\n")
-    
-    print(f"✓ Symmetry operations saved to {filename}")
-
 def save_full_kpoints(full_kpoints, filename="full_kpoints.txt"):
     """Save reconstructed full Brillouin zone k-points to a file."""
     with open(filename, 'w') as f:
@@ -532,40 +497,6 @@ def save_full_kpoints(full_kpoints, filename="full_kpoints.txt"):
     
     print(f"✓ Full k-points saved to {filename}")
 
-def find_all_indices_in_array(arr, target, tol=1e-10):
-    """
-    Returns a list of all indices where array component equals target within tolerance.
-    
-    Args:
-        arr: List/tuple of 3 elements
-        target: Target number to check for
-        tol: Tolerance for floating-point comparison
-    
-    Returns:
-        list: List of matching indices (e.g., [0, 2] or [])
-    """
-    if len(arr) != 3:
-        raise ValueError("Array must have exactly 3 components")
-    
-    return [i for i, element in enumerate(arr) if abs(element - target) <= tol]
-
-def check_value_in_array(arr, target, tol=1e-10):
-    """
-    Checks if any of the 3 components in the array equal the target number,
-    accounting for floating-point numerical errors.
-    
-    Args:
-        arr: A list/tuple of 3 elements (can be ints or floats)
-        target: The number to check for (int or float)
-        tol: Tolerance for floating-point comparison (default: 1e-10)
-    
-    Returns:
-        bool: True if any element is within tolerance of target, False otherwise
-    """
-    if len(arr) != 3:
-        raise ValueError("Array must have exactly 3 components")
-    
-    return any(abs(element - target) <= tol for element in arr)
 
 def main():
     """
