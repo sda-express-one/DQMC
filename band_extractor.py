@@ -252,7 +252,29 @@ def extract_selected_bands(vaspout_dir=".", band_indices=None, output_file="sele
             print(f"  Fallback also failed: {e2}")
 
     full_kpoints, full_eigenvalues, kpoint_to_ir_map = reconstruct_full_brillouin_zone(kpoint_coords, kpoint_weights, lattice, rotations, mesh_dims, eigenvalues)
-    print("bbb")
+
+    volume = np.dot(lattice[0], np.cross(lattice[1], lattice[2]))
+    b1 = 2*np.pi*np.cross(lattice[1],lattice[2])/volume
+    b2 = 2*np.pi*np.cross(lattice[2],lattice[0])/volume
+    b3 = 2*np.pi*np.cross(lattice[0],lattice[1])/volume
+
+    lattice_rec = np.vstack((b1, b2, b3))
+    lattice_rec = np.transpose(lattice_rec)
+
+    full_kpoints = np.dot(full_kpoints, lattice_rec.T)
+
+    print(b1)
+    print(lattice_rec)
+    
+    # combine kpoints and eigenvalues into a total array
+    full_values = np.hstack((full_kpoints, full_eigenvalues))
+
+
+    # sort kpoints from -0.5 to 0.5 starting from z component
+    idx = np.lexsort((full_values[:,2], full_values[:,1], full_values[:,0]))
+    full_values_sorted = full_values[idx]
+
+
     # ========================================
     # Write to file
     # ========================================
@@ -296,14 +318,14 @@ def extract_selected_bands(vaspout_dir=".", band_indices=None, output_file="sele
             # Write data for each k-point
             for ik in range(len(full_kpoints)):                
                 # k-point coordinates (fractional)
-                f.write(f"{full_kpoints[ik][0]:10.6f} ")
-                f.write(f"{full_kpoints[ik][1]:10.6f} ")
-                f.write(f"{full_kpoints[ik][2]:10.6f} ")
+                f.write(f"{full_values_sorted[ik][0]:10.6f} ")
+                f.write(f"{full_values_sorted[ik][1]:10.6f} ")
+                f.write(f"{full_values_sorted[ik][2]:10.6f} ")
                 
                 # Band energies for selected bands
                 for band_idx in bands_to_extract:
                     # Convert to 0-based index
-                    energy = full_eigenvalues[ik, band_idx - 1]
+                    energy = full_values_sorted[ik, band_idx + 2]
                     f.write(f"{energy:15.10f} ")
                 f.write("\n")
             

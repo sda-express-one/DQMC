@@ -2,9 +2,6 @@
 #define COMPUTATIONAL_METHODS_HPP
 #include <iostream>
 #include <iterator>
-//#include "../../thirdparty/Eigen/Core"
-//#include "../../thirdparty/Eigen/Eigenvalues"
-//#include "../../thirdparty/Eigen/LU"
 #include <Eigen/Core>
 #include <Eigen/Eigenvalues>
 #include <Eigen/LU>
