@@ -3,6 +3,7 @@ BUILD ?= release
 
 CXX = g++
 CXXFLAGS = -fopenmp -Wall -Wextra -Werror
+LDFLAGS = -lyaml-cpp
 
 # target name and build directory
 PROGRAM_NAME = DQMC.o
@@ -35,7 +36,7 @@ all: $(TARGET)
 
 # link the program
 $(TARGET): $(OBJECTS) | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 # compile source files
 %.o: %.cpp

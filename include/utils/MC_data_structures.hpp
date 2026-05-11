@@ -68,6 +68,15 @@ struct settings{
     long double tau_cutoff_Z = 10;
 };
 
+struct config_parameters{
+    parameters sim;
+    settings sets;
+    cpu_info cpu;
+    double probs[8] = {0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125};
+    double * phonon_modes = nullptr;
+    double * dielectric_responses =  nullptr;
+};
+
 // string to type conversion functions
 
 inline int stringToInt(const std::string& str){

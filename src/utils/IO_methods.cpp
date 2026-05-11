@@ -236,6 +236,115 @@ parameters readSimParameterstxt(const std::string& filename){
     return params;
 };
 
+config_parameters readParametersYAML(config_parameters cfg, const std::string& filename){
+    YAML::Node node = YAML::LoadFile(filename);
+    try {
+        // fields
+        auto sim_node = node["simulation_parameters"];
+        auto sets_node = node["simulation_settings"];
+        auto prob_node = node["update_probabilities"];
+        auto cpu_node = node["cpu_settings"];
+
+        // simulation parameters
+        cfg.sim.type = sim_node["type"].as<std::string>("simple"); // simulation type: "simple" for single band isotropic model, "bands" for anisotropic 1 band or 3 band LK model
+        cfg.sim.N_diags = sim_node["simulation_steps"].as<unsigned long long int>(100000000); // number of diagrams to be sampled in the Markov chain
+        cfg.sim.relax_steps = sim_node["thermalization_steps"].as<unsigned long long int>(1000000); // number of steps for thermalization (relaxation) of the Markov chain before statistics collection
+        cfg.sim.tau_max = sim_node["max_tau_value"].as<long double>(50); // maximum value for imaginary time (tau) in the simulation, used for normalization of tau values in histogram and exact GF estimators
+        cfg.sim.dimensions = sim_node["dimensions"].as<int>(3); // dimensionality of the system (2 or 3)
+        // external momentum components (kx, ky, kz) for Green's function calculation
+        cfg.sim.kx = sim_node["kx"].as<double>(0); 
+        cfg.sim.ky = sim_node["ky"].as<double>(0);
+        cfg.sim.kz = sim_node["kz"].as<double>(0);
+        cfg.sim.chem_potential = sim_node["chemical_potential"].as<double>(-2.2); // chemical potential for Green's function calculation, used as normalization factor
+        cfg.sim.order_int_max = sim_node["max_internal_order"].as<int>(1000); // maximum internal order of diagrams to be sampled in the Markov chain
+        cfg.sim.ph_ext_max = sim_node["max_num_ext_phonons"].as<int>(50); // maximum number of external phonon lines in the diagrams to be sampled in the Markov chain
+        cfg.sim.dielectric_const = sim_node["simulation_parameters"]["dielectric_infty"].as<double>(1); // optical dielectric constant
+
+        cfg.sim.volume = sim_node["simple"]["volume"].as<double>(1.0); // volume of the system, usecfg.sim.dielectric_const = sim_node["simulation_parameters"]["dielectric_infty"].as<double>(); // optical dielectric constantd for normalization of Green's function values ("simple" model)
+        cfg.sim.alpha = sim_node["simple"]["coupling_strength"].as<double>(2.0); // coupling strength (alpha) for electron-phonon interaction ()"simple" model)
+        cfg.sim.el_eff_mass = sim_node["simple"]["electron_effective_mass"].as<double>(1); // effective mass of the electron for the simple model
+        cfg.sim.ph_dispersion = sim_node["simple"]["optical_phonon_dispersion"].as<double>(1); // optical phonon dispersion for the simple model (1 for dispersionless phonons)
+
+        cfg.sim.num_bands = sim_node["bands"]["num_bands"].as<int>(); // number of electron bands for the "bands" type simulation
+        cfg.sim.num_phonon_modes = sim_node["bands"]["num_phonon_modes"].as<int>(); // number of phonon modes for the "bands" type simulation
+        cfg.phonon_modes = new double[cfg.sim.num_phonon_modes];
+        cfg.dielectric_responses = new double[cfg.sim.num_phonon_modes];
+        // effective masses for the anisotropic 1 band model ("bands")
+        cfg.sim.m_x = sim_node["bands"]["m_x"].as<double>(1.0); 
+        cfg.sim.m_y = sim_node["bands"]["m_y"].as<double>(1.0);
+        cfg.sim.m_z = sim_node["bands"]["m_z"].as<double>(1.0);
+        // LK parameters for the 3 band LK model ("bands")
+        cfg.sim.A_LK = sim_node["bands"]["A_LK"].as<double>(1.0);
+        cfg.sim.B_LK = sim_node["bands"]["B_LK"].as<double>(1.0);
+        cfg.sim.C_LK = sim_node["bands"]["C_LK"].as<double>(0.0);
+        // Variable-length sequence for phonon modes and dielectric responses for the "bands" type simulation
+        if (sim_node["bands"]["phonon_modes"] && sim_node["bands"]["dielectric_responses"]) {
+            int i = 0;
+            for (const auto& val : sim_node["bands"]["phonon_modes"]){
+                if(i >= cfg.sim.num_phonon_modes){
+                    std::cerr << "Warning: number of phonon modes in the list exceeds num_phonon_modes. Ignoring extra values." << std::endl;
+                    break;
+                }
+                cfg.phonon_modes[i] = val.as<double>(1.0);
+                ++i;
+            }
+            i = 0;
+            for (const auto& val : sim_node["bands"]["dielectric_responses"]){
+                if(i >= cfg.sim.num_phonon_modes){
+                    std::cerr << "Warning: number of dielectric responses in the list exceeds num_phonon_modes. Ignoring extra values." << std::endl;
+                    break;
+                }
+                cfg.dielectric_responses[i] = val.as<double>(1.0);
+                ++i;
+            }
+        }
+        cfg.sim.V_BZ = sim_node["bands"]["V_cell"].as<double>(1.0); // unit cell volume, used for normalization ("bands")
+        cfg.sim.V_BvK = sim_node["bands"]["V_BvK"].as<double>(1.0); // Born von Karman volume, used for normalization ("bands") (=1)
+
+        // simulation settings
+        cfg.sets.histo = sets_node["histogram_method"].as<bool>(false); // histogram method
+        cfg.sets.num_bins = sets_node["num_bins"].as<int>(50); // number of bins for histogram method
+        cfg.sets.gf_exact = sets_node["exact_green_function"].as<bool>(false); // exact Green's function estimator
+        cfg.sets.num_points_exact = sets_node["num_points_exact"].as<int>(50); // number of points for exact Green's function estimator
+        cfg.sets.selected_order = sets_node["selected_order"].as<int>(-1); // selected order for exact Green's function estimator (0 for all orders)
+        cfg.sets.gs_energy = sets_node["gs_energy"].as<bool>(false); // ground state energy exact estimator
+        cfg.sets.tau_cutoff_energy = sets_node["cutoff_tau_energy"].as<long double>(30.0); // imaginary time cutoff for gs energy estimator
+        cfg.sets.effective_mass = sets_node["effective_mass"].as<bool>(false); // effective mass exact estimator
+        cfg.sets.tau_cutoff_mass = sets_node["cutoff_tau_mass"].as<long double>(30.0); // imaginary time cutoff for effective mass estimator
+        cfg.sets.Z_factor = sets_node["Z_factor"].as<bool>(false); // quasiparticle weight (Z-factor) exact estimator
+        cfg.sets.tau_cutoff_Z = sets_node["cutoff_tau_Z"].as<long double>(30.0); // imaginary time cutoff for Z-factor estimator
+        cfg.sets.write_diagrams = sets_node["write_diagrams"].as<bool>(false); // whether to write sampled diagrams to file (<25000 samples)
+        cfg.sets.time_benchmark = sets_node["time_benchmark"].as<bool>(false); // whether to perform time benchmarking of updates
+        cfg.sets.mc_statistics = sets_node["mc_statistics"].as<bool>(false); // whether to perform Monte Carlo statistics analysis (average order of diagrams, average length...)
+        cfg.sets.tau_cutoff_statistics = sets_node["cutoff_tau_statistics"].as<long double>(0.0); // imaginary time cutoff for MC statistics analysis
+        cfg.sets.blocking_analysis = sets_node["blocking_method"].as<bool>(false); // whether to perform blocking analysis for error estimation
+        cfg.sets.N_blocks = sets_node["N_blocks"].as<int>(100); // number of blocks for blocking analysis (if enabled)
+        cfg.sets.fix_tau_value = sets_node["fix_tau_value"].as<bool>(false); // whether to fix tau value for all diagrams in the Markov chain (ground state properties calculation)
+        
+        // update probabilities
+        cfg.probs[0] = prob_node["length_update"].as<double>(0.125);
+        cfg.probs[1] = prob_node["add_internal_update"].as<double>(0.125);
+        cfg.probs[2] = prob_node["remove_internal_update"].as<double>(0.125);
+        cfg.probs[3] = prob_node["add_external_update"].as<double>(0.125);
+        cfg.probs[4] = prob_node["remove_external_update"].as<double>(0.125);
+        cfg.probs[5] = prob_node["swap_phonon_update"].as<double>(0.125);
+        cfg.probs[6] = prob_node["shift_phonon_update"].as<double>(0.125);
+        cfg.probs[7] = prob_node["stretch_diagram_update"].as<double>(0.125);
+
+        // CPU settings
+        cfg.cpu.parallel_mode = cpu_node["parallel_mode"].as<bool>(false); // whether to run in parallel mode (if false, the program runs in sequential mode)
+        cfg.cpu.parallel_type = cpu_node["parallel_type"].as<std::string>("from_scratch"); // type of parallelization: "start_sequential" to start sequential thermalization, "from_scratch" to have fully parallelized processes from the start (no sequential thermalization)
+        cfg.cpu.num_procs = cpu_node["num_procs"].as<int>(6); // number of parallel processes per node (if parallel_mode is true)
+        cfg.cpu.num_nodes = cpu_node["num_nodes"].as<int>(1); // number of nodes for parallelization (if parallel_mode is true)
+        cfg.cpu.autocorr_steps = cpu_node["autocorr_steps"].as<int>(100000); // number of steps for autocorrelation rejection of the Markov chain (if parallel_mode is start_sequential)
+    }
+    catch(const std::exception& e){
+        std::cerr << "Error parsing YAML file: " << e.what() << std::endl;
+        std::cerr << "Using default parameters." << std::endl;
+    }
+    return cfg;
+};
+
 settings readSimSettingstxt(const std::string& filename){
     settings sets;
     std::ifstream file(filename);

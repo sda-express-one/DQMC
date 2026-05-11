@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <sstream>
 #include "MC_data_structures.hpp"
+#include <yaml-cpp/yaml.h>
 #include "../GreenFuncNphBands.hpp"
 
 // read from .txt file
@@ -19,6 +20,8 @@ parameters readSimParameterstxt(const std::string& filename);
 settings readSimSettingstxt(const std::string& filename);
 
 cpu_info readCPUSettingstxt(const std::string& filename);
+
+config_parameters readParametersYAML(config_parameters cfg, const std::string& filename);
 
 // write to .txt file (multithread process)
 void writeGS_Energy(const std::string& filename, GreenFuncNphBands * diagram, int num_threads, bool blocking,

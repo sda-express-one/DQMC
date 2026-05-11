@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <omp.h>
 #include <chrono>
@@ -11,16 +12,52 @@
 #include "../include/GreenFuncNphBands.hpp"
 
 uint64_t getClockTime();
+bool fileExists(const std::string& filename);
+
 // set internal parameters of diagram class
 void setDiagramClassParameters(GreenFuncNphBands * diagram, parameters sim, settings sets, cpu_info cpu, double * probs, double * phonon_modes, double * dielectric_responses);
 
 int main(){
-    // read simulation parameters from file
+    // inputs
+    parameters sim;
+    settings sets;
+    cpu_info cpu;
     double probs[8];
-    readProbabilities("simulation_probabilities_MC.txt", probs, 8);
-    parameters sim = readSimParameterstxt("simulation_parameters.txt");
-    settings sets = readSimSettingstxt("simulation_settings.txt");
-    cpu_info cpu = readCPUSettingstxt("simulation_cpu_settings.txt");
+    double * phonon_modes = nullptr;
+    double * dielectric_responses = nullptr;
+
+    bool yaml_file_exists = fileExists("config_file.yaml");
+    if(yaml_file_exists){
+        // read inputs from YAML file
+        std::cout << "YAML configuration file found. Reading parameters from simulation_config.yaml." << std::endl;
+        config_parameters cfg;
+        cfg = readParametersYAML(cfg, "config_file.yaml");
+        sim = cfg.sim;
+        sets = cfg.sets;
+        cpu = cfg.cpu;
+
+        phonon_modes = new double[sim.num_phonon_modes];
+        dielectric_responses = new double[sim.num_phonon_modes];
+
+        for(int i = 0; i < 8; ++i){
+            probs[i] = cfg.probs[i];
+        }
+        for(int i = 0; i < cfg.sim.num_phonon_modes; ++i){
+            phonon_modes[i] = cfg.phonon_modes[i];
+            dielectric_responses[i] = cfg.dielectric_responses[i];
+        }
+
+        delete[] cfg.phonon_modes;
+        delete[] cfg.dielectric_responses;
+    }
+    else{
+        // read inputs from .txt files
+        std::cout << "YAML configuration file not found. Reading parameters from .txt files." << std::endl;
+        readProbabilities("simulation_probabilities_MC.txt", probs, 8);
+        sim = readSimParameterstxt("simulation_parameters.txt");
+        sets = readSimSettingstxt("simulation_settings.txt");
+        cpu = readCPUSettingstxt("simulation_cpu_settings.txt");
+    }
 
     // initialize GreenFuncNph object
     uint64_t seed = getClockTime();
@@ -66,9 +103,12 @@ int main(){
 
     // type == bands anisotropic 1 band model or 3 band LK model
     else if(sim.type == "bands"){
-        double phonon_modes[sim.num_phonon_modes];
-        double dielectric_responses[sim.num_phonon_modes];
-        readPhononModes("simulation_parameters.txt", phonon_modes, dielectric_responses, sim.num_phonon_modes);
+
+        if(!yaml_file_exists){
+            phonon_modes = new double[sim.num_phonon_modes];
+            dielectric_responses = new double[sim.num_phonon_modes];
+            readPhononModes("simulation_parameters.txt", phonon_modes, dielectric_responses, sim.num_phonon_modes);
+        }
 
         if(cpu.parallel_mode == false){
             GreenFuncNphBands diagram(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max,
@@ -603,7 +643,9 @@ int main(){
         }
     }
     
-    //std::cout << std::endl;
+    if(phonon_modes != nullptr){delete[] phonon_modes;}
+    if(dielectric_responses != nullptr){delete[] dielectric_responses;}
+
     std::cout << "Terminating the program." << std::endl;
     std::cout << std::endl;
     return 0;
@@ -614,6 +656,11 @@ uint64_t getClockTime(){
         std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
     return seed;
 };
+
+bool fileExists(const std::string& filename) {
+    std::ifstream file(filename);
+    return file.good();
+}
 
 void setDiagramClassParameters(GreenFuncNphBands * diagram, parameters sim, settings sets, cpu_info cpu, double * probs, double * phonon_modes, double * dielectric_responses){
     diagram->setPhononModes(phonon_modes);

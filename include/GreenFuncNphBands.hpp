@@ -14,8 +14,8 @@
 #include "utils/MC_Benchmarking.hpp"
 #include "utils/computational_methods.hpp"
 #include <omp.h>
-#include "../thirdparty/Eigen/Core"        // built with Eigen 3.4.0, download it from https://gitlab.com/libeigen/eigen/-/releases
-#include "../thirdparty/Eigen/Eigenvalues" // add Eigen directory inside project directory to compile
+#include <Eigen/Core>        // built with Eigen 3.4.0, download it from https://gitlab.com/libeigen/eigen/-/releases
+#include <Eigen/Eigenvalues> // add Eigen directory inside project directory to compile
 #include "Diagram.hpp"
 
 class GreenFuncNphBands : public Diagram {
@@ -120,7 +120,7 @@ class GreenFuncNphBands : public Diagram {
     void setEffectiveMasses(double m_x, double m_y, double m_z);
     void setLuttingerKohnParameters(double A_LK_el, double B_LK_el, double C_LK_el);
 
-    // phonons modes
+    // phonon modes
     void setPhononModes(double* phonon_modes);
     void setExtPhononTypeNum(int* ext_phonon_type_num);
     void setDielectricResponses(double* dielectric_responses);
