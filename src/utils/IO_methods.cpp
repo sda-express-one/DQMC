@@ -337,6 +337,7 @@ config_parameters readParametersYAML(config_parameters cfg, const std::string& f
         cfg.cpu.num_procs = cpu_node["num_procs"].as<int>(6); // number of parallel processes per node (if parallel_mode is true)
         cfg.cpu.num_nodes = cpu_node["num_nodes"].as<int>(1); // number of nodes for parallelization (if parallel_mode is true)
         cfg.cpu.autocorr_steps = cpu_node["autocorr_steps"].as<int>(100000); // number of steps for autocorrelation rejection of the Markov chain (if parallel_mode is start_sequential)
+        cfg.cpu.cpu_time = cpu_node["cpu_time"].as<bool>(false); // whether to perform CPU time benchmarking for each update type (if parallel_mode is true)
     }
     catch(const std::exception& e){
         std::cerr << "Error parsing YAML file: " << e.what() << std::endl;
