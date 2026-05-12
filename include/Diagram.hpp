@@ -7,8 +7,8 @@
 #include <random>
 #include <chrono>
 #include <omp.h>
-#include "/home/samuele/libraries_cpp/include/pcg_random.hpp"
-#include "/home/samuele/libraries_cpp/include/pcg_extras.hpp"
+#include "../thirdparty/include/pcg_random.hpp"
+#include "../thirdparty/include/pcg_extras.hpp"
 #include "utils/computational_methods.hpp"
 #include "utils/MC_data_structures.hpp"
 
