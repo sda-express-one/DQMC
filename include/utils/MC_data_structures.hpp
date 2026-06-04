@@ -49,30 +49,34 @@ struct cpu_info{
 // parameters to set in simulation_settings.txt
 struct settings{
     bool gf_exact = false;
+    int num_points_exact = 100;
+    int selected_order = 0;
     bool histo = false;
+    int num_bins = 100;
     bool gs_energy = false;
+    long double tau_cutoff_energy = 10;
     bool effective_mass = false;
+    long double tau_cutoff_mass = 10;
     bool Z_factor = false;
+    long double tau_cutoff_Z = 10;
     bool write_diagrams = false;
     bool time_benchmark = false;
     bool mc_statistics = false;
-    bool blocking_analysis = false;
-    bool fix_tau_value = false;
-    int num_points_exact = 100;
-    int num_bins = 100;
-    int selected_order = 0;
-    int N_blocks = 1;
-    long double tau_cutoff_energy = 10;
-    long double tau_cutoff_mass = 10;
     long double tau_cutoff_statistics = 0;
-    long double tau_cutoff_Z = 10;
+    bool blocking_analysis = false;
+    int N_blocks = 100;
+    bool fix_tau_value = false;
+    bool laguerre = false;
+    int max_order_laguerre = 10;
+    long double alpha_laguerre = 1;
+    int num_points_laguerre = 100;
 };
 
 struct config_parameters{
     parameters sim;
     settings sets;
     cpu_info cpu;
-    double probs[8] = {0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125};
+    double probs[9] = {1./9, 1./9, 1./9, 1./9, 1./9, 1./9, 1./9, 1./9};
     double * phonon_modes = nullptr;
     double * dielectric_responses =  nullptr;
 };
@@ -138,7 +142,8 @@ struct Flags{
         bool mc_statistics = false; // flag for statistics
         bool blocking_analysis = false; // flag for blocking analysis
         bool fix_tau_value = false; // flag to fix diagram length during simulation (gs properties)
-    };
+        bool laguerre = false; // flag to use Laguerre polynomials method for GF estimation
+};
 
 
 // Structure to hold a vertex in the diagram

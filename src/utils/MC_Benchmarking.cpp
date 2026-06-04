@@ -67,11 +67,11 @@ void MC_Benchmarking::stopUpdateTimer(int update_index) {
 void MC_Benchmarking::printResults(){
     std::cout << "Total time taken: " << _total_time << " seconds." << std::endl;
     std::cout << "Average time per iteration: " << _total_time / _total_iterations << " seconds." << std::endl;
-    std::cout << "Iterations per second: " << static_cast<int>(1. / (_total_time / _total_iterations)) << std::endl;
+    std::cout << "Iterations per second: " << static_cast<long long int>(1.L / (_total_time / static_cast<long double>(_total_iterations))) << std::endl;
     std::cout << "Total iterations: " << _total_iterations << "." << std::endl;
     for(int i = 0; i < _num_updates; ++i) {
         std::cout << "Average time for update " << i << ": " << _updates_time[i] / _updates_iterations[i] << " seconds" << std::endl;
-        std::cout << "Iterations per second for update " << i << ":" << static_cast<int>(1. / (_updates_time[i] / _updates_iterations[i])) << std::endl;
+        std::cout << "Iterations per second for update " << i << ": " << static_cast<long long int>(1.L / (_updates_time[i] / static_cast<long double>(_updates_iterations[i]))) << std::endl;
         std::cout << "Number of iterations for update " << i << ": " << _updates_iterations[i] << "." << std::endl;
     }
 };
@@ -85,11 +85,11 @@ void MC_Benchmarking::writeResultsToFile(const std::string& filename) {
     }
     file << "Total time taken: " << _total_time << " seconds." << std::endl;
     file << "Average time per iteration: " << _total_time / _total_iterations << " seconds." << std::endl;
-    file << "Iterations per second: " << static_cast<int>(1. / (_total_time / _total_iterations)) << std::endl;
+    file << "Iterations per second: " << static_cast<long long int>(1.L / (_total_time / static_cast<long double>(_total_iterations))) << std::endl;
     file << "Total iterations: " << _total_iterations << "." << std::endl;
     for(int i = 0; i < _num_updates; ++i) {
-        file << "Average time for update " << i << ": " << _updates_time[i] / _updates_iterations[i] << " seconds" << std::endl;
-        file << "Iterations per second for update " << i << ": " << static_cast<int>(1. / (_updates_time[i] / _updates_iterations[i])) << std::endl;
+        file << "Average time for update " << i << ":  " << _updates_time[i] / _updates_iterations[i] << " seconds" << std::endl;
+        file << "Iterations per second for update " << i << ": " << static_cast<long long int>(1.L / (_updates_time[i] / static_cast<long double>(_updates_iterations[i]))) << std::endl;
         file << "Number of iterations for update " << i << ": " << _updates_iterations[i] << std::endl;
     }
     file << std::endl;

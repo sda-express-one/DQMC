@@ -22,7 +22,7 @@ int main(){
     parameters sim;
     settings sets;
     cpu_info cpu;
-    double probs[8];
+    double probs[9];
     double * phonon_modes = nullptr;
     double * dielectric_responses = nullptr;
 
@@ -39,7 +39,7 @@ int main(){
         phonon_modes = new double[sim.num_phonon_modes];
         dielectric_responses = new double[sim.num_phonon_modes];
 
-        for(int i = 0; i < 8; ++i){
+        for(int i = 0; i < 9; ++i){
             probs[i] = cfg.probs[i];
         }
         for(int i = 0; i < cfg.sim.num_phonon_modes; ++i){
@@ -53,7 +53,7 @@ int main(){
     else{
         // read inputs from .txt files
         std::cout << "YAML configuration file not found. Reading parameters from .txt files." << std::endl;
-        readProbabilities("simulation_probabilities_MC.txt", probs, 8);
+        readProbabilities("simulation_probabilities_MC.txt", probs, 9);
         sim = readSimParameterstxt("simulation_parameters.txt");
         sets = readSimSettingstxt("simulation_settings.txt");
         cpu = readCPUSettingstxt("simulation_cpu_settings.txt");
@@ -74,7 +74,12 @@ int main(){
 
         // Markov chain settings
         diagram.setRelaxSteps(sim.relax_steps);
-        diagram.setProbabilities(probs);
+
+        double probs_new[8];
+        for(int i = 0; i < 8; ++i){
+            probs_new[i] = probs[i];
+        }
+        diagram.setProbabilities(probs_new);
 
         //histogram settings
         diagram.setN_bins(sets.num_bins);
@@ -201,8 +206,8 @@ int main(){
                 num_points_exact_gf = diagram_relax.getNumPoints();
                 int current_order_int = diagram_relax.getCurrentOrderInt();
                 int current_ph_ext = diagram_relax.getCurrentPhExt();
-                int ext_phonon_type_num[sim.ph_ext_max];
-                for(int i=0; i < sim.ph_ext_max; i++){
+                int ext_phonon_type_num[sim.num_phonon_modes];
+                for(int i=0; i < sim.num_phonon_modes; i++){
                     ext_phonon_type_num[i] = diagram_relax.getExtPhononTypeNum(i);
                 }
 
@@ -691,8 +696,13 @@ void setDiagramClassParameters(GreenFuncNphBands * diagram, parameters sim, sett
     // blocking method
     diagram->setNumBlocks(sets.N_blocks);
 
+    // Laguerre method
+    diagram->setLaguerreMaxOrder(sets.max_order_laguerre);
+    diagram->setLaguerreAlpha(sets.alpha_laguerre);
+    diagram->setNumLaguerrePoints(sets.num_points_laguerre);
+
     // set calculations perfomed
-    diagram->setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor, sets.blocking_analysis, sets.fix_tau_value);
+    diagram->setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor, sets.blocking_analysis, sets.fix_tau_value, sets.laguerre);
     // set benchmarking
     diagram->setBenchmarking(sets.time_benchmark);
     // set MC statistics

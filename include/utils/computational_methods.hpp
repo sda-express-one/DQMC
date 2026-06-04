@@ -227,6 +227,19 @@ inline double calcVertexSquareModulus(double strength, double overlap){
     return std::pow(strength*overlap,2);
 };
 
+inline unsigned long long int factorial(int n){
+    if(n == 0 || n == 1){
+        return 1;
+    }
+    else{
+        unsigned long long int result = 1;
+        for(int i=2; i != n+1; ++i){
+            result *= i;
+        }
+        return result;
+    }
+};
+
 inline long double computeMean(long double * data, int length){
     long double sum = 0.0L;
     for(int i=0; i<length; i++){
@@ -258,4 +271,29 @@ inline double computeStdDev(double * data, double mean, int length){
     }
     return std::sqrt(sum/(static_cast<double>(length - 1)));
 }
+
+inline long double LaguerrePolynomial(int n, long double alpha, long double x){
+    if(n == 0){return 1;}
+    else if(n == 1){return (1 - alpha*x);}
+    else{
+        long double L_n_minus_two = 1;
+        long double L_n_minus_one = (1 - alpha*x);
+        long double L_n;
+        for(int i=2; i != n+1; ++i){
+            L_n = ((2*i - 1 - alpha * x)*L_n_minus_one - (i - 1)*L_n_minus_two)/static_cast<long double>(i);
+            L_n_minus_two = L_n_minus_one;
+            L_n_minus_one = L_n;
+        }
+        return L_n;
+    }
+};
+
+inline long double LaguerrePolynomial(int n, long double alpha, long double L_n_minus_two, long double L_n_minus_one, long double x){
+    if(n == 0){return 1;}
+    else if(n == 1){return (1 - alpha*x);}
+    else{
+        long double L_n = ((2*n - 1 - alpha * x)*L_n_minus_one - (n - 1)*L_n_minus_two)/static_cast<long double>(n);
+        return L_n;
+    }
+};
 #endif

@@ -57,6 +57,11 @@ class GreenFuncNphBands : public Diagram {
                 delete[] _effective_masses_block_array;
             }
         }
+        if(_flags.laguerre){
+            delete[] _L_coefficients;
+            delete[] _L_points;
+            delete[] _L_GF;
+        }
     };
 
     // getters
@@ -115,6 +120,10 @@ class GreenFuncNphBands : public Diagram {
     // blocking method
     int getNumBlocks() const {return _N_blocks;}
 
+    // Laguerre method
+    int getMaxOrderLaguerre() const {return _L_order;};
+    int getAlphaLaguerre() const {return _L_alpha;};
+
     // setters
     // electron bands
     void setEffectiveMasses(double m_x, double m_y, double m_z);
@@ -143,7 +152,7 @@ class GreenFuncNphBands : public Diagram {
     void setNumProcs(int num_procs = 1);
 
     // calculations performed
-    void setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor, bool blocking_analysis, bool fix_tau_value);
+    void setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor, bool blocking_analysis, bool fix_tau_value, bool laguerre);
 
     // exact estimator
     // histogram method
@@ -165,9 +174,10 @@ class GreenFuncNphBands : public Diagram {
     // blocking method
     void setNumBlocks(int N_blocks);
 
-    // write to file
-    // write diagrams
-    inline void writeDiagrams(bool write_diagrams = false){_flags.write_diagrams = write_diagrams;};
+    // laguerre method
+    void setLaguerreMaxOrder(int L_order){if(L_order >= 2){_L_order = L_order;}};
+    void setLaguerreAlpha(long double L_alpha){if(L_alpha > 0){_L_alpha = L_alpha;}};
+    void setNumLaguerrePoints(int num_laguerre_points){if(num_laguerre_points > 0){_L_num_points = num_laguerre_points;}};
 
     // time benchmarking
     inline void setBenchmarking(bool time_benchmark = false){_flags.time_benchmark = time_benchmark;};
@@ -175,6 +185,10 @@ class GreenFuncNphBands : public Diagram {
     // MC statistics
     inline void setMCStatistics(bool mc_statistics = false){_flags.mc_statistics = mc_statistics;};
     void setTauCutoffStatistics(long double tau_cutoff_statistics);
+
+    // write to file
+    // write diagrams
+    inline void writeDiagrams(bool write_diagrams = false){_flags.write_diagrams = write_diagrams;};
 
     // main simulation method
     void markovChainMC();
@@ -232,19 +246,20 @@ class GreenFuncNphBands : public Diagram {
 
     // negative sign diagrammatic Monte Carlo
     int _current_sign = 1; // current sign of the diagram (bold method)
-    long long int _num_negative_diagrams[8] = {0,0,0,0,0,0,0,0}; // number of updates that lead to negative diagram weight (bold method)
+    long long int _num_negative_diagrams[9] = {0,0,0,0,0,0,0,0,0}; // number of updates that lead to negative diagram weight (bold method)
     long double _ratio_negative_updates = 0.0L; // ratio of negative updates over total updates (bold method)
     long double _average_sign = 1.0L; // average sign of the diagrams (bold method)
 
     // transition probabilities
-    double _p_length = (1./8.);
-    double _p_add_int = (1./8.);
-    double _p_rem_int = (1./8.);
-    double _p_add_ext = (1./8.);
-    double _p_rem_ext = (1./8.);
-    double _p_swap = (1./8.);
-    double _p_shift = (1./8.);
-    double _p_stretch = (1./8.);
+    double _p_length = (1./9.);
+    double _p_add_int = (1./9.);
+    double _p_rem_int = (1./9.);
+    double _p_add_ext = (1./9.);
+    double _p_rem_ext = (1./9.);
+    double _p_swap = (1./9.);
+    double _p_shift = (1./9.);
+    double _p_stretch = (1./9.);
+    double _p_change_band = (1./9.);
     
     // important variables to keep at runtime
     long double _last_vertex = 0; // last current phonon vertex (0 if no vertices are present)
@@ -263,7 +278,7 @@ class GreenFuncNphBands : public Diagram {
     double _bin_center = _bin_width/2; // center of each bin
     double _bin_width_inv = 1./_bin_width;
     double* _histogram = nullptr; // histogram time points
-    unsigned long long int* _bin_count = nullptr; // number of diagrams in each bin
+    long long int* _bin_count = nullptr; // number of diagrams in each bin
     double* _green_func = nullptr;
 
     // direct estimator variables
@@ -299,6 +314,16 @@ class GreenFuncNphBands : public Diagram {
     long double* _points_gf_exact = nullptr; // gf values for evaluated points
     unsigned long long int _gf_exact_count = 0;
 
+    // Laguerre polynomials for GF reconstruction
+    long double _L_alpha = 1.0; // alpha parameter for generalized Laguerre polynomials
+    long double _L_beta = 0.0; // beta parameter for generalized Laguerre polynomials
+    long double _L = 1.0; // lambda parameter for generalized Laguerre polynomials
+    int _L_order = 10; // order of Laguerre polynomials
+    long double * _L_coefficients = nullptr; // coefficients for Laguerre polynomials expansion
+    int _L_num_points = 100; // number of points for Laguerre polynomials expansion
+    long double * _L_points = nullptr; // points for Laguerre polynomials expansion
+    long double * _L_GF = nullptr; // reconstructed GF values for Laguerre polynomials expansion
+
     // collect MC statistics
     MC_Benchmarking * _benchmark_sim = nullptr; // time benchmarking object
     MC_Benchmarking * _benchmark_th = nullptr; // time benchmarking object for thermalization
@@ -324,8 +349,8 @@ class GreenFuncNphBands : public Diagram {
     // negative sign methods
     inline void updateSign(){_current_sign = _current_sign*-1;};
     inline void updateNegativeDiagrams(int update_index){if(_current_sign == -1){_num_negative_diagrams[update_index]++;}};
-    inline void resetNegativeDiagrams(){for(int i = 0; i < 8; i++){_num_negative_diagrams[i] = 0;}};
-    inline void computeRatioNegativeUpdates(long long int num_updates);
+    inline void resetNegativeDiagrams(){for(int i = 0; i < 9; i++){_num_negative_diagrams[i] = 0;}};
+    void computeRatioNegativeUpdates(long long int num_updates);
 
     // MCMC updates
     long double diagramLengthUpdate(long double tau_init);
@@ -336,6 +361,7 @@ class GreenFuncNphBands : public Diagram {
     void swapPhononPropagator();
     void shiftPhononPropagator();
     long double stretchDiagramLength(long double tau_init);
+    void changeBand();
 
     // main MC simulation methods
     long double configSimulation(long double tau_length);
@@ -349,27 +375,39 @@ class GreenFuncNphBands : public Diagram {
     void printEffectiveMassEstimator();
     void printZFactor();
     void printMCStatistics();
-    void printBoldStatistics(std::string type = "simulation");
+    void printNegativeStatistics(std::string type = "simulation");
     
     // histogram methods
     double calcNormConst();
     void normalizeHistogram(double norm_const);
 
     // exact estimator methods
+
     // GF exact estimator
     void exactEstimatorGF(long double tau_length, int ext_phonon_order);
+
     // ground state energy estimator
     double groundStateEnergyExactEstimator(long double tau_length);
     void groundStateEnergyBlockEstimator(long double gs_energy);
+
     // effective mass estimator
     double effectiveMassExactEstimator(long double tau_length);
     void effectiveMassBlockEstimator(long double avg, long double xP, long double yP, long double zP);
+
     // quasiparticle weight estimator
     void ZFactorExactEstimator(long double tau_length);
     inline long double computeZFactor(int i) const {
         if(_Z_factor_count == 0){return 0;}
         return static_cast<long double>(_Z_factor_array[i])/static_cast<long double>(_Z_factor_count);
     };
+
+    // Laguerre polynomials for GF reconstruction
+    void initializeLaguerre();
+    void computeLaguerreCoefficients(long double tau_length);
+    void computeLaguerreFinalCoefficients();
+    void computeLaguerreGF();
+    void writeLaguerreCoefficients(const std::string& filename) const;
+    void writeLaguerreGF(const std::string& filename) const;
 
     // debug methods
     void writeDiagram(std::string filename, int i, double r) const;
