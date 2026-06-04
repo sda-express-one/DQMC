@@ -4211,12 +4211,12 @@ void GreenFuncNphBands::computeLaguerreCoefficients(long double tau_length){
     long double L_minus_one = LaguerrePolynomial(1, _L_alpha, tau_length);
     long double L_current = 0;
 
-    _L_coefficients[0] += std::exp(-_L_alpha/2*tau_length)*L_minus_two;
-    _L_coefficients[1] += std::exp(-_L_alpha/2*tau_length)*L_minus_one;
+    _L_coefficients[0] += std::exp(-_L_alpha/2*tau_length)*L_minus_two*_current_sign;
+    _L_coefficients[1] += std::exp(-_L_alpha/2*tau_length)*L_minus_one*_current_sign;
 
     for(int n = 2; n < _L_order + 1; ++n){
         L_current = LaguerrePolynomial(n, _L_alpha, L_minus_two, L_minus_one, tau_length);
-        _L_coefficients[n] += std::exp(-_L_alpha/2*tau_length)*L_current;
+        _L_coefficients[n] += std::exp(-_L_alpha/2*tau_length)*L_current*_current_sign;
         L_minus_two = L_minus_one;
         L_minus_one = L_current;
     }
@@ -4226,7 +4226,8 @@ void GreenFuncNphBands::computeLaguerreFinalCoefficients(){
     //double norm_const = calcNormConst();
     long double coeff_sum = 0;
     for(int n = 0; n < _L_order + 1; ++n){
-        _L_coefficients[n] = std::sqrt(_L_alpha)*_L_coefficients[n]/static_cast<long double>(getNdiags());//*static_cast<long double>(norm_const);
+        _L_coefficients[n] = std::sqrt(_L_alpha)*_L_coefficients[n]/static_cast<long double>(getNdiags());
+        if(_num_bands > 1){_L_coefficients[n] = _L_coefficients[n]/_ratio_negative_updates;}
         coeff_sum += _L_coefficients[n];
     }
 
@@ -4266,6 +4267,8 @@ void GreenFuncNphBands::writeLaguerreCoefficients(const std::string& filename) c
     }
 
     file << "# Laguerre coefficients calculated for alpha = " << _L_alpha << " and max order " << _L_order << ".\n";
+    file << "# kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << ", chemical potential = " << _chem_potential << "\n";
+    file << "\n";
 
     for(int n = 0; n < _L_order + 1; ++n){
         file << n << " " << _L_coefficients[n] << "\n";
@@ -4276,6 +4279,7 @@ void GreenFuncNphBands::writeLaguerreCoefficients(const std::string& filename) c
     file.close();
 
     std::cout << "Laguerre coefficients written to file " << filename << "." << std::endl;
+    std::cout << std::endl;
 };
 
 void GreenFuncNphBands::writeLaguerreGF(const std::string& filename) const {
@@ -4288,6 +4292,7 @@ void GreenFuncNphBands::writeLaguerreGF(const std::string& filename) const {
 
     file << "# Laguerre GF calculated for alpha = " << _L_alpha << " and max order " << _L_order << ".\n";
     file << "# kx = " << _kx << ", ky = " << _ky << ", kz = " << _kz << ", chemical potential = " << _chem_potential << "\n";
+    file << "\n";
 
     for(int i = 0; i < _L_num_points; ++i){
         file << _L_points[i] << " " << _L_GF[i] << "\n";
@@ -4295,6 +4300,7 @@ void GreenFuncNphBands::writeLaguerreGF(const std::string& filename) const {
     file.close();
 
     std::cout << "Laguerre GF written to file " << filename << "." << std::endl;
+    std::cout << std::endl;
 };
 
 void GreenFuncNphBands::computeRatioNegativeUpdates(long long int num_updates){

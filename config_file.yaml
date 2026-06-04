@@ -84,7 +84,7 @@ simulation_settings:
   N_blocks: 100
   fix_tau_value: false
   laguerre: true
-  max_order_laguerre: 50
+  max_order_laguerre: 9
   alpha_laguerre: 1.0
   num_points_laguerre: 1000
 
