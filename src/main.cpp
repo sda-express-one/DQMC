@@ -427,7 +427,10 @@ int main(){
                         }
                         //============ simulation loop ================
                         auto start = std::chrono::steady_clock::now();
-                        if(ID == 0){diagram_simulate.markovChainMC();}
+                        if(ID == 0){
+                            diagram_simulate.markovChainMCOnlyRelax();
+                            diagram_simulate.markovChainMCOnlySample();
+                        }
                         else{diagram_simulate.markovChainMCOnlySample();}
                         auto end = std::chrono::steady_clock::now();
                         // ============================================
@@ -444,7 +447,10 @@ int main(){
                     }
                     else{
                         //============ simulation loop ================
-                        if(ID == 0){diagram_simulate.markovChainMC();}
+                        if(ID == 0){
+                            diagram_simulate.markovChainMCOnlyRelax();
+                            diagram_simulate.markovChainMCOnlySample();
+                        }
                         else{diagram_simulate.markovChainMCOnlySample();}
                         // ============================================
                     }

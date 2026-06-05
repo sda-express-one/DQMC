@@ -3831,6 +3831,12 @@ void GreenFuncNphBands::markovChainMCOnlyRelax(){
 
 void GreenFuncNphBands::markovChainMCOnlySample(){
     long double tau_length = _tail->tau;
+
+    if(_flags.fix_tau_value){
+        tau_length = _tau_max;
+        _tail->tau = _tau_max;
+    }
+
     double r = 0.5;
     unsigned long long int i = 0;
 
@@ -3841,64 +3847,65 @@ void GreenFuncNphBands::markovChainMCOnlySample(){
 
     ProgressBar bar(N_autocorr, 70);
 
-    if(_master){
-        std::cout << "Starting autocorrelation process (to obtain independent results)" << std::endl;
-        std::cout << std::endl;
-
-        bar.setTotal(N_autocorr);
-
-        if(_flags.time_benchmark){
-            std::cout << "Benchmarking autocorrelation process time..." << std::endl;
-            std::cout << std::endl;
-            _benchmark_th->startTimer();
-        }
-    }
-
-    for(i = 0; i < N_autocorr; ++i){
-        r = drawUniformR();
-
-        tau_length = chooseUpdate(tau_length, r, _benchmark_th);
-
-        if(static_cast<int>(i%100000) == 0){fixDoublePrecisionErrors(1e-9);}
-
-        if(static_cast<int>(i%100000) == 0){checkTimeErrors();}
-
-        if(static_cast<int>(i%(N_autocorr/100)) == 0 && _master){bar.update(i);}
-
-    }
-
-    if(_master){
-        bar.finish();
-
-        if(_flags.time_benchmark){
-            _benchmark_th->stopTimer();
-        }
-
-        std::cout << std::endl;
-        std::cout << "Autocorrelation process finished." << std::endl;
-        std::cout << std::endl;
-
-        if(_flags.time_benchmark){
-            std::cout << "Autocorrelation time benchmark finished." << std::endl;
-            _benchmark_th->printResults(); 
-            _benchmark_th->writeResultsToFile("autocorrelation_benchmark.txt");
-            std::cout << std::endl;
-        }
-
-        if(_num_bands > 1 && _flags.mc_statistics){
-            printNegativeStatistics("autocorrelation");
-        }
-    }
-
-    if(_num_bands > 1){resetNegativeDiagrams();} // compute ratio of negative updates to total updates for autocorrelation process
-
-    if(_flags.time_benchmark){delete _benchmark_th;}
-
-    if(_flags.write_diagrams){
-        _flags.write_diagrams = false; 
+    if(N_autocorr > 0){
         if(_master){
-            if(N_diags <= 15000){
-                _flags.write_diagrams = true; // set true for master process
+                std::cout << "Starting autocorrelation process (to obtain independent results)" << std::endl;
+                std::cout << std::endl;
+
+                bar.setTotal(N_autocorr);
+
+                if(_flags.time_benchmark){
+                std::cout << "Benchmarking autocorrelation process time..." << std::endl;
+                std::cout << std::endl;
+                _benchmark_th->startTimer();
+            }
+        }
+        for(i = 0; i < N_autocorr; ++i){
+            r = drawUniformR();
+
+            tau_length = chooseUpdate(tau_length, r, _benchmark_th);
+
+            if(static_cast<int>(i%100000) == 0){fixDoublePrecisionErrors(1e-9);}
+
+            if(static_cast<int>(i%100000) == 0){checkTimeErrors();}
+
+            if(static_cast<int>(i%(N_autocorr/100)) == 0 && _master){bar.update(i);}
+
+        }
+
+        if(_master){
+            bar.finish();
+
+            if(_flags.time_benchmark){
+                _benchmark_th->stopTimer();
+            }
+
+            std::cout << std::endl;
+            std::cout << "Autocorrelation process finished." << std::endl;
+            std::cout << std::endl;
+
+            if(_flags.time_benchmark){
+                std::cout << "Autocorrelation time benchmark finished." << std::endl;
+                _benchmark_th->printResults(); 
+                _benchmark_th->writeResultsToFile("autocorrelation_benchmark.txt");
+                std::cout << std::endl;
+            }
+
+            if(_num_bands > 1 && _flags.mc_statistics){
+                printNegativeStatistics("autocorrelation");
+            }
+        }
+
+        if(_num_bands > 1){resetNegativeDiagrams();} // compute ratio of negative updates to total updates for autocorrelation process
+
+        if(_flags.time_benchmark){delete _benchmark_th;}
+
+        if(_flags.write_diagrams){
+            _flags.write_diagrams = false; 
+            if(_master){
+                if(N_diags <= 15000){
+                    _flags.write_diagrams = true; // set true for master process
+                }
             }
         }
     }
@@ -3951,7 +3958,7 @@ void GreenFuncNphBands::markovChainMCOnlySample(){
 
     if(_flags.time_benchmark){delete _benchmark_sim;}
 
-    computeFinalQuantities(); // compute final quantities for all processes (no write to console or files) 
+    computeFinalQuantities(); // compute final quantities for all processes (no write to console or files)
 
     if(_master && _flags.mc_statistics){printMCStatistics();}
 };
