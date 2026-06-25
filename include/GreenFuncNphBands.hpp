@@ -64,6 +64,9 @@ class GreenFuncNphBands : public Diagram {
         }
     };
 
+    // choose band to use in calculation
+    static inline void setBand(int chosen_band_zero_order){_chosen_band_zero_order = chosen_band_zero_order;};
+
     // getters
     // diagram
     Propagator getPropagator(int index) const {return _propagators[index];};
@@ -126,8 +129,8 @@ class GreenFuncNphBands : public Diagram {
 
     // setters
     // electron bands
-    void setEffectiveMasses(double m_x, double m_y, double m_z);
-    void setLuttingerKohnParameters(double A_LK_el, double B_LK_el, double C_LK_el);
+    static inline void setEffectiveMasses(double m_x, double m_y, double m_z){_m_x_el = m_x; _m_y_el = m_y; _m_z_el = m_z;};
+    static inline void setLuttingerKohnParameters(double A_LK_el, double B_LK_el, double C_LK_el){_A_LK_el = A_LK_el; _B_LK_el = B_LK_el; _C_LK_el = C_LK_el;};
 
     // phonon modes
     void setPhononModes(double* phonon_modes);
@@ -204,7 +207,8 @@ class GreenFuncNphBands : public Diagram {
 
     protected:
 
-    // support arrays
+    // support variables and arrays
+    Band _selected_band;
     long double * _new_taus = nullptr;
     Band * _bands_init = nullptr;
     Band * _bands_fin = nullptr;
@@ -230,13 +234,16 @@ class GreenFuncNphBands : public Diagram {
 
     // electron band effective mass
     // single band model
-    double _m_x_el = 1.0;
-    double _m_y_el = 1.0;
-    double _m_z_el = 1.0;
+    static thread_local double _m_x_el;
+    static thread_local double _m_y_el;
+    static thread_local double _m_z_el;
     // 3-band model, Luttinger-Kohn parameters
-    double _A_LK_el = 1.0;
-    double _B_LK_el = 1.0;
-    double _C_LK_el = 0.0;
+    static thread_local double _A_LK_el;
+    static thread_local double _B_LK_el;
+    static thread_local double _C_LK_el;
+
+    // band to choose
+    static thread_local int _chosen_band_zero_order;
 
     // phonon longitudinal optical modes
     int _num_phonon_modes = 1;
@@ -330,6 +337,8 @@ class GreenFuncNphBands : public Diagram {
     MC_Statistics _mc_statistics; // statistics of the simulation
     long double _tau_cutoff_statistics = 0.; // cutoff for statistics, if tau < tau_cutoff statistics is not calculated
 
+    // set diagram
+    void setFreePropagators();
 
     // manage diagram
     inline void findLastPhVertex(){_last_vertex = _tail->prev->tau;};

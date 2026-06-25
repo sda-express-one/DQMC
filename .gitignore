@@ -17,6 +17,7 @@ doubles.cpp
 test.cpp
 Updates.cpp
 Updates.hpp
+trial_matrix.cpp
 
 # ignore text files
 *.txt

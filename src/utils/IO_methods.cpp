@@ -1,6 +1,6 @@
 #include "../../include/utils/IO_methods.hpp"
 
-void readProbabilities(const std::string& filename, double* probs, int num_updates){
+void IOMethods::readProbabilities(const std::string& filename, double* probs, int num_updates){
     // Default probabilities
     for(int i = 0; i < num_updates; i++){
         probs[i] = (1./num_updates);
@@ -62,7 +62,7 @@ void readProbabilities(const std::string& filename, double* probs, int num_updat
     file.close();
 };
 
-void readPhononModes(const std::string& filename, double * phonon_modes, double * dielectric_responses, int num_phonon_modes){
+void IOMethods::readPhononModes(const std::string& filename, double * phonon_modes, double * dielectric_responses, int num_phonon_modes){
     // default
     for(int i=0; i<num_phonon_modes; i++){
         phonon_modes[i] = 0.5;
@@ -109,7 +109,7 @@ void readPhononModes(const std::string& filename, double * phonon_modes, double 
     file.close();
 };
 
-parameters readSimParameterstxt(const std::string& filename){
+parameters IOMethods::readSimParameterstxt(const std::string& filename){
     parameters params;
     std::ifstream file(filename);
 
@@ -287,7 +287,7 @@ parameters readSimParameterstxt(const std::string& filename){
     return params;
 };
 
-settings readSimSettingstxt(const std::string& filename){
+settings IOMethods::readSimSettingstxt(const std::string& filename){
     settings sets;
     std::ifstream file(filename);
     if(!file.is_open()){
@@ -442,7 +442,7 @@ settings readSimSettingstxt(const std::string& filename){
     return sets;
 };
 
-cpu_info readCPUSettingstxt(const std::string& filename){
+cpu_info IOMethods::readCPUSettingstxt(const std::string& filename){
     cpu_info cpu;
     std::ifstream file(filename);
     if(!file.is_open()){
@@ -493,7 +493,7 @@ cpu_info readCPUSettingstxt(const std::string& filename){
     return cpu;
 };
 
-config_parameters readParametersYAML(config_parameters cfg, const std::string& filename){
+config_parameters IOMethods::readParametersYAML(config_parameters cfg, const std::string& filename){
     YAML::Node node = YAML::LoadFile(filename);
     try {
         // fields
@@ -523,6 +523,7 @@ config_parameters readParametersYAML(config_parameters cfg, const std::string& f
         cfg.sim.ph_dispersion = sim_node["simple"]["optical_phonon_dispersion"].as<double>(1); // optical phonon dispersion for the simple model (1 for dispersionless phonons)
 
         cfg.sim.num_bands = sim_node["bands"]["num_bands"].as<int>(); // number of electron bands for the "bands" type simulation
+        cfg.sim.selected_band = sim_node["bands"]["selected_band"].as<int>(); // band selected for free propagator (no overhead phonon lines)
         cfg.sim.num_phonon_modes = sim_node["bands"]["num_phonon_modes"].as<int>(); // number of phonon modes for the "bands" type simulation
         cfg.phonon_modes = new double[cfg.sim.num_phonon_modes];
         cfg.dielectric_responses = new double[cfg.sim.num_phonon_modes];
@@ -608,7 +609,7 @@ config_parameters readParametersYAML(config_parameters cfg, const std::string& f
     return cfg;
 };
 
-void writeGS_Energy(const std::string& filename, GreenFuncNphBands * diagram, int num_threads, bool blocking, 
+void IOMethods::writeGS_Energy(const std::string& filename, GreenFuncNphBands * diagram, int num_threads, bool blocking, 
     long double gs_energy_mean, long double * gs_energy_threads,
     long double gs_energy_mean_var, long double * gs_energy_var_threads){
     std::cout << "Ground state energy of the system is: " << gs_energy_mean;
@@ -698,7 +699,7 @@ void writeGS_Energy(const std::string& filename, GreenFuncNphBands * diagram, in
     std::cout << std::endl;
 };
 
-void writeEffectiveMass(const std::string filename, GreenFuncNphBands * diagram, int num_threads, bool blocking, 
+void IOMethods::writeEffectiveMass(const std::string filename, GreenFuncNphBands * diagram, int num_threads, bool blocking, 
     long double effective_mass_avg_mean, long double effective_mass_avg_var, 
     long double * effective_masses_mean, long double ** effective_masses_threads,
     long double * effective_masses_mean_var, long double ** effective_masses_var_threads){
@@ -826,7 +827,7 @@ void writeEffectiveMass(const std::string filename, GreenFuncNphBands * diagram,
     std::cout << std::endl;
 };
 
-void writeGF_Histo(const std::string filename, GreenFuncNphBands * diagram, int num_threads, 
+void IOMethods::writeGF_Histo(const std::string filename, GreenFuncNphBands * diagram, int num_threads, 
     long double * histo_points, long double * histo_values){
     
     std::cout << "GF computed (histogram method)" << std::endl;
@@ -854,7 +855,7 @@ void writeGF_Histo(const std::string filename, GreenFuncNphBands * diagram, int 
     std::cout << std:: endl;
 };
 
-void writeGF_Exact(const std::string filename, GreenFuncNphBands * diagram, int num_threads, 
+void IOMethods::writeGF_Exact(const std::string filename, GreenFuncNphBands * diagram, int num_threads, 
     long double * gf_points, long double * gf_values){
     
     if(diagram->getGFSelectedOrder() < 0){
@@ -893,7 +894,7 @@ void writeGF_Exact(const std::string filename, GreenFuncNphBands * diagram, int 
     std::cout << std::endl;
 };
 
-void writeZFactor(const std::string filename, GreenFuncNphBands * diagram, int num_threads,
+void IOMethods::writeZFactor(const std::string filename, GreenFuncNphBands * diagram, int num_threads,
     long double * Z_Factor_array, long double * Z_Factor_array_var){
     
     std::cout << "Quasiparticle weights (Z factor) computed." << std::endl;

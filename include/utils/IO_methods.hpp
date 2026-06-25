@@ -10,35 +10,37 @@
 #include <yaml-cpp/yaml.h>
 #include "../GreenFuncNphBands.hpp"
 
-// read from .txt file
-void readProbabilities(const std::string& filename, double * probs, int num_updates);
+namespace IOMethods{
+    // read from .txt file
+    void readProbabilities(const std::string& filename, double * probs, int num_updates);
 
-void readPhononModes(const std::string& filename, double * phonon_modes, double * dielectric_responses, int num_phonon_modes);
+    void readPhononModes(const std::string& filename, double * phonon_modes, double * dielectric_responses, int num_phonon_modes);
 
-parameters readSimParameterstxt(const std::string& filename);
+    parameters readSimParameterstxt(const std::string& filename);
 
-settings readSimSettingstxt(const std::string& filename);
+    settings readSimSettingstxt(const std::string& filename);
 
-cpu_info readCPUSettingstxt(const std::string& filename);
+    cpu_info readCPUSettingstxt(const std::string& filename);
 
-config_parameters readParametersYAML(config_parameters cfg, const std::string& filename);
+    config_parameters readParametersYAML(config_parameters cfg, const std::string& filename);
 
-// write to .txt file (multithread process)
-void writeGS_Energy(const std::string& filename, GreenFuncNphBands * diagram, int num_threads, bool blocking,
-    long double gs_energy_mean, long double * gs_energy_threads,
-    long double gs_energy_mean_var, long double * gs_energy_var_threads);
+    // write to .txt file (multithread process)
+    void writeGS_Energy(const std::string& filename, GreenFuncNphBands * diagram, int num_threads, bool blocking,
+        long double gs_energy_mean, long double * gs_energy_threads,
+        long double gs_energy_mean_var, long double * gs_energy_var_threads);
 
-void writeEffectiveMass(const std::string filename, GreenFuncNphBands * diagram, int num_threads, bool blocking, 
-    long double effective_mass_avg_mean, long double effective_mass_avg_var,
-    long double * effective_masses_mean, long double ** effective_masses_threads,
-    long double * effective_masses_mean_var, long double ** effective_masses_var_threads);
+    void writeEffectiveMass(const std::string filename, GreenFuncNphBands * diagram, int num_threads, bool blocking, 
+        long double effective_mass_avg_mean, long double effective_mass_avg_var,
+        long double * effective_masses_mean, long double ** effective_masses_threads,
+        long double * effective_masses_mean_var, long double ** effective_masses_var_threads);
 
-void writeGF_Histo(const std::string filename, GreenFuncNphBands * diagram, int num_threads,
-    long double * histo_points, long double * histo_values);
+    void writeGF_Histo(const std::string filename, GreenFuncNphBands * diagram, int num_threads,
+        long double * histo_points, long double * histo_values);
 
-void writeGF_Exact(const std::string filename, GreenFuncNphBands * diagram, int num_threads, 
-    long double * gf_points, long double * gf_values);
+    void writeGF_Exact(const std::string filename, GreenFuncNphBands * diagram, int num_threads, 
+        long double * gf_points, long double * gf_values);
 
-void writeZFactor(const std::string filename, GreenFuncNphBands * diagram, int num_threads,
-    long double * Z_Factor_array, long double * Z_Factor_array_var);
+    void writeZFactor(const std::string filename, GreenFuncNphBands * diagram, int num_threads,
+        long double * Z_Factor_array, long double * Z_Factor_array_var);
+}
 #endif

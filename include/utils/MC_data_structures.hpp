@@ -22,6 +22,7 @@ struct parameters{
     int order_int_max = 0;
     int ph_ext_max = 0;
     int num_bands = 1;
+    int selected_band = -1;
     int num_phonon_modes = 1;
     double el_eff_mass = 1;
     double ph_dispersion = 1;

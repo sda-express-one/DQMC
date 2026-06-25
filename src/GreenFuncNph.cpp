@@ -110,7 +110,7 @@ void GreenFuncNph::setSelectedOrder(int selected_order){
 
 void GreenFuncNph::setProbabilities(double p_length, double p_add_int, double p_rem_int, double p_add_ext, double p_rem_ext, 
     double p_swap, double p_shift, double p_stretch){
-    if(!isEqual(p_length + p_add_int + p_rem_int + p_add_ext + p_rem_ext + p_swap + p_shift + p_stretch, 1)){
+    if(!CompMethods::isEqual(p_length + p_add_int + p_rem_int + p_add_ext + p_rem_ext + p_swap + p_shift + p_stretch, 1)){
         std::cerr << "Invalid probabilities, total probability must add to 1.\n";
         double normalization = 1/(p_length + p_add_int + p_rem_int + p_add_ext + p_rem_ext + p_swap + p_shift + p_stretch);
         std::cout << "Probabilities are being riscaled using the value " << normalization <<".\n";
@@ -136,7 +136,7 @@ void GreenFuncNph::setProbabilities(double p_length, double p_add_int, double p_
 };
 
 void GreenFuncNph::setProbabilities(double* probs){
-    if(!isEqual(probs[0] + probs[1] + probs[2] + probs[3] + probs[4] + probs[5] + probs[6] + probs[7], 1)){
+    if(!CompMethods::isEqual(probs[0] + probs[1] + probs[2] + probs[3] + probs[4] + probs[5] + probs[6] + probs[7], 1)){
         std::cerr << "Invalid probabilities, total probability must add to 1.\n";
         double normalization = 1/(probs[0] + probs[1] + probs[2] + probs[3] + probs[4] + probs[5] + probs[6] + probs[7]);
         std::cout << "Probabilities are being riscaled using the value " << normalization <<".\n";
@@ -327,10 +327,10 @@ void GreenFuncNph::addInternalPhononPropagator(){
             // control statements to check for floating point errors
             if(index_one == -1 || index_two == -1){return;} // reject if tau values are not found in the vertices array
             if(_current_ph_ext > 0){
-                if( tau_one < _vertices[index_one].tau || isEqual(tau_one, _vertices[index_one].tau) 
-                    || isEqual(tau_one, _vertices[index_one+1].tau) || tau_one > _vertices[index_one+1].tau){return;}
-                if(tau_two < _vertices[index_two].tau || isEqual(tau_two, _vertices[index_two].tau) 
-                    || isEqual(tau_two, _vertices[index_two+1].tau) || tau_two > _vertices[index_two+1].tau){return;}
+                if( tau_one < _vertices[index_one].tau || CompMethods::isEqual(tau_one, _vertices[index_one].tau) 
+                    || CompMethods::isEqual(tau_one, _vertices[index_one+1].tau) || tau_one > _vertices[index_one+1].tau){return;}
+                if(tau_two < _vertices[index_two].tau || CompMethods::isEqual(tau_two, _vertices[index_two].tau) 
+                    || CompMethods::isEqual(tau_two, _vertices[index_two+1].tau) || tau_two > _vertices[index_two+1].tau){return;}
             }
             // create arrays of momentum values
             double* px_init = new double[index_two + 1 - index_one];
@@ -542,7 +542,7 @@ void GreenFuncNph::addExternalPhononPropagator(){
 
         long double tau_two = tau_current + std::log(1-drawUniformR())/_ph_dispersion; // time of outgoing vertex
         if(tau_two <= 0){return;} // reject if it goes out of bound
-        if(isEqual(tau_one, tau_two)){return;} // reject if both vertices are equal (should not happen)
+        if(CompMethods::isEqual(tau_one, tau_two)){return;} // reject if both vertices are equal (should not happen)
 
         std::normal_distribution<double> distrib_norm(0, std::sqrt(1/(tau_current-tau_two+tau_one))); // may need variance, inserted std dev
         double w_x = distrib_norm(gen);
@@ -559,10 +559,10 @@ void GreenFuncNph::addExternalPhononPropagator(){
 
             // control statements to check for floating point errors
             if(index_one == -1 || index_two == -1){return;} // reject if tau values are not found in the vertices array
-            if( tau_one < _vertices[index_one].tau || isEqual(tau_one, _vertices[index_one].tau) 
-                || isEqual(tau_one, _vertices[index_one+1].tau) || tau_one > _vertices[index_one+1].tau){return;}
-            if(tau_two < _vertices[index_two].tau || isEqual(tau_two, _vertices[index_two].tau) 
-                || isEqual(tau_two, _vertices[index_two+1].tau) || tau_two > _vertices[index_two+1].tau){return;} 
+            if( tau_one < _vertices[index_one].tau || CompMethods::isEqual(tau_one, _vertices[index_one].tau) 
+                || CompMethods::isEqual(tau_one, _vertices[index_one+1].tau) || tau_one > _vertices[index_one+1].tau){return;}
+            if(tau_two < _vertices[index_two].tau || CompMethods::isEqual(tau_two, _vertices[index_two].tau) 
+                || CompMethods::isEqual(tau_two, _vertices[index_two+1].tau) || tau_two > _vertices[index_two+1].tau){return;} 
 
             double* px_one_init = new double[index_one + 1];
             double* px_two_init = new double[total_order + 1 - index_two];
@@ -720,10 +720,10 @@ void GreenFuncNph::addExternalPhononPropagator(){
             // control statements to check for floating point errors
 
             if(index_one == -1 || index_two == -1){return;} // reject if tau values are not found in the vertices array
-            if( tau_two < _vertices[index_one].tau || isEqual(tau_two, _vertices[index_one].tau) 
-                || isEqual(tau_two, _vertices[index_one+1].tau) || tau_two > _vertices[index_one+1].tau){return;}
-            if(tau_one < _vertices[index_two].tau || isEqual(tau_one, _vertices[index_two].tau) 
-                || isEqual(tau_one, _vertices[index_two+1].tau) || tau_one > _vertices[index_two+1].tau){return;}
+            if( tau_two < _vertices[index_one].tau || CompMethods::isEqual(tau_two, _vertices[index_one].tau) 
+                || CompMethods::isEqual(tau_two, _vertices[index_one+1].tau) || tau_two > _vertices[index_one+1].tau){return;}
+            if(tau_one < _vertices[index_two].tau || CompMethods::isEqual(tau_one, _vertices[index_two].tau) 
+                || CompMethods::isEqual(tau_one, _vertices[index_two+1].tau) || tau_one > _vertices[index_two+1].tau){return;}
 
             int total_order = _current_order_int + 2*_current_ph_ext;
 
@@ -1194,7 +1194,7 @@ void GreenFuncNph::shiftPhononPropagator(){
         double energy_delta = electronDispersion(kx_incoming, ky_incoming, kz_incoming, _el_eff_mass) 
             - electronDispersion(kx_outgoing, ky_outgoing, kz_outgoing, _el_eff_mass) - phononDispersion(_ph_dispersion)*c;
         long double tau_new = tau_init - std::log(1 - drawUniformR()*(1 - std::exp(-energy_delta*(tau_fin - tau_init))))/energy_delta;
-        if(isEqual(tau_new, tau_init) || isEqual(tau_new, tau_fin) || tau_new > tau_fin){return;}
+        if(CompMethods::isEqual(tau_new, tau_init) || CompMethods::isEqual(tau_new, tau_fin) || tau_new > tau_fin){return;}
         _vertices[vertex_index].tau = tau_new; // assign new time value to vertex
         findLastPhVertex();
     }
@@ -1231,12 +1231,12 @@ long double GreenFuncNph::stretchDiagramLength(long double tau_init){
         double energy_delta = electronDispersion(kx_incoming, ky_incoming, kz_incoming, _el_eff_mass) - electronDispersion(kx_outgoing, ky_outgoing, kz_outgoing, _el_eff_mass) - phononDispersion(_ph_dispersion)*c;
             
         new_taus[i] = tau_one - std::log(1 - drawUniformR()*(1 - std::exp(-energy_delta*(tau_two - tau_one))))/energy_delta;
-        if(isEqual(new_taus[i], tau_one) || isEqual(new_taus[i], tau_two) || new_taus[i] > tau_two){delete[] new_taus; return tau_init;}
+        if(CompMethods::isEqual(new_taus[i], tau_one) || CompMethods::isEqual(new_taus[i], tau_two) || new_taus[i] > tau_two){delete[] new_taus; return tau_init;}
     }
 
     new_taus[total_order+1] = new_taus[total_order] - std::log(1-drawUniformR())/(electronDispersion(kx,ky,kz,_el_eff_mass) - _chem_potential + phononDispersion(_ph_dispersion)*_current_ph_ext);
     
-    if(isEqual(new_taus[total_order], new_taus[total_order+1]) || isEqual(new_taus[total_order+1], _tau_max) 
+    if(CompMethods::isEqual(new_taus[total_order], new_taus[total_order+1]) || CompMethods::isEqual(new_taus[total_order+1], _tau_max) 
        || new_taus[total_order+1] >= _tau_max){delete[] new_taus; return tau_init;}
     else{
         for(int i = 0; i < total_order + 2; i++){
@@ -1256,7 +1256,7 @@ void GreenFuncNph::markovChainMC(){
     unsigned long long int N_diags = getNdiags(); // number of diagrams to be generated
     unsigned long long int N_relax = getRelaxSteps(); // number of thermalization steps
 
-    if((!(isEqual(_kx,0)) || !(isEqual(_ky,0)) || !(isEqual(_kz,0))) && _flags.effective_mass){
+    if((!(CompMethods::isEqual(_kx,0)) || !(CompMethods::isEqual(_ky,0)) || !(CompMethods::isEqual(_kz,0))) && _flags.effective_mass){
         std::cerr << "Warning: kx, ky and kz should be equal to 0 to calculate effective mass." << std::endl;
         std::cerr << "Effective mass calculation is not possible." << std::endl;
         _flags.effective_mass = false;

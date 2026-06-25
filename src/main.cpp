@@ -15,7 +15,8 @@ uint64_t getClockTime();
 bool fileExists(const std::string& filename);
 
 // set internal parameters of diagram class
-void setDiagramClassParameters(GreenFuncNphBands * diagram, parameters sim, settings sets, cpu_info cpu, double * probs, double * phonon_modes, double * dielectric_responses);
+uint64_t setStaticParameters(parameters sim);
+void setGFNphBandsClassParameters(GreenFuncNphBands * diagram, parameters sim, settings sets, cpu_info cpu, double * probs, double * phonon_modes, double * dielectric_responses);
 
 int main(){
     // inputs
@@ -29,9 +30,11 @@ int main(){
     bool yaml_file_exists = fileExists("config_file.yaml");
     if(yaml_file_exists){
         // read inputs from YAML file
+        std::cout << std::endl;
         std::cout << "YAML configuration file found. Reading parameters from simulation_config.yaml." << std::endl;
+        std::cout << std::endl;
         config_parameters cfg;
-        cfg = readParametersYAML(cfg, "config_file.yaml");
+        cfg = IOMethods::readParametersYAML(cfg, "config_file.yaml");
         sim = cfg.sim;
         sets = cfg.sets;
         cpu = cfg.cpu;
@@ -52,16 +55,16 @@ int main(){
     }
     else{
         // read inputs from .txt files
+        std::cout << std::endl;
         std::cout << "YAML configuration file not found. Reading parameters from .txt files." << std::endl;
-        readProbabilities("simulation_probabilities_MC.txt", probs, 9);
-        sim = readSimParameterstxt("simulation_parameters.txt");
-        sets = readSimSettingstxt("simulation_settings.txt");
-        cpu = readCPUSettingstxt("simulation_cpu_settings.txt");
+        std::cout << std::endl;
+        IOMethods::readProbabilities("simulation_probabilities_MC.txt", probs, 9);
+        sim = IOMethods::readSimParameterstxt("simulation_parameters.txt");
+        sets = IOMethods::readSimSettingstxt("simulation_settings.txt");
+        cpu = IOMethods::readCPUSettingstxt("simulation_cpu_settings.txt");
     }
 
-    // initialize GreenFuncNph object
-    uint64_t seed = getClockTime();
-    Diagram::setSeed(seed);
+    uint64_t seed = setStaticParameters(sim);
 
     // type == simple standard DMC computation
     if(sim.type == "simple"){
@@ -112,14 +115,14 @@ int main(){
         if(!yaml_file_exists){
             phonon_modes = new double[sim.num_phonon_modes];
             dielectric_responses = new double[sim.num_phonon_modes];
-            readPhononModes("simulation_parameters.txt", phonon_modes, dielectric_responses, sim.num_phonon_modes);
+            IOMethods::readPhononModes("simulation_parameters.txt", phonon_modes, dielectric_responses, sim.num_phonon_modes);
         }
 
         if(cpu.parallel_mode == false){
             GreenFuncNphBands diagram(sim.N_diags, sim.tau_max, sim.kx, sim.ky, sim.kz, sim.chem_potential, sim.order_int_max,
                 sim.ph_ext_max, 1, sim.num_bands, sim.num_phonon_modes);
         
-            setDiagramClassParameters(&diagram, sim, sets, cpu, probs, phonon_modes, dielectric_responses);
+            setGFNphBandsClassParameters(&diagram, sim, sets, cpu, probs, phonon_modes, dielectric_responses);
 
             // main simulation
             diagram.markovChainMC();
@@ -145,7 +148,7 @@ int main(){
             diagram_input.setNumProcs(cpu.num_procs);
             
             // set internal parameters
-            setDiagramClassParameters(&diagram_input, sim, sets, cpu, probs, phonon_modes, dielectric_responses);
+            setGFNphBandsClassParameters(&diagram_input, sim, sets, cpu, probs, phonon_modes, dielectric_responses);
 
             // number of threads for parallelization
             int num_threads = 1;
@@ -196,7 +199,7 @@ int main(){
                 diagram_relax.setNumNodes(cpu.num_nodes);
                 diagram_relax.setNumProcs(cpu.num_procs);
             
-                setDiagramClassParameters(&diagram_relax, sim, sets, cpu, probs, phonon_modes, dielectric_responses);
+                setGFNphBandsClassParameters(&diagram_relax, sim, sets, cpu, probs, phonon_modes, dielectric_responses);
 
                 // main simulation
                 diagram_relax.markovChainMCOnlyRelax();
@@ -260,7 +263,7 @@ int main(){
                 
                     #pragma omp critical
                     {
-                        setDiagramClassParameters(&diagram_simulate, local_sim, local_sets, local_cpu, probs, phonon_modes, dielectric_responses);
+                        setGFNphBandsClassParameters(&diagram_simulate, local_sim, local_sets, local_cpu, probs, phonon_modes, dielectric_responses);
                         diagram_simulate.setExtPhononTypeNum(ext_phonon_type_num);
                         diagram_simulate.setCurrentOrderInt(current_order_int);
                         diagram_simulate.setCurrentPhExt(current_ph_ext);
@@ -404,6 +407,7 @@ int main(){
                         }
                         else{
                             // no autocorrelation time, thermalization performed in parallel
+                            diagram_simulate.setMaster(false);
                             local_cpu.autocorr_steps = local_sim.relax_steps;
                         }
                     }
@@ -411,7 +415,7 @@ int main(){
                 
                     #pragma omp critical
                     {
-                        setDiagramClassParameters(&diagram_simulate, local_sim, local_sets, local_cpu, probs, phonon_modes, dielectric_responses);
+                        setGFNphBandsClassParameters(&diagram_simulate, local_sim, local_sets, local_cpu, probs, phonon_modes, dielectric_responses);
                     }
 
                     // main simulation
@@ -533,10 +537,10 @@ int main(){
 
 
             if(sets.gs_energy){
-                long double gs_energy_mean = computeMean(gs_energy, num_threads);
-                long double gs_energy_mean_var = computeMean(gs_energy_var, num_threads)*(num_threads)/(num_threads-1);
+                long double gs_energy_mean = CompMethods::computeMean(gs_energy, num_threads);
+                long double gs_energy_mean_var = CompMethods::computeMean(gs_energy_var, num_threads)*(num_threads)/(num_threads-1);
     
-                writeGS_Energy("gs_energy.txt", &diagram_input, num_threads, sets.blocking_analysis,
+                IOMethods::writeGS_Energy("gs_energy.txt", &diagram_input, num_threads, sets.blocking_analysis,
                     gs_energy_mean, gs_energy,
                     gs_energy_mean_var, gs_energy_var
                 );
@@ -546,8 +550,8 @@ int main(){
             }
 
             if(sets.effective_mass){
-                long double effective_mass_mean = computeMean(effective_mass, num_threads);
-                long double effective_mass_mean_var = computeMean(effective_mass_var, num_threads)*num_threads/(num_threads-1);
+                long double effective_mass_mean = CompMethods::computeMean(effective_mass, num_threads);
+                long double effective_mass_mean_var = CompMethods::computeMean(effective_mass_var, num_threads)*num_threads/(num_threads-1);
                 long double * effective_masses_values = new long double[num_threads];
                 long double * effective_masses_values_var = new long double[num_threads];
                 long double effective_masses_mean[3];
@@ -558,11 +562,11 @@ int main(){
                         effective_masses_values[j] = effective_masses[j][i];
                         effective_masses_values_var[j] = effective_masses_var[j][i];
                     }
-                    effective_masses_mean[i] = computeMean(effective_masses_values, num_threads);
-                    effective_masses_mean_var[i] = computeMean(effective_masses_values_var, num_threads)*num_threads/(num_threads-1);
+                    effective_masses_mean[i] = CompMethods::computeMean(effective_masses_values, num_threads);
+                    effective_masses_mean_var[i] = CompMethods::computeMean(effective_masses_values_var, num_threads)*num_threads/(num_threads-1);
                 }
 
-                writeEffectiveMass("effective_mass.txt", &diagram_input, num_threads, sets.blocking_analysis,
+                IOMethods::writeEffectiveMass("effective_mass.txt", &diagram_input, num_threads, sets.blocking_analysis,
                     effective_mass_mean, effective_mass_mean_var,
                     effective_masses_mean, effective_masses,
                     effective_masses_mean_var, effective_masses_var
@@ -587,10 +591,10 @@ int main(){
                     for(int j = 0; j < num_threads; j++){
                         gf_histo_threads[j] = gf_histo[j][i];
                     }
-                    gf_histo_mean[i] = computeMean(gf_histo_threads, num_threads);
+                    gf_histo_mean[i] = CompMethods::computeMean(gf_histo_threads, num_threads);
                 }
                 
-                writeGF_Histo("histo.txt", &diagram_input, num_threads, points_histogram[0], gf_histo_mean);
+                IOMethods::writeGF_Histo("histo.txt", &diagram_input, num_threads, points_histogram[0], gf_histo_mean);
 
                 delete[] gf_histo_threads;
                 delete[] gf_histo_mean;
@@ -609,7 +613,7 @@ int main(){
                     for(int j=0; j < num_threads; j++){
                         gf_exact_threads[j] = gf_values_exact[j][i];
                     }
-                    gf_exact_mean[i] = computeMean(gf_exact_threads, num_threads);
+                    gf_exact_mean[i] = CompMethods::computeMean(gf_exact_threads, num_threads);
                 }
                 std::string a = "GF_";
                 auto b = std::to_string(diagram_input.getGFSelectedOrder());
@@ -618,7 +622,7 @@ int main(){
                 }
                 std::string c = "_exact.txt";
                 
-                writeGF_Exact(a+b+c, &diagram_input, num_threads, points_gf_exact[0], gf_exact_mean);
+                IOMethods::writeGF_Exact(a+b+c, &diagram_input, num_threads, points_gf_exact[0], gf_exact_mean);
 
                 delete[] gf_exact_threads;
                 delete[] gf_exact_mean;
@@ -640,11 +644,11 @@ int main(){
                     for(int j=0; j < num_threads; j++){
                         Z_Factor_thread_array[j] = Z_Factor_cpus_array[j*(sim.ph_ext_max + 1) + i];
                     }
-                    Z_Factor_array[i] = computeMean(Z_Factor_thread_array, num_threads);
-                    Z_Factor_array_var[i] = computeStdDev(Z_Factor_thread_array, Z_Factor_array[i], num_threads);
+                    Z_Factor_array[i] = CompMethods::computeMean(Z_Factor_thread_array, num_threads);
+                    Z_Factor_array_var[i] = CompMethods::computeStdDev(Z_Factor_thread_array, Z_Factor_array[i], num_threads);
                 }
 
-                writeZFactor("quasiparticle_weights.txt", &diagram_input, num_threads, Z_Factor_array, Z_Factor_array_var);
+                IOMethods::writeZFactor("quasiparticle_weights.txt", &diagram_input, num_threads, Z_Factor_array, Z_Factor_array_var);
 
                 delete[] Z_Factor_cpus_array;
                 delete[] Z_Factor_thread_array;
@@ -673,19 +677,26 @@ bool fileExists(const std::string& filename) {
     return file.good();
 }
 
-void setDiagramClassParameters(GreenFuncNphBands * diagram, parameters sim, settings sets, cpu_info cpu, double * probs, double * phonon_modes, double * dielectric_responses){
+uint64_t setStaticParameters(parameters sim){
+    // initialize GreenFuncNph object
+    uint64_t seed = getClockTime();
+    Diagram::setSeed(seed);
+
+    // set initial band for multiple band calculations
+    GreenFuncNphBands::setBand(sim.selected_band);
+    
+    GreenFuncNphBands::setEffectiveMasses(sim.m_x, sim.m_y, sim.m_z);
+    GreenFuncNphBands::setLuttingerKohnParameters(sim.A_LK, sim.B_LK, sim.C_LK);
+
+    return seed;
+};
+
+void setGFNphBandsClassParameters(GreenFuncNphBands * diagram, parameters sim, settings sets, cpu_info cpu, double * probs, double * phonon_modes, double * dielectric_responses){
     diagram->setPhononModes(phonon_modes);
     diagram->setDielectricResponses(dielectric_responses);
     diagram->set1BZVolume(sim.V_BZ);
     diagram->setBvKVolume(sim.V_BvK);
     diagram->setDielectricConstant(sim.dielectric_const);
-
-    if(sim.num_bands == 1){
-        diagram->setEffectiveMasses(sim.m_x, sim.m_y, sim.m_z);
-    }
-    else if(sim.num_bands == 3){
-        diagram->setLuttingerKohnParameters(sim.A_LK, sim.B_LK, sim.C_LK);
-    }
 
     // Markov chain settings
     diagram->setRelaxSteps(sim.relax_steps);
