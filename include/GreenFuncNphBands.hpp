@@ -208,7 +208,9 @@ class GreenFuncNphBands : public Diagram {
     protected:
 
     // support variables and arrays
-    Band _selected_band;
+    Band _selected_band; // band chosen as initial state
+    Eigen::Matrix3d _zero_point_matrix; // eigenvectors at chosen k-point
+    double _zero_point_effective_masses[3] = {1,1,1}; // eigenvalues at chosen k-point
     long double * _new_taus = nullptr;
     Band * _bands_init = nullptr;
     Band * _bands_fin = nullptr;
