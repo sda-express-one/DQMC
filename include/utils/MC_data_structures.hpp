@@ -67,6 +67,7 @@ struct settings{
     bool blocking_analysis = false;
     int N_blocks = 100;
     bool fix_tau_value = false;
+    bool fix_band = false;
     bool laguerre = false;
     int max_order_laguerre = 10;
     long double alpha_laguerre = 1;
@@ -143,6 +144,7 @@ struct Flags{
         bool mc_statistics = false; // flag for statistics
         bool blocking_analysis = false; // flag for blocking analysis
         bool fix_tau_value = false; // flag to fix diagram length during simulation (gs properties)
+        bool fix_band = false; // flag to fix band index during simulation (gs properties)
         bool laguerre = false; // flag to use Laguerre polynomials method for GF estimation
 };
 

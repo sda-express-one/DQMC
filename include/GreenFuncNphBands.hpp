@@ -155,7 +155,7 @@ class GreenFuncNphBands : public Diagram {
     void setNumProcs(int num_procs = 1);
 
     // calculations performed
-    void setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor, bool blocking_analysis, bool fix_tau_value, bool laguerre);
+    void setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor, bool blocking_analysis, bool fix_tau_value, bool fix_band, bool laguerre);
 
     // exact estimator
     // histogram method

@@ -458,7 +458,7 @@ void GreenFuncNphBands::setNumNodes(int num_nodes){_num_nodes = num_nodes;};
 void GreenFuncNphBands::setNumProcs(int num_procs){_num_procs = num_procs;};
 
 // calculations setters
-void GreenFuncNphBands::setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor, bool blocking_analysis, bool fix_tau_value, bool laguerre){
+void GreenFuncNphBands::setCalculations(bool gf_exact, bool histo, bool gs_energy, bool effective_mass, bool Z_factor, bool blocking_analysis, bool fix_tau_value, bool fix_band, bool laguerre){
     _flags.gf_exact = gf_exact;
     _flags.histo = histo;
     _flags.gs_energy = gs_energy;
@@ -466,6 +466,7 @@ void GreenFuncNphBands::setCalculations(bool gf_exact, bool histo, bool gs_energ
     _flags.Z_factor = Z_factor;
     _flags.blocking_analysis = blocking_analysis;
     _flags.fix_tau_value = fix_tau_value;
+    _flags.fix_band = fix_band;
     _flags.laguerre = laguerre;
 };
 
@@ -2897,7 +2898,7 @@ long double GreenFuncNphBands::stretchDiagramLength(long double tau_init){
 };
 
 void GreenFuncNphBands::changeBand(){
-    if(_current_order_int + 2*_current_ph_ext <= 0){
+    if(_current_order_int + 2*_current_ph_ext < 1){
         if(_num_bands > 1){updateNegativeDiagrams(8);}
         return; // reject if no vertices are present
     }
@@ -2920,10 +2921,21 @@ void GreenFuncNphBands::changeBand(){
         return; // reject if vertex is linked to free propagator
     }
 
+    if(_flags.fix_band){
+        if(_pointer_one->next == _tail && _current_ph_ext == 0){
+            _pointer_one = nullptr;
+            updateNegativeDiagrams(8);
+            return; // reject if vertex is linked to last vertex and no external phonons are present
+        }
+    }
+    
     long double tau_init = 0;
     long double tau_end = 0;
     long double tau_propagator = 0;
-    if(_pointer_one->next == _tail){
+    // DIFFERENT VERSION IF TRY CASE WITH CHANGING BAND IN ZERO
+    // ADD _pointer_one != _head && 
+    // MAYBE OK
+    if(_pointer_one->next == _tail && total_order > 0){
         tau_init = _head->tau_next;
         tau_end = _pointer_one->tau;
         tau_propagator = _tail->tau - tau_end + tau_init;
@@ -2957,18 +2969,30 @@ void GreenFuncNphBands::changeBand(){
         double prefactor_init = 1;
         double new_effective_mass = 1;
 
-        values_matrix = CompMethods::diagonalizeLKHamiltonian(kx, ky, kz, _A_LK_el, _B_LK_el, _C_LK_el);
-        eigenval = values_matrix(0,new_band);
-        new_effective_mass = CompMethods::computeEffMassfromEigenval(eigenval);
-        new_overlap = values_matrix.block<3,1>(1,new_band);
-
-        if(_pointer_one->next != _tail){
-            prefactor_init = CompMethods::vertexOverlapTerm(_pointer_one->prev->electronic_band, _pointer_one->electronic_band)*CompMethods::vertexOverlapTerm(_pointer_one->electronic_band, _pointer_one->next->electronic_band);
-            prefactor_fin = CompMethods::vertexOverlapTerm(_pointer_one->prev->electronic_band, new_overlap)*CompMethods::vertexOverlapTerm(_pointer_one->next->electronic_band, new_overlap);
+        if(CompMethods::isEqual(kx,_kx) && CompMethods::isEqual(ky,_ky) && CompMethods::isEqual(kz,_kz)){
+            new_effective_mass = _zero_point_effective_masses[new_band];
+            new_overlap = _zero_point_matrix.col(new_band);
         }
         else{
-            prefactor_init = CompMethods::vertexOverlapTerm(_pointer_one->prev->electronic_band, _pointer_one->electronic_band)*CompMethods::vertexOverlapTerm(_head->electronic_band, _head->next->electronic_band);
-            prefactor_fin = CompMethods::vertexOverlapTerm(_pointer_one->prev->electronic_band, new_overlap)*CompMethods::vertexOverlapTerm(_head->next->electronic_band, new_overlap);
+            values_matrix = CompMethods::diagonalizeLKHamiltonian(kx, ky, kz, _A_LK_el, _B_LK_el, _C_LK_el);
+            eigenval = values_matrix(0,new_band);
+            new_effective_mass = CompMethods::computeEffMassfromEigenval(eigenval);
+            new_overlap = values_matrix.block<3,1>(1,new_band);
+        }
+
+        if(_pointer_one->next != _tail){
+            prefactor_init = CompMethods::vertexOverlapTerm(_pointer_one->prev->electronic_band, _pointer_one->electronic_band)
+                            *CompMethods::vertexOverlapTerm(_pointer_one->electronic_band, _pointer_one->next->electronic_band);
+            prefactor_fin = CompMethods::vertexOverlapTerm(_pointer_one->prev->electronic_band, new_overlap)
+                            *CompMethods::vertexOverlapTerm(_pointer_one->next->electronic_band, new_overlap);
+        }
+        // TO BE CHANGED IF TRY CASE WITH CHANGING BAND IN ZERO
+        // MAYBE OK
+        else if(_current_ph_ext > 0){
+            prefactor_init = CompMethods::vertexOverlapTerm(_pointer_one->prev->electronic_band, _pointer_one->electronic_band)
+                            *CompMethods::vertexOverlapTerm(_head->electronic_band, _head->next->electronic_band);
+            prefactor_fin = CompMethods::vertexOverlapTerm(_pointer_one->prev->electronic_band, new_overlap)
+                            *CompMethods::vertexOverlapTerm(_head->next->electronic_band, new_overlap);
         }
 
         energy_init = CompMethods::electronEnergy(kx, ky, kz, _pointer_one->electronic_band.effective_mass);
@@ -2993,7 +3017,8 @@ void GreenFuncNphBands::changeBand(){
             _pointer_one->electronic_band.c2 = new_overlap[1];
             _pointer_one->electronic_band.c3 = new_overlap[2];
 
-            if(_pointer_one->next == _tail){
+            // MAYBE OK
+            if(_pointer_one->next == _tail && _current_ph_ext > 0){
                 _head->electronic_band.effective_mass = new_effective_mass;
                 _head->electronic_band.band_number = new_band;
                 _head->electronic_band.c1 = new_overlap[0];
@@ -3260,7 +3285,7 @@ long double GreenFuncNphBands::configSimulation(long double tau_length = 1.0L){
             std::cerr << "Length and stretch updates will not be performed." << std::endl;
             std::cerr << std::endl;
 
-            double probs[9] = {0., _p_add_int, _p_rem_int, _p_add_ext, _p_rem_ext, _p_swap, _p_shift, 0., _p_change_band};
+            double probs[9] = {0, _p_add_int, _p_rem_int, _p_add_ext, _p_rem_ext, _p_swap, _p_shift, 0, _p_change_band};
             setProbabilities(probs);
 
             std::cout << "Update probabilities have been adjusted to have a fixed diagram length." << std::endl;
@@ -3270,6 +3295,25 @@ long double GreenFuncNphBands::configSimulation(long double tau_length = 1.0L){
             ", swap update = " << _p_swap << ", shift update = " << _p_shift << ", change band update = " << _p_change_band <<  std::endl;
             std::cout << std::endl;
         }
+    }
+
+    if(_flags.fix_band){
+        std::cout << "Electronic band for zero-kpoint propagators is fixed to: " << _chosen_band_zero_order << std::endl;
+        /*if(_p_add_ext > 0 || _p_rem_ext > 0){
+            std::cerr << "Warning: probabilities for add-external and remove-external updates are set to non-zero values, but they will not be used." << std::endl;
+            std::cerr << "Length and stretch updates will not be performed." << std::endl;
+            std::cerr << std::endl;
+
+            double probs[9] = {_p_length, _p_add_int, _p_rem_int, 0, 0, _p_swap, _p_shift, _p_stretch, _p_change_band};
+            setProbabilities(probs);
+
+            std::cout << "Update probabilities have been adjusted to have a fixed band for zero k-point propagators." << std::endl;
+            std::cout << "p_add_ext = 0, p_rem_ext = 0" << std::endl;
+            std::cout << "New update probabilities: change length update = " << _p_length << ", add internal update = " << _p_add_int << ", remove internal update = " << _p_rem_int <<
+            ", swap update = " << _p_swap << ", shift update = " << _p_shift << ", stretch diagram update = " << _p_stretch << ", change band update = " << _p_change_band <<  std::endl;
+            std::cout << std::endl;
+        }*/
+        std::cout << std::endl;
     }
 
     if(_flags.laguerre){
@@ -3363,12 +3407,17 @@ void GreenFuncNphBands::configSimulationSilent(){
 
     if(_flags.fix_tau_value){
         if(_p_length > 0 || _p_stretch > 0){
-
-            double probs[9] = {0., _p_add_int, _p_rem_int, _p_add_ext, _p_rem_ext, _p_swap, _p_shift, 0., _p_change_band};
+            double probs[9] = {0, _p_add_int, _p_rem_int, _p_add_ext, _p_rem_ext, _p_swap, _p_shift, 0, _p_change_band};
             setProbabilities(probs);
-            //std::cout << std::endl;
         }
     }
+
+    /*if(_flags.fix_band){
+        if(_p_add_ext > 0 || _p_rem_ext > 0){
+            double probs[9] = {_p_length, _p_add_int, _p_rem_int, 0, 0, _p_swap, _p_shift, _p_stretch, _p_change_band};
+            setProbabilities(probs);
+        }
+    }*/
 
     if(_flags.laguerre){
         initializeLaguerre();

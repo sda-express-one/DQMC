@@ -719,7 +719,7 @@ void setGFNphBandsClassParameters(GreenFuncNphBands * diagram, parameters sim, s
     diagram->setNumLaguerrePoints(sets.num_points_laguerre);
 
     // set calculations perfomed
-    diagram->setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor, sets.blocking_analysis, sets.fix_tau_value, sets.laguerre);
+    diagram->setCalculations(sets.gf_exact, sets.histo, sets.gs_energy, sets.effective_mass, sets.Z_factor, sets.blocking_analysis, sets.fix_tau_value, sets.fix_band, sets.laguerre);
     // set benchmarking
     diagram->setBenchmarking(sets.time_benchmark);
     // set MC statistics

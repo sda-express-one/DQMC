@@ -394,6 +394,11 @@ settings IOMethods::readSimSettingstxt(const std::string& filename){
                 iss >> value;
                 sets.N_blocks = stringToInt(value);
             }
+            else if(key == "fix_band"){
+                std::string value;
+                iss >> value;
+                sets.fix_band = stringToBool(value);
+            }
             else if(key == "fix_tau_value" || key == "fix_length"){
                 std::string value;
                 iss >> value;
@@ -578,6 +583,7 @@ config_parameters IOMethods::readParametersYAML(config_parameters cfg, const std
         cfg.sets.blocking_analysis = sets_node["blocking_method"].as<bool>(false); // whether to perform blocking analysis for error estimation
         cfg.sets.N_blocks = sets_node["N_blocks"].as<int>(100); // number of blocks for blocking analysis (if enabled)
         cfg.sets.fix_tau_value = sets_node["fix_tau_value"].as<bool>(false); // whether to fix tau value for all diagrams in the Markov chain (ground state properties calculation)
+        cfg.sets.fix_band = sets_node["fix_band"].as<bool>(false); // whether to fix the band index for all diagrams in the Markov chain (multi band, ground state properties calculation, use only with no external phonons)
         cfg.sets.laguerre = sets_node["laguerre"].as<bool>(false); // whether to use Laguerre polynomials method for Green's function estimation
         cfg.sets.max_order_laguerre = sets_node["max_order_laguerre"].as<int>(10); // maximum order of Laguerre polynomials for Green's function estimation
         cfg.sets.alpha_laguerre = sets_node["alpha_laguerre"].as<long double>(0.5); // alpha parameter for Laguerre polynomials for Green's function estimation
