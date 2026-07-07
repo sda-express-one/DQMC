@@ -5,17 +5,17 @@
 # all simulation parameters are written here
 simulation_parameters:
   type: "bands"
-  simulation_steps: 100000000
+  simulation_steps: 1000000000
   thermalization_steps: 10000000
-  max_tau_value: 50
+  max_tau_value: 1000000
   dimensions: 3
-  kx: 0.0
-  ky: 0.0
-  kz: 0.0
-  chemical_potential: -2.2
-  max_internal_order: 1000
+  kx: 0
+  ky: 0
+  kz: 0
+  chemical_potential: -0.8
+  max_internal_order: 5000
   max_num_ext_phonons: 100
-  dielectric_infty: 8.12
+  dielectric_infty: 9.49
   # 9.49
   # 8.12
   simple:
@@ -24,9 +24,10 @@ simulation_parameters:
     electron_effective_mass: 1.0
     optical_phonon_dispersion: 1.0
   bands:
-    num_bands: 1
+    num_bands: 3
+    selected_band: 0
     num_phonon_modes: 1
-    m_x: 1
+    m_x: 1.2
     # 0.252
     # 0.243
     m_y: 1
@@ -35,22 +36,26 @@ simulation_parameters:
     m_z: 1
     # 0.809
     # 0.897
-    A_LK: 2.598
+    A_LK: 4.681
+  # 3
   # 4.681
-    B_LK: 0.894
+    B_LK: 1.019
+  # 2
   # 1.019
-    C_LK: 3.335
+    C_LK: 5.498
+  # 0.5
   # 5.498
     phonon_modes:
-      - 1.0
+      # - 1.0
       # - 0.002201283285681736
-      # - 0.00173824189
+      - 0.00173824189
     dielectric_responses:
-      - 0.3535533905932738
+      # - 0.7071067811865476
+      #- 0.3535533905932738
       # - 0.1414213562373095
       # - 38.09018181818178
-      # - 54.07420792079206
-    V_cell: 281.70300085400004
+      - 54.07420792079206
+    V_cell: 317.1200664062499
     # 281.70300085400004
     # 317.1200664062499
     V_BvK: 1.0
@@ -63,28 +68,30 @@ simulation_parameters:
 # if simulation_steps > 25000 in simulation_parameters.txt,
 # write_diagrams is automatically set to false
 # if fix_tau_value = true, please set prob_length = 0 and prob_stretch = 0,
+# if fix_band = true, pleas set add_external_update and remove_external_update = 0,
 # otherwise it will be done automatically
 simulation_settings:
-  histogram_method: true
+  histogram_method: false
   num_bins: 1000
-  exact_green_function: true
+  exact_green_function: false
   num_points_exact: 1000
   selected_order: -1
-  gs_energy: false
+  gs_energy: true
   cutoff_tau_energy: 30.0
   effective_mass: false
   cutoff_tau_mass: 30.0
   Z_factor: false
   cutoff_tau_Z: 30.0
-  write_diagrams: false
-  time_benchmark: true
+  write_diagrams: true
+  time_benchmark: false
   mc_statistics: true
   cutoff_tau_statistics: 0.0
   blocking_method: false
   N_blocks: 100
-  fix_tau_value: false
-  laguerre: true
-  max_order_laguerre: 9
+  fix_tau_value: true
+  fix_band: false
+  laguerre: false
+  max_order_laguerre: 20
   alpha_laguerre: 1.0
   num_points_laguerre: 1000
 
@@ -97,22 +104,22 @@ simulation_settings:
 # to avoid correlations between different cpus
 # set probabilities
 update_probabilities:
-  length_update: 0.2
-  add_internal_update: 0.2
-  remove_internal_update: 0.2
-  add_external_update: 0.05
-  remove_external_update: 0.05
+  length_update: 0
+  add_internal_update: 0.3
+  remove_internal_update: 0.3
+  add_external_update: 0
+  remove_external_update: 0
   swap_phonon_update: 0.1
-  shift_phonon_update: 0.18
-  stretch_diagram_update: 0.02
-  change_band_update: 0
+  shift_phonon_update: 0.2
+  stretch_diagram_update: 0
+  change_band_update: 0.1
 
 # cpu settings for main simulation
 # if parallel_mode is off, code is sequential
 # parallel_type can be "start_sequential" to start sequential thermalization,
 # "from_scratch" to have fully parallelized processes
 # from the start (no sequential thermalization)
-# choose number of nodes in which to run the simulation
+# choose number of nodes in which to run the simulation (not yet implemented)
 # choose number of cpus to use in each node,
 # write MAX to use all available cpus
 # choose number of iterations to perform to avoid correlations
@@ -120,7 +127,7 @@ update_probabilities:
 cpu_settings:
   parallel_mode: false
   parallel_type: "from_scratch"
-  num_procs: 4
+  num_procs: 2
   num_nodes: 1
-  autocorr_steps: 100000
+  autocorr_steps: 10000
   cpu_time: true

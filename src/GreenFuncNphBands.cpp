@@ -854,7 +854,7 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
                         prefactor_fin *= CompMethods::vertexOverlapTerm(_bands_fin[i], _bands_init[i]);
                     }
                     else{
-                        // take band number from oold diagram
+                        // take band number from old diagram
                         chosen_band = _bands_init[i].band_number;
 
                         // assign band value
@@ -915,7 +915,7 @@ void GreenFuncNphBands::addInternalPhononPropagator(){
                                          _dielectric_responses[phonon_index], _dielectric_const, mass_q);
 
             double p_B = _p_rem_int*(_current_order_int + 2*_current_ph_ext + 1);
-            double p_A = _p_add_int*(_current_order_int/2 + 1);
+            double p_A = _p_add_int*(static_cast<double>(_current_order_int)/2 + 1);
 
             double numerator = p_B*std::exp(-(action_fin - action_init + (CompMethods::phononEnergy(_phonon_modes, phonon_index)*(tau_two - tau_one))))*
                 (tau_end-tau_init)*prefactor_fin*_V_BZ; //*_num_bands*_num_bands
@@ -1219,7 +1219,7 @@ void GreenFuncNphBands::removeInternalPhononPropagator(){
                                     *CompMethods::vertexStrengthTerm(w_x, w_y, w_z, _V_BZ, _V_BvK, _phonon_modes[phonon_index],
                                     _dielectric_responses[phonon_index], _dielectric_const, mass_q);
 
-        double p_A = _p_add_int*((_current_order_int - 2)/2 + 1);
+        double p_A = _p_add_int*(static_cast<double>(_current_order_int - 2)/2 + 1);
         double p_B = _p_rem_int*(_current_order_int + 2*_current_ph_ext - 1);
         
         double numerator = p_A*std::pow(2*M_PI,_D)*CompMethods::phononEnergy(_phonon_modes, phonon_index)
@@ -1380,7 +1380,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 _pointer_two = nullptr;
                 return;
             }
-            if(tau_two < _pointer_two->tau || CompMethods::isEqual(tau_two, _pointer_two->tau) 
+            if(tau_two < _pointer_two->tau || CompMethods::isEqual(tau_two, _pointer_two->tau)
                 || CompMethods::isEqual(tau_two, _pointer_two->tau_next) || tau_two > _pointer_two->tau_next){
                 if(_num_bands > 1){updateNegativeDiagrams(3);}
                 _pointer_one = nullptr;
@@ -1437,30 +1437,40 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 // below first vertex
                 if(first_part){
                     if(_num_bands == 3){
-                        chosen_band = band_number(gen);
+                        if(_helper != _pointer_one){
+                            chosen_band = _bands_init[i].band_number;
+
+                            // compute new eigenvectors and eigenvalues for (px_fin, py_fin, pz_fin) momentum values
+                            new_values_matrix = CompMethods::diagonalizeLKHamiltonian(px_fin, py_fin, pz_fin, _A_LK_el, _B_LK_el, _C_LK_el);
+                            eigenval = new_values_matrix(0,chosen_band);
+
+                            new_overlap = new_values_matrix.block<3,1>(1,chosen_band);
+                        }
+                        else{
+                            chosen_band = band_number(gen);
+                            
+                            // compute new eigenvectors and eigenvalues for (px_fin, py_fin, pz_fin) momentum values
+                            new_values_matrix = CompMethods::diagonalizeLKHamiltonian(px_fin, py_fin, pz_fin, _A_LK_el, _B_LK_el, _C_LK_el);
+                            eigenval = new_values_matrix(0,chosen_band);
+
+                            new_overlap = new_values_matrix.block<3,1>(1,chosen_band);
+
+                            prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_init[i], new_overlap);
+                        }
+                        // assign new band number and effective mass
                         _bands_fin[i].band_number = chosen_band;
-
-                        new_values_matrix = CompMethods::diagonalizeLKHamiltonian(px_fin, py_fin, pz_fin, _A_LK_el, _B_LK_el, _C_LK_el);    
-                        eigenval = new_values_matrix(0,chosen_band);
-                
-                        // computing new proposed electron effective mass from chosen eigenvalue
                         _bands_fin[i].effective_mass = CompMethods::computeEffMassfromEigenval(eigenval);
-
-                        // new proposed band eigenstate
-                        new_overlap = new_values_matrix.block<3,1>(1,chosen_band);
-                        _bands_fin[i].c1 = new_overlap(0); 
+                        _bands_fin[i].c1 = new_overlap(0);
                         _bands_fin[i].c2 = new_overlap(1);
                         _bands_fin[i].c3 = new_overlap(2);
 
                         if(_helper != _head){
-                            // compute vertex terms
                             prefactor_init = prefactor_init*CompMethods::vertexOverlapTerm(_bands_init[i-1], _bands_init[i]);
-                            prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_fin[i-1], new_overlap);
+                            prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_fin[i-1], _bands_fin[i]);
                         }
                     }
                     else if(_num_bands == 1){
-                        _bands_fin[i].effective_mass = CompMethods::computeEffMassSingleBand(px_fin, py_fin, pz_fin,
-                                                                                _m_x_el, _m_y_el, _m_z_el);   
+                        _bands_fin[i].effective_mass = CompMethods::computeEffMassSingleBand(px_fin, py_fin, pz_fin, _m_x_el, _m_y_el, _m_z_el);   
                     }
 
                     // compute energies
@@ -1475,52 +1485,64 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                     else{
                         action_one_init += energy_init*(tau_one - _helper->tau);
                         action_one_fin += energy_fin*(tau_one - _helper->tau);
-                        // new vertex (left)
-                        if(_num_bands == 3){
-                            prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_fin[i], _pointer_one->electronic_band);
-                        }
                     }
                 }
                 // above second vertex
                 else{
                     if(_num_bands == 3){
-                        if(_helper->next != _tail){
-                            chosen_band = band_number(gen);
-                            _bands_fin[i].band_number = chosen_band;
+                        if(_helper->next == _tail){
+                            chosen_band = _bands_fin[0].band_number;
+                            _bands_fin[i] = _bands_fin[0];
 
-                            new_values_matrix = CompMethods::diagonalizeLKHamiltonian(px_fin, py_fin, pz_fin, 
-                                                                    _A_LK_el, _B_LK_el, _C_LK_el);
+                            if(_helper != _pointer_two){
+                                prefactor_init = prefactor_init*CompMethods::vertexOverlapTerm(_bands_init[i-1], _bands_init[i]);
+                                prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_fin[i-1], _bands_fin[i]);
+                            }
+                            else{
+                                prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_init[i], _bands_fin[i]);
+                            }
+                        }
+                        else if(_helper != _pointer_two){
+                            chosen_band = _bands_init[i].band_number;
+
+                            // compute new eigenvectors and eigenvalues for (px_fin, py_fin, pz_fin) momentum values
+                            new_values_matrix = CompMethods::diagonalizeLKHamiltonian(px_fin, py_fin, pz_fin, _A_LK_el, _B_LK_el, _C_LK_el);
                             eigenval = new_values_matrix(0,chosen_band);
 
-                            // computing new proposed electron effective mass from chosen eigenvalue
-                            _bands_fin[i].effective_mass = CompMethods::computeEffMassfromEigenval(eigenval);
-
-                            // new proposed band eigenstate
                             new_overlap = new_values_matrix.block<3,1>(1,chosen_band);
-                            _bands_fin[i].c1 = new_overlap(0); 
-                            _bands_fin[i].c2 = new_overlap(1); 
+
+                            prefactor_init = prefactor_init*CompMethods::vertexOverlapTerm(_bands_init[i-1], _bands_init[i]);
+                            prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_fin[i-1], new_overlap);
+
+                            // assign new band number and effective mass
+                            _bands_fin[i].band_number = chosen_band;
+                            _bands_fin[i].effective_mass = CompMethods::computeEffMassfromEigenval(eigenval);
+                            _bands_fin[i].c1 = new_overlap(0);
+                            _bands_fin[i].c2 = new_overlap(1);
                             _bands_fin[i].c3 = new_overlap(2);
                         }
                         else{
-                            // last propagator must be the same as the first one (conservation of four-momentum)
-                            _bands_fin[i] = _bands_fin[0];
-                            new_overlap(0) = _bands_fin[0].c1;
-                            new_overlap(1) = _bands_fin[0].c2;
-                            new_overlap(2) = _bands_fin[0].c3;
-                        }
+                            chosen_band = band_number(gen);
+                            
+                            // compute new eigenvectors and eigenvalues for (px_fin, py_fin, pz_fin) momentum values
+                            new_values_matrix = CompMethods::diagonalizeLKHamiltonian(px_fin, py_fin, pz_fin, _A_LK_el, _B_LK_el, _C_LK_el);
+                            eigenval = new_values_matrix(0,chosen_band);
 
-                        // compute vertex terms
-                        if(_helper != _pointer_two){
-                            prefactor_init = prefactor_init*CompMethods::vertexOverlapTerm(_bands_init[i-1], _bands_init[i]);
-                            prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_fin[i-1], new_overlap);
-                        }
-                        else{
+                            new_overlap = new_values_matrix.block<3,1>(1,chosen_band);
+
                             prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_init[i], new_overlap);
+
+                            // assign new band number and effective mass
+                            _bands_fin[i].band_number = chosen_band;
+                            _bands_fin[i].effective_mass = CompMethods::computeEffMassfromEigenval(eigenval);
+                            _bands_fin[i].c1 = new_overlap(0);
+                            _bands_fin[i].c2 = new_overlap(1);
+                            _bands_fin[i].c3 = new_overlap(2);
                         }
+                        
                     }
                     else if(_num_bands == 1){
-                        _bands_fin[i].effective_mass = CompMethods::computeEffMassSingleBand(px_fin, py_fin, pz_fin, 
-                                                                            _m_x_el, _m_y_el, _m_z_el);
+                        _bands_fin[i].effective_mass = CompMethods::computeEffMassSingleBand(px_fin, py_fin, pz_fin, _m_x_el, _m_y_el, _m_z_el);
                     }
 
                     // calc energy values for propagators above second ph vertex
@@ -1669,6 +1691,10 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             }
         }
         else{
+            //###################### TEMP ##########################
+            //######################################################
+            return;
+            //######################################################
             _pointer_one = findVertexPosition(tau_two);
             _pointer_two = findVertexPosition(tau_one);
 
@@ -1719,7 +1745,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
             // vertices weights of two diagrams
             double prefactor_fin = 1;
             double prefactor_init = 1;
-            bool first_part = false, second_part = true, third_part = true;
+            bool first_part = true, second_part = false, third_part = false;
 
             _helper = _head;
             int i = 0;
@@ -1740,7 +1766,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                 action_init += energy_init*(_helper->tau_next - _helper->tau);
 
                 // final diagram
-                if(!first_part){
+                if(first_part){
                     px_fin = px_init - w_x;
                     py_fin = py_init - w_y;
                     pz_fin = pz_init - w_z;
@@ -1775,11 +1801,11 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                     }
                     else{
                         action_fin += energy_fin*(tau_two - _helper->tau);
-                        first_part = true;
-                        second_part = false;
+                        first_part = false;
+                        second_part = true;
                     }
                 }
-                if(!second_part){
+                if(second_part){
                     px_fin = px_init - 2*w_x;
                     py_fin = py_init - 2*w_y;
                     pz_fin = pz_init - 2*w_z;
@@ -1809,22 +1835,22 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
 
                     if(_helper == _pointer_one && _helper == _pointer_two){
                         action_fin += energy_fin*(tau_one - tau_two);
-                        second_part = true;
-                        third_part = false;
+                        second_part = false;
+                        third_part = true;
                     }
                     else if(_helper == _pointer_one){
                         action_fin += energy_fin*(_helper->tau_next - tau_two);
                     }
                     else if(_helper == _pointer_two){
                         action_fin += energy_fin*(tau_one - _helper->tau);
-                        second_part = true;
-                        third_part = false;
+                        second_part = false;
+                        third_part = true;
                     }
                     else{
                         action_fin += energy_fin*(_helper->tau_next - _helper->tau);
                     }
                 }
-                if(!third_part){
+                if(third_part){
                     px_fin = px_init - w_x;
                     py_fin = py_init - w_y;
                     pz_fin = pz_init - w_z;
@@ -1867,7 +1893,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
                         action_fin += energy_fin*(_helper->tau_next - _helper->tau);
                     }
 
-                    if(_helper->next == _tail){third_part = true;}
+                    if(_helper->next == _tail){third_part = false;}
                 }
                 _helper = _helper->next;
                 ++i;
@@ -2047,7 +2073,6 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
         // retrieve phonon mode
         int phonon_index = _pointer_one->index;
 
-
         // vertices weights of two diagrams
         double prefactor_fin = 1;
         double prefactor_init = 1;
@@ -2061,6 +2086,22 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
         std::uniform_int_distribution<int> band_number(0, _num_bands-1);
 
         if(_pointer_one->type == -2){
+            if(_num_bands > 1 && _flags.fix_band){
+                if(_current_ph_ext < 2){
+                    if(_current_order_int < 2){
+                        // going back not possible if free bands are not the same as original
+                        if(_pointer_one->electronic_band.band_number != _chosen_band_zero_order){return;}
+                    }
+                    else{
+                        if(CompMethods::isEqual(_pointer_one->k[0],_kx) && CompMethods::isEqual(_pointer_one->k[1],_ky) && CompMethods::isEqual(_pointer_one->k[2],_kz)){
+                            if(_pointer_one->electronic_band.band_number != _chosen_band_zero_order){return;}
+                        }
+                        if(CompMethods::isEqual(_pointer_two->prev->k[0],_kx) && CompMethods::isEqual(_pointer_two->prev->k[1],_ky) && CompMethods::isEqual(_pointer_two->prev->k[2],_kz)){
+                            if(_pointer_two->prev->electronic_band.band_number != _chosen_band_zero_order){return;}
+                        }
+                    }
+                }
+            }
 
             // momentum values
             double px_init = 0;
@@ -2084,62 +2125,48 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
             int i = 0;
 
             while(_helper->next != nullptr){
-                if(_helper->tau < _pointer_one->tau && _helper != _pointer_one){
-                    px_fin = _helper->k[0];
-                    py_fin = _helper->k[1];
-                    pz_fin = _helper->k[2];
+                px_fin = _helper->k[0];
+                py_fin = _helper->k[1];
+                pz_fin = _helper->k[2];
 
-                    _bands_fin[i] = _helper->electronic_band;
+                _bands_fin[i] = _helper->electronic_band;
 
-                    px_init = px_fin + w_x;
-                    py_init = py_fin + w_y;
-                    pz_init = pz_fin + w_z;
+                px_init = px_fin + w_x;
+                py_init = py_fin + w_y;
+                pz_init = pz_fin + w_z;
 
+                if(_helper->tau < _pointer_one->tau && _helper != _pointer_one){    
                     if(_num_bands == 3){
-                        if(_helper->next != _pointer_one){             
+                        if(_helper->next != _pointer_one){
+                            chosen_band = _bands_fin[i].band_number;
+
                             new_values_matrix = CompMethods::diagonalizeLKHamiltonian(px_init, py_init, pz_init, _A_LK_el, _B_LK_el, _C_LK_el);
+                            eigenval = new_values_matrix(0,chosen_band);
 
-                            // check if it is a free propagator
-                            if(new_values_matrix(0,0) == -2){
-                                _bands_init[i].band_number = -1;
-                                _bands_init[i].effective_mass = 1;
-                                _bands_init[i].c1 = (1./3);
-                                _bands_init[i].c2 = (1./3);
-                                _bands_init[i].c3 = (1./3);
+                            new_overlap = new_values_matrix.block<3,1>(1,chosen_band);
 
-                                new_overlap << (1./3), (1./3), (1./3);
-                            }
-                            else{
-                                chosen_band = _bands_fin[i].band_number;
-
-                                _bands_init[i].band_number = chosen_band;
-                                eigenval = new_values_matrix(0,chosen_band);
-                                _bands_init[i].effective_mass = CompMethods::computeEffMassfromEigenval(eigenval);
-
-                                new_overlap = new_values_matrix.block<3,1>(1,chosen_band);
-                                _bands_init[i].c1 = new_overlap(0);
-                                _bands_init[i].c2 = new_overlap(1); 
-                                _bands_init[i].c3 = new_overlap(2);
-                            }
-                            if(_helper != _head){
-                                prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_fin[i-1],_bands_fin[i]);
-                                prefactor_init = prefactor_init*CompMethods::vertexOverlapTerm(_bands_init[i-1], _bands_init[i]);
-                            }
+                            // assign new band
+                            _bands_init[i].band_number = chosen_band;
+                            _bands_init[i].effective_mass = CompMethods::computeEffMassfromEigenval(eigenval);
+                            _bands_init[i].c1 = new_overlap(0);
+                            _bands_init[i].c2 = new_overlap(1);
+                            _bands_init[i].c3 = new_overlap(2);
                         }
                         else{
+                            chosen_band = _pointer_one->electronic_band.band_number;
                             _bands_init[i] = _pointer_one->electronic_band;
 
-                            if(_helper != _head){
-                                prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_fin[i-1], _bands_fin[i]);
-                                prefactor_init = prefactor_init*CompMethods::vertexOverlapTerm(_bands_init[i-1], _bands_init[i]);
-                            }
+                            // vertex to take out
+                            prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_pointer_one->electronic_band, _bands_fin[i]);
+                        }
 
-                            prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_fin[i],_pointer_one->electronic_band);
+                        if(_helper != _head){
+                            prefactor_init = prefactor_init*CompMethods::vertexOverlapTerm(_bands_init[i-1], _bands_init[i]);
+                            prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_fin[i-1], _bands_fin[i]);
                         }
                     }
                     else if(_num_bands == 1){
-                        _bands_init[i].effective_mass = CompMethods::computeEffMassSingleBand(px_init, py_init, pz_init, 
-                                                                                _m_x_el, _m_y_el, _m_z_el);
+                        _bands_init[i].effective_mass = CompMethods::computeEffMassSingleBand(px_init, py_init, pz_init, _m_x_el, _m_y_el, _m_z_el);
                     }
 
                     // compute energies
@@ -2150,65 +2177,37 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                     action_one_init += energy_init*(_helper->tau_next - _helper->tau);
                     action_one_fin += energy_fin*(_helper->tau_next - _helper->tau);
                 }
-
                 
                 if(_helper->tau > _pointer_two->tau || _helper == _pointer_two){
-
-                    px_fin = _helper->k[0];
-                    py_fin = _helper->k[1];
-                    pz_fin = _helper->k[2];
-
-                    px_init = px_fin + w_x;
-                    py_init = py_fin + w_y;
-                    pz_init = pz_fin + w_z;
-                    
-                    _bands_fin[i] = _helper->electronic_band;
-
                     if(_num_bands == 3){
                         if(_helper != _pointer_two){
+                            chosen_band = _bands_fin[i].band_number;
+
                             new_values_matrix = CompMethods::diagonalizeLKHamiltonian(px_init, py_init, pz_init, _A_LK_el, _B_LK_el, _C_LK_el);
-                            
-                            // check if it is a free propagator
-                            if(new_values_matrix(0,0) == -2){
-                                _bands_init[i].band_number = -1;
-                                _bands_init[i].effective_mass = 1;
-                                _bands_init[i].c1 = (1./3);
-                                _bands_init[i].c2 = (1./3);
-                                _bands_init[i].c3 = (1./3);
+                            eigenval = new_values_matrix(0,chosen_band);
 
-                                new_overlap << (1./3), (1./3), (1./3);
-                            }
-                            else{
-                                chosen_band = _bands_fin[i].band_number;
+                            new_overlap = new_values_matrix.block<3,1>(1,chosen_band);
 
-                                _bands_init[i].band_number = chosen_band;
-                                eigenval = new_values_matrix(0,chosen_band);
-                                _bands_init[i].effective_mass = CompMethods::computeEffMassfromEigenval(eigenval);
+                            prefactor_init = prefactor_init*CompMethods::vertexOverlapTerm(_bands_init[i-1], new_overlap);
+                            prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_init[i-1], _bands_fin[i]);
 
-                                new_overlap = new_values_matrix.block<3,1>(1,chosen_band);
-                                _bands_init[i].c1 = new_overlap(0);
-                                _bands_init[i].c2 = new_overlap(1); 
-                                _bands_init[i].c3 = new_overlap(2);
-                            }
-
-                            prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_fin[i-1], _bands_fin[i]);
-                            prefactor_init = prefactor_init*CompMethods::vertexOverlapTerm(_bands_init[i-1], _bands_init[i]);
+                            // assign new band
+                            _bands_init[i].band_number = chosen_band;
+                            _bands_init[i].effective_mass = CompMethods::computeEffMassfromEigenval(eigenval);
+                            _bands_init[i].c1 = new_overlap(0);
+                            _bands_init[i].c2 = new_overlap(1);
+                            _bands_init[i].c3 = new_overlap(2);
                         }
                         else{
-                            if(_pointer_two->next == _tail){
-                                _bands_init[i] = _bands_init[0];
+                            chosen_band = _pointer_two->prev->electronic_band.band_number;
+                            _bands_init[i] = _pointer_two->prev->electronic_band;
 
-                                prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_pointer_two->prev->electronic_band, _bands_fin[i]);
-                                if(_pointer_two != _pointer_one->next){
-                                    prefactor_init = prefactor_init*CompMethods::vertexOverlapTerm(_pointer_two->prev->prev->electronic_band, _bands_init[0]);
-                                }
-                                // missing prefactor init somewhere
-                            }
+                            // vertex to take out
+                            prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_pointer_two->prev->electronic_band, _bands_fin[i]);
                         }
                     }
                     else if(_num_bands == 1){
-                        _bands_init[i].effective_mass = CompMethods::computeEffMassSingleBand(px_init, py_init, pz_init,
-                                                                                _m_x_el, _m_y_el, _m_z_el);
+                        _bands_init[i].effective_mass = CompMethods::computeEffMassSingleBand(px_init, py_init, pz_init, _m_x_el, _m_y_el, _m_z_el);
                     }
 
                     energy_init = CompMethods::electronEnergy(px_init, py_init, pz_init, _bands_init[i].effective_mass);
@@ -2898,36 +2897,33 @@ long double GreenFuncNphBands::stretchDiagramLength(long double tau_init){
 };
 
 void GreenFuncNphBands::changeBand(){
-    if(_current_order_int + 2*_current_ph_ext < 1){
-        if(_num_bands > 1){updateNegativeDiagrams(8);}
-        return; // reject if no vertices are present
-    }
+    if(_num_bands < 2){return;} // reject if only one band is present
 
     int total_order = _current_order_int + 2*_current_ph_ext;
-    std::uniform_int_distribution<int> distrib(0, total_order-1);
-    
-    int vertex_index = distrib(gen); // choose random vertex
+    int vertex_index = 0;
 
-    if(vertex_index < _current_order_int){
-        _pointer_one = findInternalPhononVertex(vertex_index);
-    }
-    else{
-        _pointer_one = findExternalPhononVertex(vertex_index - _current_order_int);
-    }
+    if(total_order > 0){
+        std::uniform_int_distribution<int> distrib(0, total_order-1);
+        vertex_index = distrib(gen); // choose random vertex
 
-    if(_pointer_one->electronic_band.band_number == -1){
-        _pointer_one = nullptr;
-        updateNegativeDiagrams(8);
-        return; // reject if vertex is linked to free propagator
-    }
+        if(vertex_index < _current_order_int){_pointer_one = findInternalPhononVertex(vertex_index);}
+        else{_pointer_one = findExternalPhononVertex(vertex_index - _current_order_int);}
 
-    if(_flags.fix_band){
-        if(_pointer_one->next == _tail && _current_ph_ext == 0){
+        if(_pointer_one->electronic_band.band_number == -1){
             _pointer_one = nullptr;
             updateNegativeDiagrams(8);
-            return; // reject if vertex is linked to last vertex and no external phonons are present
+            return; // reject if vertex is linked to this weird stuff I first made
+        }
+
+        if(_flags.fix_band){
+            if(_pointer_one->next == _tail && _current_ph_ext == 0){
+                _pointer_one = nullptr;
+                updateNegativeDiagrams(8);
+                return; // reject if vertex is linked to last vertex and no external phonons are present
+            }
         }
     }
+    else{_pointer_one = _head;}
     
     long double tau_init = 0;
     long double tau_end = 0;
@@ -2988,7 +2984,7 @@ void GreenFuncNphBands::changeBand(){
         }
         // TO BE CHANGED IF TRY CASE WITH CHANGING BAND IN ZERO
         // MAYBE OK
-        else if(_current_ph_ext > 0){
+        else if(total_order > 0){
             prefactor_init = CompMethods::vertexOverlapTerm(_pointer_one->prev->electronic_band, _pointer_one->electronic_band)
                             *CompMethods::vertexOverlapTerm(_head->electronic_band, _head->next->electronic_band);
             prefactor_fin = CompMethods::vertexOverlapTerm(_pointer_one->prev->electronic_band, new_overlap)
@@ -3018,7 +3014,7 @@ void GreenFuncNphBands::changeBand(){
             _pointer_one->electronic_band.c3 = new_overlap[2];
 
             // MAYBE OK
-            if(_pointer_one->next == _tail && _current_ph_ext > 0){
+            if(_pointer_one->next == _tail && total_order > 0){
                 _head->electronic_band.effective_mass = new_effective_mass;
                 _head->electronic_band.band_number = new_band;
                 _head->electronic_band.c1 = new_overlap[0];
@@ -3631,7 +3627,7 @@ void GreenFuncNphBands::printGFExactEstimator(){
         //_points_gf_exact[i] = _points_gf_exact[i]/((double)_gf_exact_count);
         _points_gf_exact[i] = _points_gf_exact[i]*norm_const/_N0; // right normalization
         if(_num_bands > 1){
-            _points_gf_exact[i] = _points_gf_exact[i]/_ratio_negative_updates;
+            _points_gf_exact[i] = _points_gf_exact[i]; ///_ratio_negative_updates;
         }
     }
     std::string a = "GF_";
@@ -3863,7 +3859,7 @@ void GreenFuncNphBands::printEffectiveMassEstimator(){
             if(_flags.blocking_analysis){file << " +\\- " << _effective_masses_var[2];}
             file << "." << std::endl; 
         }
-       else if(_num_bands == 3){
+        else if(_num_bands == 3){
             // stuff
         }
         file << std::endl;
@@ -4525,7 +4521,6 @@ void GreenFuncNphBands::initializeLaguerre(){
         _L_points[i] = (static_cast<long double>(i))*_tau_max/static_cast<long double>(_L_num_points); // mid-point of each bin
         _L_GF[i] = 0;
     }
-    //monial = std::pow(-1, i)*(factorial(n)/factorial(i))/factorial(n-i)*1/factorial(i); // compute coefficients of Laguerre polynomial L_n(x) = sum_{i=0}^{n} (-1)^i * (n!/i!)/(n-i)! * 1/i! * x^i
 };
 
 void GreenFuncNphBands::computeLaguerreCoefficients(long double tau_length){
@@ -4634,10 +4629,17 @@ void GreenFuncNphBands::computeRatioNegativeUpdates(long long int num_updates){
 }
 
 double GreenFuncNphBands::calcNormConst(){
-    double eff_mass_electron = CompMethods::computeEffMassSingleBand(_kx, _ky, _kz, _m_x_el, _m_y_el, _m_z_el);
+    double eff_mass_electron{1};
+    if(_num_bands == 1){
+        eff_mass_electron = CompMethods::computeEffMassSingleBand(_kx, _ky, _kz, _m_x_el, _m_y_el, _m_z_el);
+    }
+    // TO BE FIXED
+    else if(_num_bands == 3){
+        eff_mass_electron = 1;
+    }
+    
     double numerator = 1 - std::exp(-(CompMethods::electronEnergy(_kx,_ky,_kz, eff_mass_electron)-_chem_potential)*_tau_max);
     double denominator = CompMethods::electronEnergy(_kx,_ky,_kz,eff_mass_electron)-_chem_potential;
-    //std::cout << "Normalization constant calculated." << std::endl;
     return (numerator/denominator);
 };
 
@@ -4646,7 +4648,7 @@ void GreenFuncNphBands::normalizeHistogram(double norm_const){
         _green_func[i] = _bin_count[i]/(_N0*_bin_width);
         _green_func[i] = _green_func[i]*norm_const;
         if(_num_bands > 1){
-            _green_func[i] = _green_func[i]/_ratio_negative_updates;
+            _green_func[i] = _green_func[i]; // /_ratio_negative_updates;
         }
     }
 };
