@@ -3562,7 +3562,7 @@ void GreenFuncNphBands::computeFinalQuantities(){
 
     if(_flags.gs_energy){
         _gs_energy = _gs_energy/static_cast<long double>(_gs_energy_count); // average energy of diagrams
-        if(_num_bands > 1){_gs_energy = _gs_energy/((1-_ratio_negative_updates)-_ratio_negative_updates);}
+        if(_num_bands > 1){_gs_energy = _gs_energy/_ratio_negative_updates;}
         if(_flags.blocking_analysis){
             long double squared_sum = 0;
             int count = 0;
@@ -4946,7 +4946,7 @@ void GreenFuncNphBands::writeMCStatistics(std::string filename) const {
 
     if(_num_bands > 1){
         file << "Negative sign Diagrammatic Monte Carlo analysis" << "\n";
-        for(int i = 0; i < 8; ++i){
+        for(int i = 0; i < 9; ++i){
             file << "Update " << i << ", negative diagram updates: " << _num_negative_diagrams[i] << "\n";
         }
         file << "\n";
@@ -4954,82 +4954,10 @@ void GreenFuncNphBands::writeMCStatistics(std::string filename) const {
         file << "\n";
     }
     file << "Probabilities: " << _p_length << ", " <<  _p_add_int << ", " << _p_rem_int << ", " << _p_add_ext << ", "
-        << _p_rem_ext << ", "<< _p_swap << ", " << _p_shift << ", " << _p_stretch << ".\n";
+        << _p_rem_ext << ", "<< _p_swap << ", " << _p_shift << ", " << _p_stretch << ", " << _p_change_band << ".\n";
     file << "\n";
 
     file.close();
     std::cout << "Values' statistics written to file " << filename << "." << std::endl;
 };
 
-
-/*
-#####################################################################################
-OLD VERSION OF STRETCH UPDATE
-#####################################################################################
-
-    initialize momentum values for first electron propagator
-    double kx = _propagators[0].el_propagator_kx;
-    double ky = _propagators[0].el_propagator_ky;
-    double kz = _propagators[0].el_propagator_kz;
-
-    // create complete array of new vertex time values
-    int total_order = _current_order_int + 2*_current_ph_ext;
-    long double* new_taus = new long double[total_order+2];
-    new_taus[0] = 0; // first vertex time value is always 0
-
-    // declare variables used in for loop
-    int c = 0;
-    int phonon_index = 0;
-    long double tau_one, tau_two;
-    long double kx_incoming, ky_incoming, kz_incoming;
-    long double kx_outgoing, ky_outgoing, kz_outgoing;
-    double el_eff_mass_incoming, el_eff_mass_outgoing;
-    double energy_delta = 0;
-
-    // assign new time values to every vertex
-    for(int i = 1; i < total_order+1; i++){
-        // necessary step to address phonon type into evaluation
-        c = _vertices[i].type;
-        if(c == 2){c = 1;}
-        else if(c == -2){c = -1;}
-        phonon_index = _vertices[i].index;  // index of phonon mode in el-phonon vertex
-
-        // left vertex value is retrieved from new proposed values, right vertex value from old ones (vertex array)
-        tau_one = new_taus[i-1];
-        tau_two = _vertices[i+1].tau;
-
-        kx_incoming = _propagators[i-1].el_propagator_kx;
-        ky_incoming = _propagators[i-1].el_propagator_ky;
-        kz_incoming = _propagators[i-1].el_propagator_kz;
-        el_eff_mass_incoming = _bands[i-1].effective_mass;
-
-        kx_outgoing = _propagators[i].el_propagator_kx;
-        ky_outgoing = _propagators[i].el_propagator_ky;
-        kz_outgoing = _propagators[i].el_propagator_kz;
-        el_eff_mass_outgoing = _bands[i].effective_mass;
-
-        energy_delta = electronEnergy(kx_incoming, ky_incoming, kz_incoming, el_eff_mass_incoming) - 
-        electronEnergy(kx_outgoing, ky_outgoing, kz_outgoing, el_eff_mass_outgoing) - phononEnergy(_phonon_modes, phonon_index)*c;
-            
-        new_taus[i] = tau_one - std::log(1 - drawUniformR()*(1 - std::exp(-energy_delta*(tau_two - tau_one))))/energy_delta;
-
-        // check for possible double precision errors
-        if(isEqual(new_taus[i], tau_one) || isEqual(new_taus[i], tau_two) || new_taus[i] > tau_two){delete[] new_taus; return tau_init;}
-    }
-
-    new_taus[total_order+1] = new_taus[total_order] - std::log(1-drawUniformR())/(electronEnergy(kx,ky,kz,_bands[total_order].effective_mass) 
-        - _chem_potential + extPhononEnergy(_ext_phonon_type_num, _phonon_modes, _num_phonon_modes));
-    
-    // check for possible double precision errors
-    if(isEqual(new_taus[total_order], new_taus[total_order+1]) || isEqual(new_taus[total_order+1], _tau_max) 
-       || new_taus[total_order+1] >= _tau_max){delete[] new_taus; return tau_init;}
-    else{
-        for(int i = 0; i < total_order + 2; i++){
-            _vertices[i].tau = new_taus[i]; // assign new time values to vertices
-        }
-    }
-    long double tau_fin = new_taus[total_order+1]; // assign new time value to last vertex
-    delete[] new_taus;
-    return tau_fin; // return new length of diagram
-
-    */

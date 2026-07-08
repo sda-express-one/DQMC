@@ -18,29 +18,6 @@ namespace CompMethods{;
     // evaluates equality between two double precision values
     inline bool isEqual(long double a, long double b, long double epsilon = 1e-9L) {return std::fabs(a - b) < epsilon;};
 
-    inline void reorderChangeSignEigenvectors(Eigen::Matrix3d& eigenvectors, choice eigenv_gauge){
-
-        Eigen::Matrix3d eigenvectors_new;
-        Eigen::RowVector3d eigenvals_new;
-
-        eigenvectors_new = eigenvectors;
-
-        eigenvectors.row(0) = eigenvectors_new.row(eigenv_gauge.position[0]);
-        eigenvectors.row(1) = eigenvectors_new.row(eigenv_gauge.position[1]);
-        eigenvectors.row(2) = eigenvectors_new.row(eigenv_gauge.position[2]);
-
-        for(int i = 0; i < 3; ++i){
-            std::cout << "\n" << eigenvectors(eigenv_gauge.position[i],i) << std::endl;
-            std::cout << eigenv_gauge.sign[i] << std::endl;
-            std::cout << eigenv_gauge.sign[i] << std::endl;
-        }
-    
-        if(eigenvectors(eigenv_gauge.position[0],0)*eigenv_gauge.sign[0] < 0){eigenvectors.col(0)*=-1;}
-        if(eigenvectors(eigenv_gauge.position[1],1)*eigenv_gauge.sign[1] < 0){eigenvectors.col(1)*=-1;}
-        if(eigenvectors(eigenv_gauge.position[2],2)*eigenv_gauge.sign[2] < 0){eigenvectors.col(2)*=-1;}
-    };
-
-
     inline choice selectionRulesLK(const double kx, const double ky, const double kz){
         // decision container
         choice eigenv_gauge;

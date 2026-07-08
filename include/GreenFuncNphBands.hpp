@@ -9,13 +9,12 @@
 #include <chrono>
 #include <algorithm>
 #include <omp.h>
+#include <Eigen/Core> // built with Eigen 3.4.0, download it from https://gitlab.com/Eigen
+#include <Eigen/Eigenvalues>
 #include "utils/MC_data_structures.hpp"
 #include "utils/progressbar.hpp"
 #include "utils/MC_Benchmarking.hpp"
 #include "utils/computational_methods.hpp"
-#include <omp.h>
-#include <Eigen/Core>        // built with Eigen 3.4.0, download it from https://gitlab.com/libeigen/eigen/-/releases
-#include <Eigen/Eigenvalues> // add Eigen directory inside project directory to compile
 #include "Diagram.hpp"
 
 class GreenFuncNphBands : public Diagram {
