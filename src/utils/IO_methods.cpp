@@ -805,7 +805,7 @@ void IOMethods::writeEffectiveMass(const std::string filename, GreenFuncNphBands
             if(blocking){file << " +\\- " << std::sqrt(effective_masses_mean_var[2]);}
             file << std::endl; 
         }
-       else if(diagram->getNumBands() == 3){
+        else if(diagram->getNumBands() == 3){
             // stuff
         }
 

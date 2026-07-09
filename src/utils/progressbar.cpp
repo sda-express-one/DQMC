@@ -1,6 +1,5 @@
 #include "../../include/utils/progressbar.hpp"
 #include <iostream>
-#include <iomanip>
 
 ProgressBar::ProgressBar(unsigned long long int total, int width) : _total(total), _width(width) {
     _is_terminal = checkTerminal();

@@ -389,7 +389,7 @@ void GreenFuncNph::addInternalPhononPropagator(){
             delete[] energy_fin;
 
             double p_B = _p_rem_int*(_current_order_int + 2*_current_ph_ext + 1);
-            double p_A = _p_add_int*(_current_order_int/2 + 1);
+            double p_A = _p_add_int*(static_cast<double>(_current_order_int)/2 + 1);
 
             double numerator = p_B*std::exp(-(exponent_fin - exponent_init + (phononDispersion(_ph_dispersion))*(tau_two - tau_one)))*calcVertexStrength(w_x,w_y,w_z)*(tau_end-tau_init);
             double denominator = p_A*std::pow(2*M_PI,_D)*_ph_dispersion*std::exp(-_ph_dispersion*(tau_two-tau_one))*std::pow(((tau_two-tau_one)/(2*M_PI)),double(_D)/2.)*
@@ -507,7 +507,7 @@ void GreenFuncNph::removeInternalPhononPropagator(){
         delete[] energy_init;
         delete[] energy_fin;
 
-        double p_A = _p_add_int*((_current_order_int - 2)/2 + 1);
+        double p_A = _p_add_int*(static_cast<double>(_current_order_int - 2)/2 + 1);
         double p_B = _p_rem_int*(_current_order_int + 2*_current_ph_ext - 1);
         
         double numerator = p_A*std::pow(2*M_PI,_D)*_ph_dispersion*std::exp(-_ph_dispersion*(tau_two-tau_one))*std::pow(((tau_two-tau_one)/(2*M_PI)),double(_D)/2.)*
