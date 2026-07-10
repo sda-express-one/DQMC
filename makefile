@@ -2,18 +2,25 @@
 BUILD ?= release
 
 CXX = g++
-CXXFLAGS = -fopenmp -Wall -Wextra -Werror
+CXXFLAGS = -fopenmp -Wall -Wextra -Werror -Iinclude
 LDFLAGS = -lyaml-cpp
+
+# directories
+SRC_DIR = src
+INCLUDE_DIR = include
+BUILD_DIR = build/$(BUILD)
+BIN_DIR = bin
 
 # target name and build directory
 PROGRAM_NAME = DQMC.o
 BUILD_DIR = build/
 
-# source files
-SRC_DIR = src
+# source files  and corresponding object files
 SOURCES = $(wildcard $(SRC_DIR)/*.cpp)
 SOURCES += $(wildcard $(SRC_DIR)/utils/*.cpp)
-OBJECTS = $(SOURCES:.cpp=.o)
+
+# map src/file.cpp -> build/release/foo.o (preserving directory structure)
+OBJECTS = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SOURCES))
 
 # build-specific flags
 # -fsanitize=thread -fsanitize=address
@@ -23,31 +30,31 @@ RELEASE_FLAGS = -O3 -DNDEBUG
 # select flags based on BUILD variable
 ifeq ($(BUILD),debug)
     CXXFLAGS += $(DEBUG_FLAGS)
-	BUILD_DIR = build/$(BUILD)
 else
     CXXFLAGS += $(RELEASE_FLAGS)
 endif
 
 # final target with build directory
-TARGET = $(BUILD_DIR)/$(PROGRAM_NAME)
+PROGRAM_NAME = DQMC
+TARGET = $(BIN_DIR)/$(PROGRAM_NAME)
 
 # default target
 all: $(TARGET)
 
 # link the program
-$(TARGET): $(OBJECTS) | $(BUILD_DIR)
+$(TARGET): $(OBJECTS) | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
-# compile source files
-%.o: %.cpp
+# compile source files (preserving subdirectory structure in build/)
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
+	mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# create build directory if it doesn't exist
-$(BUILD_DIR): 
+# create directories if they don't exist
+$(BUILD_DIR) $(BIN_DIR): 
 		mkdir -p $@
 
 # convenience targets
-
 debug:
 	$(MAKE) BUILD=debug
 
@@ -58,6 +65,6 @@ clean:
 	rm -f $(OBJECTS)
 
 cleanall:
-	rm -f $(OBJECTS) $(TARGET)
+	rm -rf build/ $(BIN_DIR)
 
 .PHONY: all debug release clean cleanall

@@ -1,4 +1,4 @@
-# ignore executable files
+# ignore executable and linking files
 *.exe
 *.o
 
@@ -11,12 +11,8 @@
 .vscode/*
 
 # ignore following single files
-aaa.cpp
-aaa.hpp
-doubles.cpp
 test.cpp
-Updates.cpp
-Updates.hpp
+matrix.cpp
 trial_matrix.cpp
 
 # ignore text files
@@ -39,12 +35,10 @@ trial_matrix.cpp
 
 # ignore folders
 build
+bin
 thirdparty
 Eigen
 pcg-cpp-0.98
-
-#ignore unrelated files
-matrix.cpp
 
 # ignore ipynb files
 *.ipynb
