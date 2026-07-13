@@ -1,4 +1,7 @@
 #include "../include/GreenFuncNphBands.hpp"
+#include <Eigen/src/Core/Matrix.h>
+#include <cstdlib>
+#include <random>
 
 // constructor
 GreenFuncNphBands::GreenFuncNphBands(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
@@ -2084,20 +2087,86 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
         Eigen::Vector3d new_overlap;
         new_overlap << 1,0,0;
         std::uniform_int_distribution<int> band_number(0, _num_bands-1);
+        
+        // necessary in the multiband case
+        Band free_band;
 
         if(_pointer_one->type == -2){
-            if(_num_bands > 1 && _flags.fix_band){
+            if(_num_bands > 1){
+                Eigen::Vector3d free_overlap;
                 if(_current_ph_ext < 2){
                     if(_current_order_int < 2){
-                        // going back not possible if free bands are not the same as original
-                        if(_pointer_one->electronic_band.band_number != _chosen_band_zero_order){return;}
+                        if(_flags.fix_band){
+                            // going back not possible if free bands are not the same as original
+                            if(_pointer_one->electronic_band.band_number != _chosen_band_zero_order){
+                                _pointer_one = nullptr;
+                                _pointer_two = nullptr;
+                                return;
+                            }
+                            free_band.band_number = _chosen_band_zero_order;
+                            free_band.effective_mass = _zero_point_effective_masses[_chosen_band_zero_order];
+                            free_overlap = _zero_point_matrix.col(_chosen_band_zero_order);
+                            free_band.c1 = free_overlap(0);
+                            free_band.c2 = free_overlap(1);
+                            free_band.c3 = free_overlap(2);
+                        }
+                        else{
+                            free_band = _pointer_one->electronic_band;
+                        }
                     }
                     else{
-                        if(CompMethods::isEqual(_pointer_one->k[0],_kx) && CompMethods::isEqual(_pointer_one->k[1],_ky) && CompMethods::isEqual(_pointer_one->k[2],_kz)){
-                            if(_pointer_one->electronic_band.band_number != _chosen_band_zero_order){return;}
+                        if(_pointer_one->prev == _head){
+                            if(_flags.fix_band){
+                                if(_pointer_one->electronic_band.band_number != _chosen_band_zero_order){
+                                    _pointer_one = nullptr;
+                                    _pointer_two = nullptr;
+                                    return;
+                                }
+                                free_band.band_number = _chosen_band_zero_order;
+                                free_band.effective_mass = _zero_point_effective_masses[_chosen_band_zero_order];
+                                free_overlap = _zero_point_matrix.col(_chosen_band_zero_order);
+                                free_band.c1 = free_overlap(0);
+                                free_band.c2 = free_overlap(1);
+                                free_band.c3 = free_overlap(2);
+                            }
+                            else{
+                                free_band = _pointer_one->electronic_band;
+                            }
+                            if(_pointer_two->next == _tail){
+                                if(_pointer_two->prev->electronic_band.band_number != _pointer_one->electronic_band.band_number){
+                                    _pointer_one = nullptr;
+                                    _pointer_two = nullptr;
+                                    return;
+                                }
+                            }
                         }
-                        if(CompMethods::isEqual(_pointer_two->prev->k[0],_kx) && CompMethods::isEqual(_pointer_two->prev->k[1],_ky) && CompMethods::isEqual(_pointer_two->prev->k[2],_kz)){
-                            if(_pointer_two->prev->electronic_band.band_number != _chosen_band_zero_order){return;}
+                        else if(_pointer_two->next == _tail){
+                            if(_flags.fix_band){
+                                if(_pointer_two->prev->electronic_band.band_number != _chosen_band_zero_order){
+                                    _pointer_one = nullptr;
+                                    _pointer_two = nullptr;
+                                    return;
+                                }
+                                free_band.band_number = _chosen_band_zero_order;
+                                free_band.effective_mass = _zero_point_effective_masses[_chosen_band_zero_order];
+                                free_overlap = _zero_point_matrix.col(_chosen_band_zero_order);
+                                free_band.c1 = free_overlap(0);
+                                free_band.c2 = free_overlap(1);
+                                free_band.c3 = free_overlap(2);
+                            }
+                            else{
+                                free_band = _pointer_two->prev->electronic_band;
+                            }
+                        }
+                        else{
+                            std::uniform_int_distribution<int> unif(0,_num_bands);
+                            int free_num = unif(gen);
+                            free_band.band_number = free_num;
+                            free_band.effective_mass = _zero_point_effective_masses[free_num];
+                            free_overlap = _zero_point_matrix.col(free_num);
+                            free_band.c1 = free_overlap(0);
+                            free_band.c2 = free_overlap(1);
+                            free_band.c3 = free_overlap(2);
                         }
                     }
                 }
@@ -2137,7 +2206,10 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
 
                 if(_helper->tau < _pointer_one->tau && _helper != _pointer_one){    
                     if(_num_bands == 3){
-                        if(_helper->next != _pointer_one){
+                        if(_helper == _head && _current_ph_ext < 2){
+                            _bands_init[i] = free_band;
+                        }
+                        else if(_helper->next != _pointer_one){
                             chosen_band = _bands_fin[i].band_number;
 
                             new_values_matrix = CompMethods::diagonalizeLKHamiltonian(px_init, py_init, pz_init, _A_LK_el, _B_LK_el, _C_LK_el);
@@ -2180,7 +2252,15 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                 
                 if(_helper->tau > _pointer_two->tau || _helper == _pointer_two){
                     if(_num_bands == 3){
-                        if(_helper != _pointer_two){
+                        if(_helper->next == _tail){
+                            _bands_init[i] = _bands_init[0];
+                            
+                            if(_helper != _pointer_two){
+                                prefactor_init = prefactor_init*CompMethods::vertexOverlapTerm(_bands_init[i-1],_bands_init[i]);
+                            }
+                            prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_fin[i-1],_bands_fin[i]);
+                        }
+                        else if(_helper != _pointer_two){
                             chosen_band = _bands_fin[i].band_number;
 
                             new_values_matrix = CompMethods::diagonalizeLKHamiltonian(px_init, py_init, pz_init, _A_LK_el, _B_LK_el, _C_LK_el);
@@ -2197,6 +2277,7 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                             _bands_init[i].c1 = new_overlap(0);
                             _bands_init[i].c2 = new_overlap(1);
                             _bands_init[i].c3 = new_overlap(2);
+                        
                         }
                         else{
                             chosen_band = _pointer_two->prev->electronic_band.band_number;
@@ -4083,7 +4164,7 @@ void GreenFuncNphBands::markovChainMC(){
 
 void GreenFuncNphBands::markovChainMCOnlyRelax(){
     // input variables
-    long double tau_length = diagramLengthUpdate(_tau_max/100);
+    long double tau_length = diagramLengthUpdate(_tau_max/100); //AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaa
     double r = 0.5;
     unsigned long long int i = 0;
 
@@ -4145,6 +4226,7 @@ void GreenFuncNphBands::markovChainMCOnlySample(){
     if(_flags.fix_tau_value){
         tau_length = _tau_max;
         _tail->tau = _tau_max;
+        _tail->prev->tau_next =_tau_max;
     }
 
     double r = 0.5;

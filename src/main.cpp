@@ -421,12 +421,12 @@ int main(){
                     {
                         setGFNphBandsClassParameters(&diagram_simulate, local_sim, local_sets, local_cpu, probs, phonon_modes, dielectric_responses);
 
-                        std::cout << ID << "\n";
-                        std::cout << "kx: " << diagram_simulate.getkx() << "\n";
-                        std::cout << "diel_resp: " << diagram_simulate.getDielectricResponse(0) << "\n";
-                        std::cout << "phon_E: " << diagram_simulate.getPhononMode(0) << "\n";
-                        std::cout << "diel_const: " << diagram_simulate.getDielectricConst() << "\n";
-                        std::cout.flush();
+                        //std::cout << ID << "\n";
+                        //std::cout << "kx: " << diagram_simulate.getkx() << "\n";
+                        //std::cout << "diel_resp: " << diagram_simulate.getDielectricResponse(0) << "\n";
+                        //std::cout << "phon_E: " << diagram_simulate.getPhononMode(0) << "\n";
+                        //std::cout << "diel_const: " << diagram_simulate.getDielectricConst() << "\n";
+                        //std::cout.flush();
                     }
 
                     // main simulation
