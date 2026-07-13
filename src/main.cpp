@@ -1,3 +1,4 @@
+#include <XoshiroCpp.hpp>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -203,6 +204,7 @@ int main(){
 
                 // main simulation
                 diagram_relax.markovChainMCOnlyRelax();
+                XoshiroCpp::Xoshiro256PlusPlus gen_master = diagram_relax.copyGenState();
                 
                 // retrieve parameters for main simulation
                 num_bins_histo = diagram_relax.getNumBins();
@@ -247,7 +249,7 @@ int main(){
                 
                     #pragma omp critical
                     {
-                        Diagram::setSeed(seed, ID*2654435761U);
+                        Diagram::setSeed(gen_master, ID);
                         delete[] nodes_thermalized;
                         delete[] internal_used_thermalized;
                         delete[] external_used_thermalized;
@@ -376,6 +378,7 @@ int main(){
                 }
             }
             else if(cpu.parallel_type == "from_scratch"){
+
                 #pragma omp parallel
                 {
                     int ID = omp_get_thread_num();
@@ -397,7 +400,7 @@ int main(){
                 
                     #pragma omp critical
                     {
-                        Diagram::setSeed(seed, ID*2654435761U);
+                        Diagram::setSeed(seed, ID);
                         if(ID == 0){
                             diagram_simulate.setMaster(true);
                             num_threads = omp_get_num_threads();
@@ -410,12 +413,20 @@ int main(){
                             diagram_simulate.setMaster(false);
                             local_cpu.autocorr_steps = local_sim.relax_steps;
                         }
+                        
                     }
                     #pragma omp barrier
                 
                     #pragma omp critical
                     {
                         setGFNphBandsClassParameters(&diagram_simulate, local_sim, local_sets, local_cpu, probs, phonon_modes, dielectric_responses);
+
+                        std::cout << ID << "\n";
+                        std::cout << "kx: " << diagram_simulate.getkx() << "\n";
+                        std::cout << "diel_resp: " << diagram_simulate.getDielectricResponse(0) << "\n";
+                        std::cout << "phon_E: " << diagram_simulate.getPhononMode(0) << "\n";
+                        std::cout << "diel_const: " << diagram_simulate.getDielectricConst() << "\n";
+                        std::cout.flush();
                     }
 
                     // main simulation
@@ -680,7 +691,7 @@ bool fileExists(const std::string& filename) {
 uint64_t setStaticParameters(parameters sim){
     // initialize GreenFuncNph object
     uint64_t seed = getClockTime();
-    Diagram::setSeed(seed);
+    Diagram::setSeed(seed, 0);
 
     // set initial band for multiple band calculations
     GreenFuncNphBands::setBand(sim.selected_band);

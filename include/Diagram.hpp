@@ -1,5 +1,6 @@
 #ifndef DIAGRAM_HPP
 #define DIAGRAM_HPP
+#include <cstdint>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -7,8 +8,8 @@
 #include <random>
 #include <chrono>
 #include <omp.h>
+#include <XoshiroCpp.hpp>
 #include "../thirdparty/include/pcg_random.hpp"
-#include "../thirdparty/include/pcg_extras.hpp"
 #include "utils/computational_methods.hpp"
 #include "utils/MC_data_structures.hpp"
 
@@ -68,8 +69,26 @@ class Diagram {
         };
 
         // initialize seed for random number generator
-        static inline void setSeed(uint64_t seed=0x853c49e6748fea9bULL, uint64_t stream=0xda3e39cb94b95bdbULL){
-            gen.seed(seed, stream);
+        //static inline void setSeed(uint64_t seed=0x853c49e6748fea9bULL, uint64_t stream=0xda3e39cb94b95bdbULL){
+        //    gen.seed(seed, stream);
+        //}
+
+        //static inline void setSeed(uint64_t seed=0x853c49e6748fea9bULL){
+        //    gen = XoshiroCpp::Xoshiro256PlusPlus(seed);
+        //};
+
+        static inline void setSeed(uint64_t seed=0x853c49e6748fea9bULL, int thread_ID=0){
+            gen = XoshiroCpp::Xoshiro256PlusPlus(seed);
+            for(int i=0; i<thread_ID;++i){
+                gen.jump();
+            }
+        };
+
+        static inline void setSeed(XoshiroCpp::Xoshiro256PlusPlus gen_master, int thread_ID=0){
+            gen = gen_master;
+            for(int i=0; i<thread_ID; ++i){
+                gen.jump();
+            }
         }
 
         /*static inline void setSeed(){
@@ -91,7 +110,8 @@ class Diagram {
         inline int getPhExtMax() const {return _ph_ext_max;};
         inline int getOrderMax() const {return _order_int_max + 2*_ph_ext_max;};
         //static inline std::mt19937 getSeed(){return gen;};
-        static inline pcg32 getSeed(){return gen;};
+        //static inline pcg32 getSeed(){return gen;};
+        static inline XoshiroCpp::Xoshiro256PlusPlus copyGenState() {return gen;};
         void getNodes(FullVertexNode * nodes, FullVertexNodeIndicator * internal_used, FullVertexNodeIndicator * external_used, int size);
         
         // setters
@@ -141,7 +161,8 @@ class Diagram {
     protected:
         // random number generator
         //static thread_local std::mt19937 gen; // Mersenne Twister Algorithm, 32-bit
-        static thread_local pcg32 gen; // Permuted Congruential Generator, 32-bit
+        //static thread_local pcg32 gen; // Permuted Congruential Generator, 32-bit
+        static thread_local XoshiroCpp::Xoshiro256PlusPlus gen; // XorShift256
 
         Vertex* _vertices = nullptr;
         Propagator* _propagators = nullptr;

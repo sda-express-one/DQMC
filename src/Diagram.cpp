@@ -1,8 +1,9 @@
 #include "../include/Diagram.hpp"
+#include <XoshiroCpp.hpp>
 
 //thread_local std::mt19937 Diagram::gen;
 
-thread_local pcg32 Diagram::gen;
+thread_local XoshiroCpp::Xoshiro256PlusPlus Diagram::gen;
 
 // constructor definition
 Diagram::Diagram(unsigned long long int N_diags, long double tau_max, double kx, double ky, double kz,
@@ -60,7 +61,7 @@ Diagram::Diagram(unsigned long long int N_diags, long double tau_max, double kx,
         _tail = _diagram_list;
 
 
-        //collect and allocate second node of the diagram list
+        // collect and allocate second node of the diagram list
         insertNode(_head);
         _tail = _diagram_list->next;
         _tail->tau = _tau_max/100;
