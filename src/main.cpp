@@ -16,8 +16,9 @@ uint64_t getClockTime();
 bool fileExists(const std::string& filename);
 
 // set internal parameters of diagram class
-uint64_t setStaticParameters(parameters sim);
-void setGFNphBandsClassParameters(GreenFuncNphBands * diagram, parameters sim, settings sets, cpu_info cpu, double * probs, double * phonon_modes, double * dielectric_responses);
+uint64_t setStaticParameters(parameters sim); // sets static params for and returns a seed (thread_local implementation)
+void setStaticParametersNoSeed(parameters sim); // sets static parameters (thread_local implementation)
+void setGFNphBandsClassParameters(GreenFuncNphBands * diagram, parameters sim, settings sets, cpu_info cpu, double * probs, double * phonon_modes, double * dielectric_responses); // sets class parameters for an object
 
 int main(){
     // inputs
@@ -273,6 +274,8 @@ int main(){
                     #pragma omp critical
                     {
                         setGFNphBandsClassParameters(&diagram_simulate, local_sim, local_sets, local_cpu, probs, phonon_modes, dielectric_responses);
+                        setStaticParametersNoSeed(local_sim);
+
                         diagram_simulate.setExtPhononTypeNum(ext_phonon_type_num);
                         diagram_simulate.setCurrentOrderInt(current_order_int);
                         diagram_simulate.setCurrentPhExt(current_ph_ext);
@@ -445,13 +448,18 @@ int main(){
                     #pragma omp critical
                     {
                         setGFNphBandsClassParameters(&diagram_simulate, local_sim, local_sets, local_cpu, probs, phonon_modes, dielectric_responses);
+                        setStaticParametersNoSeed(local_sim);
 
-                        //std::cout << ID << "\n";
-                        //std::cout << "kx: " << diagram_simulate.getkx() << "\n";
-                        //std::cout << "diel_resp: " << diagram_simulate.getDielectricResponse(0) << "\n";
-                        //std::cout << "phon_E: " << diagram_simulate.getPhononMode(0) << "\n";
-                        //std::cout << "diel_const: " << diagram_simulate.getDielectricConst() << "\n";
-                        //std::cout.flush();
+                        std::cout << ID << "\n";
+                        std::cout << "kx: " << diagram_simulate.getkx() << "\n";
+                        std::cout << "diel_resp: " << diagram_simulate.getDielectricResponse(0) << "\n";
+                        std::cout << "phon_E: " << diagram_simulate.getPhononMode(0) << "\n";
+                        std::cout << "diel_const: " << diagram_simulate.getDielectricConst() << "\n";
+                        std::cout << "mx: " << diagram_simulate.get_m_x_el() << "\n";
+                        std::cout << "mz: " << diagram_simulate.get_m_z_el() << "\n";
+                        std::cout << "A_LK: " << diagram_simulate.get_A_LK_el() << "\n";
+                        std::cout << "B_LK: " << diagram_simulate.get_B_LK_el() << "\n";
+                        std::cout.flush();
                     }
 
                     // main simulation
@@ -774,6 +782,14 @@ uint64_t setStaticParameters(parameters sim){
     GreenFuncNphBands::setLuttingerKohnParameters(sim.A_LK, sim.B_LK, sim.C_LK);
 
     return seed;
+};
+
+void setStaticParametersNoSeed(parameters sim){
+    // set initial band for multiple band calculations
+    GreenFuncNphBands::setBand(sim.selected_band);
+    
+    GreenFuncNphBands::setEffectiveMasses(sim.m_x, sim.m_y, sim.m_z);
+    GreenFuncNphBands::setLuttingerKohnParameters(sim.A_LK, sim.B_LK, sim.C_LK);
 };
 
 void setGFNphBandsClassParameters(GreenFuncNphBands * diagram, parameters sim, settings sets, cpu_info cpu, double * probs, double * phonon_modes, double * dielectric_responses){
