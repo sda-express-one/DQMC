@@ -1,4 +1,7 @@
 #include "../../include/utils/IO_methods.hpp"
+#include <fstream>
+#include <iterator>
+#include <ostream>
 
 void IOMethods::readProbabilities(const std::string& filename, double* probs, int num_updates){
     // Default probabilities
@@ -943,5 +946,61 @@ void IOMethods::writeZFactor(const std::string filename, GreenFuncNphBands * dia
     file.close();
 
     std::cout << "Z factor values written to file " << filename << "." << std::endl;
+    std::cout << std::endl;
+};
+
+void IOMethods::writeCoefficientsLaguerre(const std::string filename, GreenFuncNphBands *diagram, int num_threads, long double *L_coeff_array){
+    
+    std::cout << "Laguerre coefficients c_n computed." << std::endl;
+
+    std::ofstream file;
+    file.open(filename, std::ofstream::app);
+
+    if(!file.is_open()){
+        std::cerr << "Could not open file " << filename << std::endl;
+        return;
+    }
+
+    file << "# Laguerre coefficients for GF calculated:" << std::endl;
+    file << "# Number of independent parallel processes: " << num_threads << "." << std::endl;
+    file << "# Input parameters are: L_alpha = " << diagram->getAlphaLaguerre() << ", max order = " << diagram->getMaxOrderLaguerre() << "," << std::endl;
+    file << "# kx = " << diagram->getkx() << ", ky = " << diagram->getky() << ", kz = " <<  diagram->getkz() << ", chemical potential = " << diagram->getChemPotential() << "." << std::endl;
+    file << std::endl;
+    
+    file << "# order    coefficient" << std::endl; 
+    for(int i=0; i<diagram->getMaxOrderLaguerre()+1; ++i){
+        file << i << " " << L_coeff_array[i] << "\n";
+    }
+
+    file << "\n\n";
+    file.close();
+
+    std::cout << "Laguerre coefficients written to file: " << filename << "." << std::endl;
+    std::cout << std::endl;
+};
+
+void IOMethods::writeGF_Laguerre(const std::string filename, GreenFuncNphBands *diagram, int num_threads, long double *gf_L_points, long double *gf_L_values){
+    std::cout << "GF with Laguerre method computed." << std::endl;
+
+    std::ofstream file(filename, std::ofstream::out);
+
+    if(!file.is_open()){
+        std::cout << "Could not open file " << filename << std::endl;
+        return;
+    }
+
+    file << "# GF with Laguerre coefficients computed:" << std::endl;
+    file << "# Number of independent parallel processes: " << num_threads << "." << std::endl;
+    file << "# Input parameters are: L_alpha = " << diagram->getAlphaLaguerre() << ", max order " << diagram->getMaxOrderLaguerre() << "," << std::endl;
+    file << "# kx = " << diagram->getkx() << ", ky = " << diagram->getky() << ", kz = " << diagram->getkz() << ", chemical potential = " << diagram->getChemPotential() << "." << std::endl;
+    file << std::endl;
+    
+    for(int i = 0; i < diagram->getLaguerreGFNumPoints(); ++i){ // PLACEHOLDER
+        file << gf_L_points[i] << " " << gf_L_values[i] << "\n";
+    }
+    file << "\n\n";
+    file.close();
+
+    std::cout << "Laguerre GF written to file " << filename << "." << std::endl;
     std::cout << std::endl;
 };

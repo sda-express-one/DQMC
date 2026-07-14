@@ -125,6 +125,10 @@ class GreenFuncNphBands : public Diagram {
     // Laguerre method
     int getMaxOrderLaguerre() const {return _L_order;};
     int getAlphaLaguerre() const {return _L_alpha;};
+    int getLaguerreGFNumPoints() const {return _L_num_points;};
+    long double getLaguerreCoefficient(int c_i) const {if(c_i <= _L_order){return _L_coefficients[c_i];} else{return 0.0;}};
+    long double getLaguerrePoint(int index) const {if(index < _L_num_points){return _L_points[index];} else{return 0.0;}};
+    long double getLaguerreGF(int index) const {if(index < _L_num_points){return _L_GF[index];} else{return 0.0;}};
 
     // setters
     // electron bands
@@ -150,6 +154,7 @@ class GreenFuncNphBands : public Diagram {
 
     // parallelization settings
     void setMaster(bool master_mode = false);
+    void setParallelType(int parallel_type);
     void setNumNodes(int num_nodes = 1);
     void setNumProcs(int num_procs = 1);
 
@@ -224,6 +229,7 @@ class GreenFuncNphBands : public Diagram {
     int _num_nodes = 1;
     int _autocorr_steps = 0;
     bool _master = false;
+    int _parallel_type = 0; // parallelization algorithm
 
     // simulations features
     long long unsigned int _N0 = 0; // number of diagrams of order 0

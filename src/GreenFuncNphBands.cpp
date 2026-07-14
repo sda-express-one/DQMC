@@ -456,6 +456,8 @@ void GreenFuncNphBands::setProbabilities(double* probs){
 // parallelization settings
 void GreenFuncNphBands::setMaster(bool master_mode){_master = master_mode;};
 
+void GreenFuncNphBands::setParallelType(int parallel_type){_parallel_type = parallel_type;};
+
 void GreenFuncNphBands::setNumNodes(int num_nodes){_num_nodes = num_nodes;};
 
 void GreenFuncNphBands::setNumProcs(int num_procs){_num_procs = num_procs;};
@@ -3700,6 +3702,11 @@ void GreenFuncNphBands::computeFinalQuantities(){
             _effective_masses_var[2] = static_cast<long double>(1.L)/(count*(count-1))*squared_sum_zP;
         }
     }
+
+    if(_flags.laguerre){
+        computeLaguerreFinalCoefficients();
+        computeLaguerreGF();
+    }
 };
 
 void GreenFuncNphBands::printGFExactEstimator(){
@@ -4231,8 +4238,12 @@ void GreenFuncNphBands::markovChainMCOnlySample(){
 
     double r = 0.5;
     unsigned long long int i = 0;
-
-    configSimulationSilent();
+    
+    // TO BE FIXED
+    if(!_master || _parallel_type == 0){
+        configSimulationSilent();
+    }
+    
 
     unsigned long long int N_autocorr = getAutocorrSteps(); // number of autocorrelation steps
     unsigned long long int N_diags = getNdiags(); // number of diagrams to be generated
@@ -4658,7 +4669,7 @@ void GreenFuncNphBands::computeLaguerreGF(){
 };
 
 void GreenFuncNphBands::writeLaguerreCoefficients(const std::string& filename) const {
-    std::ofstream file(filename, std::ofstream::out);
+    std::ofstream file(filename, std::ofstream::app);
 
     if(!file.is_open()){
         std::cout << "Could not open file " << filename << std::endl;

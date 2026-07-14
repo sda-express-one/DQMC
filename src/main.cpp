@@ -177,6 +177,13 @@ int main(){
             // quasiparticle weights estimator
             long double * Z_Factor_cpus_array = nullptr;
 
+            // Laguerre coefficients estimator
+            long double * points_laguerre = nullptr;
+            long double * coeff_laguerre = nullptr;
+            long double * gf_laguerre = nullptr;
+            int num_points_laguerre = sets.num_points_laguerre;
+            int max_order_laguerre = sets.max_order_laguerre;
+
             int initialized_heap = 0;
 
             if(omp_get_max_threads() < cpu.num_procs){
@@ -304,30 +311,30 @@ int main(){
                     # pragma omp single nowait
                     {
                         if(local_sets.gs_energy){
-                            gs_energy = new long double[cpu.num_procs];
-                            gs_energy_var = new long double[cpu.num_procs];
+                            gs_energy = new long double[num_threads];
+                            gs_energy_var = new long double[num_threads];
                         }
                         if(local_sets.effective_mass){
-                            effective_mass = new long double[cpu.num_procs];
-                            effective_mass_var = new long double[cpu.num_procs];
-                            effective_masses = new long double * [cpu.num_procs];
-                            effective_masses_var = new long double * [cpu.num_procs];
+                            effective_mass = new long double[num_threads];
+                            effective_mass_var = new long double[num_threads];
+                            effective_masses = new long double * [num_threads];
+                            effective_masses_var = new long double * [num_threads];
                             for (int i = 0; i < cpu.num_procs; i++){
                                 effective_masses[i] = new long double[3];
                                 effective_masses_var[i] = new long double[3];
                             }
                         }
                         if(local_sets.histo){
-                            points_histogram = new long double * [cpu.num_procs];
-                            gf_histo = new long double * [cpu.num_procs];
+                            points_histogram = new long double * [num_threads];
+                            gf_histo = new long double * [num_threads];
                             for(int i = 0; i < cpu.num_procs; i++){    
                                 points_histogram[i] = new long double[num_bins_histo];
                                 gf_histo[i] = new long double[num_bins_histo];
                             }
                         }
                         if(local_sets.gf_exact){
-                            points_gf_exact = new long double * [cpu.num_procs];
-                            gf_values_exact = new long double * [cpu.num_procs];
+                            points_gf_exact = new long double * [num_threads];
+                            gf_values_exact = new long double * [num_threads];
                             for(int i = 0; i < cpu.num_procs; i++){
                                 points_gf_exact[i] = new long double[num_points_exact_gf];
                                 gf_values_exact[i] = new long double[num_points_exact_gf];
@@ -335,6 +342,11 @@ int main(){
                         }
                         if(local_sets.Z_factor){
                             Z_Factor_cpus_array = new long double[num_threads*(sim.ph_ext_max + 1)];
+                        }
+                        if(local_sets.laguerre){
+                            points_laguerre = new long double[num_points_laguerre];
+                            coeff_laguerre = new long double[num_threads*(max_order_laguerre+1)];
+                            gf_laguerre = new long double[num_threads*num_points_laguerre];
                         }
                     
                         // flush to make sure data is initialized
@@ -372,6 +384,19 @@ int main(){
                         if(sets.Z_factor){
                             for(int i=0; i < sim.ph_ext_max + 1; i++){
                                 Z_Factor_cpus_array[ID*(sim.ph_ext_max + 1) + i] = diagram_simulate.getZFactorValue(i);
+                            }
+                        }
+                        if(sets.laguerre){
+                            for(int i=0; i<std::max(num_points_laguerre ,max_order_laguerre+1); ++i){
+                                if(i < max_order_laguerre+1){
+                                    coeff_laguerre[ID*(max_order_laguerre+1)+i] = diagram_simulate.getLaguerreCoefficient(i);
+                                }
+                                if(i < num_points_laguerre){
+                                    if(ID == 0){
+                                        points_laguerre[i] = diagram_simulate.getLaguerrePoint(i);
+                                    }
+                                    gf_laguerre[ID*(num_points_laguerre)+i] = diagram_simulate.getLaguerreGF(i);
+                                }
                             }
                         }
                     }
@@ -473,30 +498,30 @@ int main(){
                     # pragma omp single nowait
                     {   
                         if(local_sets.gs_energy){
-                            gs_energy = new long double[cpu.num_procs];
-                            gs_energy_var = new long double[cpu.num_procs];
+                            gs_energy = new long double[num_threads];
+                            gs_energy_var = new long double[num_threads];
                         }
                         if(local_sets.effective_mass){
-                            effective_mass = new long double[cpu.num_procs];
-                            effective_mass_var = new long double[cpu.num_procs];
-                            effective_masses = new long double * [cpu.num_procs];
-                            effective_masses_var = new long double * [cpu.num_procs];
+                            effective_mass = new long double[num_threads];
+                            effective_mass_var = new long double[num_threads];
+                            effective_masses = new long double * [num_threads];
+                            effective_masses_var = new long double * [num_threads];
                             for (int i = 0; i < cpu.num_procs; i++){
                                 effective_masses[i] = new long double[3];
                                 effective_masses_var[i] = new long double[3];
                             }
                         }
                         if(local_sets.histo){
-                            points_histogram = new long double * [cpu.num_procs];
-                            gf_histo = new long double * [cpu.num_procs];
+                            points_histogram = new long double * [num_threads];
+                            gf_histo = new long double * [num_threads];
                             for(int i = 0; i < cpu.num_procs; i++){    
                                 points_histogram[i] = new long double[num_bins_histo];
                                 gf_histo[i] = new long double[num_bins_histo];
                             }
                         }
                         if(local_sets.gf_exact){
-                            points_gf_exact = new long double * [cpu.num_procs];
-                            gf_values_exact = new long double * [cpu.num_procs];
+                            points_gf_exact = new long double * [num_threads];
+                            gf_values_exact = new long double * [num_threads];
                             for(int i = 0; i < cpu.num_procs; i++){
                                 points_gf_exact[i] = new long double[num_points_exact_gf];
                                 gf_values_exact[i] = new long double[num_points_exact_gf];
@@ -504,6 +529,11 @@ int main(){
                         }
                         if(local_sets.Z_factor){
                             Z_Factor_cpus_array = new long double[num_threads*(sim.ph_ext_max + 1)];
+                        }
+                        if(local_sets.laguerre){
+                            points_laguerre = new long double[num_points_laguerre];
+                            coeff_laguerre = new long double[num_threads*(max_order_laguerre+1)];
+                            gf_laguerre = new long double[num_threads*num_points_laguerre];
                         }
                     
                         // flush to make sure data is initialized
@@ -538,8 +568,21 @@ int main(){
                         if(sets.histo){diagram_simulate.getHistogram(points_histogram[ID], gf_histo[ID]);}
                         if(sets.gf_exact){diagram_simulate.getGFExactPoints(points_gf_exact[ID], gf_values_exact[ID]);}
                         if(sets.Z_factor){
-                            for(int i=0; i < sim.ph_ext_max + 1; i++){
+                            for(int i=0; i < sim.ph_ext_max + 1; ++i){
                                 Z_Factor_cpus_array[ID*(sim.ph_ext_max + 1) + i] = diagram_simulate.getZFactorValue(i);
+                            }
+                        }
+                        if(sets.laguerre){
+                            for(int i=0; i<std::max(num_points_laguerre ,max_order_laguerre+1); ++i){
+                                if(i < max_order_laguerre+1){
+                                    coeff_laguerre[ID*(max_order_laguerre+1)+i] = diagram_simulate.getLaguerreCoefficient(i);
+                                }
+                                if(i < num_points_laguerre){
+                                    if(ID == 0){
+                                        points_laguerre[i] = diagram_simulate.getLaguerrePoint(i);
+                                    }
+                                    gf_laguerre[ID*(num_points_laguerre)+i] = diagram_simulate.getLaguerreGF(i);
+                                }
                             }
                         }
                     }
@@ -569,7 +612,7 @@ int main(){
                 long double effective_masses_mean_var[3];
 
                 for(int i=0; i<3; i++){
-                    for(int j=0; j < num_threads; j++){
+                    for(int j=0; j < num_threads; ++j){
                         effective_masses_values[j] = effective_masses[j][i];
                         effective_masses_values_var[j] = effective_masses_var[j][i];
                     }
@@ -587,7 +630,7 @@ int main(){
                 delete[] effective_masses_values_var;
                 delete[] effective_mass;
                 delete[] effective_mass_var;
-                for(int i=0; i < cpu.num_procs; i++){
+                for(int i=0; i < cpu.num_procs; ++i){
                     delete[] effective_masses[i];
                     delete[] effective_masses_var[i];
                 }
@@ -598,8 +641,8 @@ int main(){
             if(sets.histo){
                 long double * gf_histo_threads = new long double[num_threads];
                 long double * gf_histo_mean = new long double[num_bins_histo];
-                for(int i = 0; i < num_bins_histo; i++){
-                    for(int j = 0; j < num_threads; j++){
+                for(int i = 0; i < num_bins_histo; ++i){
+                    for(int j = 0; j < num_threads; ++j){
                         gf_histo_threads[j] = gf_histo[j][i];
                     }
                     gf_histo_mean[i] = CompMethods::computeMean(gf_histo_threads, num_threads);
@@ -609,7 +652,7 @@ int main(){
 
                 delete[] gf_histo_threads;
                 delete[] gf_histo_mean;
-                for(int i=0;i < cpu.num_procs; i++){
+                for(int i=0;i < cpu.num_procs; ++i){
                     delete[] points_histogram[i];
                     delete[] gf_histo[i];
                 }
@@ -620,8 +663,8 @@ int main(){
             if(sets.gf_exact){
                 long double * gf_exact_threads = new long double[num_threads];
                 long double * gf_exact_mean = new long double[num_points_exact_gf];
-                for(int i=0; i < num_points_exact_gf; i++){
-                    for(int j=0; j < num_threads; j++){
+                for(int i=0; i < num_points_exact_gf; ++i){
+                    for(int j=0; j < num_threads; ++j){
                         gf_exact_threads[j] = gf_values_exact[j][i];
                     }
                     gf_exact_mean[i] = CompMethods::computeMean(gf_exact_threads, num_threads);
@@ -637,7 +680,7 @@ int main(){
 
                 delete[] gf_exact_threads;
                 delete[] gf_exact_mean;
-                for(int i=0; i < cpu.num_procs; i++){
+                for(int i=0; i < cpu.num_procs; ++i){
                     delete[] points_gf_exact[i];
                     delete[] gf_values_exact[i];
                 }
@@ -651,8 +694,8 @@ int main(){
                 long double * Z_Factor_thread_array = new long double[num_threads];
 
                 // collect statistics for quasiparticle weight (Z factor) for each number of extenbr
-                for(int i=0; i < sim.ph_ext_max + 1; i++){
-                    for(int j=0; j < num_threads; j++){
+                for(int i=0; i < sim.ph_ext_max + 1; ++i){
+                    for(int j=0; j < num_threads; ++j){
                         Z_Factor_thread_array[j] = Z_Factor_cpus_array[j*(sim.ph_ext_max + 1) + i];
                     }
                     Z_Factor_array[i] = CompMethods::computeMean(Z_Factor_thread_array, num_threads);
@@ -665,6 +708,37 @@ int main(){
                 delete[] Z_Factor_thread_array;
                 delete[] Z_Factor_array;
                 delete[] Z_Factor_array_var;
+            }
+            if(sets.laguerre){
+                long double * coeff_laguerre_final =  new long double[max_order_laguerre + 1];
+                long double * gf_laguerre_final = new long double[num_points_laguerre];
+
+                for(int i=0; i<std::max(num_points_laguerre ,max_order_laguerre+1); ++i){
+                    if(i < max_order_laguerre+1){
+                        coeff_laguerre_final[i] = 0;
+                        for(int j=0; j < num_threads; ++j){
+                            coeff_laguerre_final[i] += coeff_laguerre[j*(max_order_laguerre+1)+i];
+                        }
+                        coeff_laguerre_final[i] = coeff_laguerre_final[i]/num_threads;
+                    }
+                    if(i < num_points_laguerre){
+                        gf_laguerre_final[i] = 0;
+                        for (int j=0; j < num_threads; ++j) {
+                            gf_laguerre_final[i] += gf_laguerre[j*num_points_laguerre+i];
+                        }
+                        gf_laguerre_final[i] = gf_laguerre_final[i]/num_threads;
+                    }
+                }
+
+                IOMethods::writeCoefficientsLaguerre("laguerre_coefficients.txt", &diagram_input, num_threads, coeff_laguerre_final);
+                IOMethods::writeGF_Laguerre("laguerre_gf.txt", &diagram_input, num_threads, points_laguerre, gf_laguerre_final);
+                
+                delete[] coeff_laguerre;
+                delete[] points_laguerre;
+                delete[] gf_laguerre;
+
+                delete[] coeff_laguerre_final;
+                delete[] gf_laguerre_final;
             }
         }
     }
@@ -712,6 +786,16 @@ void setGFNphBandsClassParameters(GreenFuncNphBands * diagram, parameters sim, s
     // Markov chain settings
     diagram->setRelaxSteps(sim.relax_steps);
     diagram->setAutcorrSteps(cpu.autocorr_steps);
+    if(cpu.parallel_mode == true){
+        int parallel_type{-1};
+        if(cpu.parallel_type == "start_sequential"){
+            parallel_type = 0;
+        }
+        else if(cpu.parallel_type == "from_scratch"){
+            parallel_type = 1;
+        }
+        diagram->setParallelType(parallel_type);
+    }
     diagram->setProbabilities(probs);
 
     //histogram settings

@@ -42,5 +42,9 @@ namespace IOMethods{
 
     void writeZFactor(const std::string filename, GreenFuncNphBands * diagram, int num_threads,
         long double * Z_Factor_array, long double * Z_Factor_array_var);
+
+    void writeCoefficientsLaguerre(const std::string filename, GreenFuncNphBands * diagram, int num_threads, long double * L_coeff_array);
+
+    void writeGF_Laguerre(const std::string filename, GreenFuncNphBands * diagram, int num_threads, long double * gf_L_points, long double * gf_L_values);
 }
 #endif
