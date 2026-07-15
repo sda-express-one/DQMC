@@ -3414,7 +3414,7 @@ void GreenFuncNphBands::configSimulationSilent(){
         _flags.Z_factor = false;
     }
 
-    if(_flags.gf_exact){
+    if(_flags.gf_exact && (!_master || _parallel_type != 1)){
 
         _points = new long double[_num_points];
         _points_gf_exact = new long double[_num_points];
@@ -3426,7 +3426,7 @@ void GreenFuncNphBands::configSimulationSilent(){
         }
     }
 
-    if(_flags.histo){
+    if(_flags.histo && (!_master || _parallel_type != 1)){
         _bin_width_inv = 1./_bin_width;
         _histogram = new double[_N_bins];
         _bin_count = new long long int[_N_bins];
@@ -3438,7 +3438,7 @@ void GreenFuncNphBands::configSimulationSilent(){
         }
     }
 
-    if(_flags.blocking_analysis){
+    if(_flags.blocking_analysis && (!_master || _parallel_type != 1)){
         _block_size = static_cast<long long int>(getNdiags()/_N_blocks);
 
         if(_flags.gs_energy){
@@ -3449,13 +3449,13 @@ void GreenFuncNphBands::configSimulationSilent(){
         }
     }
 
-    if(_flags.effective_mass){
+    if(_flags.effective_mass && (!_master || _parallel_type != 1)){
         if(_num_bands == 3){
             _effective_masses_bands << 0, 0, 0,
                                        0, 0, 0,
                                        0, 0, 0;
         }
-        if(_flags.blocking_analysis){
+        if(_flags.blocking_analysis && (!_master || _parallel_type != 1)){
             _effective_mass_block_array = new long double[_N_blocks];
             _effective_masses_block_array = new long double[3*_N_blocks];
 
@@ -3468,7 +3468,7 @@ void GreenFuncNphBands::configSimulationSilent(){
         }
     }
 
-    if(_flags.Z_factor){
+    if(_flags.Z_factor && (!_master || _parallel_type != 1)){
         _Z_factor_array = new int[_ph_ext_max+1];
         for(int i=0; i<_ph_ext_max+1; i++){_Z_factor_array[i] = 0;}
     }
@@ -3481,7 +3481,16 @@ void GreenFuncNphBands::configSimulationSilent(){
 
     if(_flags.time_benchmark){
         _benchmark_sim = new MC_Benchmarking(getNdiags(), 9);
-        _benchmark_th = new MC_Benchmarking(getAutocorrSteps(), 9);
+        if(_parallel_type == 0){
+            if(getAutocorrSteps() > 0){
+                _benchmark_th = new MC_Benchmarking(getAutocorrSteps(), 9);
+            }
+        }
+        else if(_parallel_type == 1){
+            if(getAutocorrSteps() > 0){
+                _benchmark_th = new MC_Benchmarking(getAutocorrSteps(), 9);
+            }
+        }
     }
 
     if(_flags.fix_tau_value){
@@ -3498,7 +3507,7 @@ void GreenFuncNphBands::configSimulationSilent(){
         }
     }*/
 
-    if(_flags.laguerre){
+    if(_flags.laguerre && (!_master || _parallel_type == 0)){
         initializeLaguerre();
     }
 };
@@ -4239,11 +4248,7 @@ void GreenFuncNphBands::markovChainMCOnlySample(){
     double r = 0.5;
     unsigned long long int i = 0;
     
-    // TO BE FIXED
-    if(!_master || _parallel_type == 0){
-        configSimulationSilent();
-    }
-    
+    configSimulationSilent();  
 
     unsigned long long int N_autocorr = getAutocorrSteps(); // number of autocorrelation steps
     unsigned long long int N_diags = getNdiags(); // number of diagrams to be generated

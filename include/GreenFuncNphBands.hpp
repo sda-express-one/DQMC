@@ -227,7 +227,6 @@ class GreenFuncNphBands : public Diagram {
     // cpu features
     int _num_procs = 1;
     int _num_nodes = 1;
-    int _autocorr_steps = 0;
     bool _master = false;
     int _parallel_type = 0; // parallelization algorithm
 
