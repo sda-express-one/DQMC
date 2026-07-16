@@ -1698,7 +1698,7 @@ void GreenFuncNphBands::addExternalPhononPropagator(){
         else{
             //###################### TEMP ##########################
             //######################################################
-            return;
+            if(_num_bands > 1){return;}
             //######################################################
             _pointer_one = findVertexPosition(tau_two);
             _pointer_two = findVertexPosition(tau_one);
