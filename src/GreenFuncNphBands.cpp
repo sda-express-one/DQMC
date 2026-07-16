@@ -2206,11 +2206,12 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                 py_init = py_fin + w_y;
                 pz_init = pz_fin + w_z;
 
-                if(_helper->tau < _pointer_one->tau && _helper != _pointer_one){    
+                if(_helper->tau < _pointer_one->tau && _helper != _pointer_one){ 
                     if(_num_bands == 3){
                         if(_helper == _head && _current_ph_ext < 2){
                             _bands_init[i] = free_band;
                         }
+                        // MAYBE HERE WRONG
                         else if(_helper->next != _pointer_one){
                             chosen_band = _bands_fin[i].band_number;
 
@@ -2228,15 +2229,16 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                         }
                         else{
                             chosen_band = _pointer_one->electronic_band.band_number;
-                            _bands_init[i] = _pointer_one->electronic_band;
-
-                            // vertex to take out
-                            prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_pointer_one->electronic_band, _bands_fin[i]);
+                            _bands_init[i] = _pointer_one->electronic_band;                            
                         }
 
                         if(_helper != _head){
                             prefactor_init = prefactor_init*CompMethods::vertexOverlapTerm(_bands_init[i-1], _bands_init[i]);
                             prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_fin[i-1], _bands_fin[i]);
+                        }
+                        if(_helper->next == _pointer_one){
+                            // vertex to take out
+                            prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_pointer_one->electronic_band, _bands_fin[i]);
                         }
                     }
                     else if(_num_bands == 1){
@@ -2256,11 +2258,6 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                     if(_num_bands == 3){
                         if(_helper->next == _tail){
                             _bands_init[i] = _bands_init[0];
-                            
-                            if(_helper != _pointer_two){
-                                prefactor_init = prefactor_init*CompMethods::vertexOverlapTerm(_bands_init[i-1],_bands_init[i]);
-                            }
-                            prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_fin[i-1],_bands_fin[i]);
                         }
                         else if(_helper != _pointer_two){
                             chosen_band = _bands_fin[i].band_number;
@@ -2269,9 +2266,6 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                             eigenval = new_values_matrix(0,chosen_band);
 
                             new_overlap = new_values_matrix.block<3,1>(1,chosen_band);
-
-                            prefactor_init = prefactor_init*CompMethods::vertexOverlapTerm(_bands_init[i-1], new_overlap);
-                            prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_init[i-1], _bands_fin[i]);
 
                             // assign new band
                             _bands_init[i].band_number = chosen_band;
@@ -2284,9 +2278,14 @@ void GreenFuncNphBands::removeExternalPhononPropagator(){
                         else{
                             chosen_band = _pointer_two->prev->electronic_band.band_number;
                             _bands_init[i] = _pointer_two->prev->electronic_band;
+                        }
 
-                            // vertex to take out
+                        if(_helper == _pointer_two){
                             prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_pointer_two->prev->electronic_band, _bands_fin[i]);
+                        }
+                        else{
+                            prefactor_init = prefactor_init*CompMethods::vertexOverlapTerm(_bands_init[i-1],_bands_init[i]);
+                            prefactor_fin = prefactor_fin*CompMethods::vertexOverlapTerm(_bands_fin[i-1], _bands_fin[i]);
                         }
                     }
                     else if(_num_bands == 1){

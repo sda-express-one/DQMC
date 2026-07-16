@@ -44,7 +44,7 @@ class GreenFuncNphBands : public Diagram {
             delete[] _bin_count;
             delete[] _green_func;
         }
-        if(_flags.gf_exact){;
+        if(_flags.gf_exact){
             delete[] _points;
             delete[] _points_gf_exact;
         }
